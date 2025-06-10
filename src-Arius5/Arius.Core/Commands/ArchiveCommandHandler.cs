@@ -243,7 +243,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             // Upload
             await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
-                containerName: handlerContext.Request.ContainerName,
                 h: hash,
                 contentType: ChunkContentType,
                 metadata: null,
@@ -261,7 +260,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             await blobStream.FlushAsync(cancellationToken);
 
             // Update tier
-            var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
+            var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(hash, blobStream.Position, handlerContext.Request.Tier);
 
             // Add to db
             handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
@@ -329,9 +328,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
-                    logger.LogInformation($"Adding '{filePair.FullName}' to TAR queue");
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
-
                     var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
                     await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
 
@@ -343,9 +339,13 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                     tarredFilePairs.Add((filePair, binaryHash, archivedSize));
                     previousPosition = ms.Position;
+
+                    logger.LogInformation($"Added '{filePair.FullName}' ({filePair.BinaryFile.Length.Bytes()} to {archivedSize.Bytes()}) to TAR queue");
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
                 }
                 else
                 {
+                    logger.LogInformation($"Binary for '{filePair.FullName}' ({binaryHash.ToShortString()}) already uploaded");
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, $"Already uploaded"));
                 }
 
@@ -398,7 +398,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
 
         await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
-            containerName: handlerContext.Request.ContainerName,
             h: tarHash,
             contentType: TarChunkContentType,
             metadata: null,
@@ -412,7 +411,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await blobStream.FlushAsync(cancellationToken);
 
         // Update tier
-        var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(handlerContext.Request.ContainerName, tarHash, blobStream.Position, handlerContext.Request.Tier);
+        var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(tarHash, blobStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
         var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
@@ -528,8 +527,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
 
-                var bs = new BlobStorage(request.AccountName, request.AccountKey);
-                var created = await bs.CreateContainerIfNotExistsAsync(request.ContainerName);
+                var bs = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+                var created = await bs.CreateContainerIfNotExistsAsync();
 
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 

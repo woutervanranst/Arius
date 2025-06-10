@@ -10,31 +10,24 @@ namespace Arius.Core.Services;
 
 internal class BlobStorage
 {
-    private readonly string            connectionString;
-    private readonly BlobServiceClient blobServiceClient;
+    private readonly string              connectionString;
+    private readonly BlobServiceClient   blobServiceClient;
+    private readonly BlobContainerClient blobContainerClient;
 
-    public BlobStorage(string accountName, string accountKey)
+    public BlobStorage(string accountName, string accountKey, string containerName)
     {
-        connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-        blobServiceClient = new BlobServiceClient(connectionString);
+        connectionString    = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+        blobServiceClient   = new BlobServiceClient(connectionString);
+        blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
     }
-
-    private BlobContainerClient GetBlobContainerClient(string containerName)
-    {
-        return containerClients.GetOrAdd(containerName, _ => blobServiceClient.GetBlobContainerClient(containerName));
-    }
-    private readonly ConcurrentDictionary<string, BlobContainerClient> containerClients = new();
 
     /// <summary>
     /// Create Blob Container if it does not exist
     /// </summary>
-    /// <param name="containerName"></param>
     /// <returns>True if it was created</returns>
-    public async Task<bool> CreateContainerIfNotExistsAsync(string containerName)
+    public async Task<bool> CreateContainerIfNotExistsAsync()
     {
-        var bcc = GetBlobContainerClient(containerName);
-        
-        var r = await bcc.CreateIfNotExistsAsync(PublicAccessType.None);
+        var r = await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
         return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
     }
@@ -45,10 +38,9 @@ internal class BlobStorage
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public IAsyncEnumerable<string> GetStatesAsync(string containerName, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<string> GetStatesAsync(CancellationToken cancellationToken = default)
     {
-        var bcc = GetBlobContainerClient(containerName);
-        return bcc.GetBlobsAsync(prefix: "states/", cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: "states/", cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
             .Select(b => b.Name); 
         //.Select(b => b.Name[(b.Name.IndexOf('/') + 1)..]); // remove the "states/" prefix
@@ -56,9 +48,9 @@ internal class BlobStorage
 
     // --- CHUNKS
 
-    public async Task<Stream> OpenWriteChunkAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
-        var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"chunks/{h}");
 
         var bbowo = new BlockBlobOpenWriteOptions();
 
@@ -74,10 +66,10 @@ internal class BlobStorage
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
-    public async Task<StorageTier> SetChunkStorageTierPerPolicy(string containerName, Hash h, long length, StorageTier targetTier)
+    public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
     {
         var actualTier = GetActualStorageTier(targetTier, length);
-        var bbc        = new BlobClient(connectionString, containerName, $"chunks/{h}");
+        var bbc        = blobContainerClient.GetBlobClient($"chunks/{h}");
 
         await bbc.SetAccessTierAsync(actualTier.ToAccessTier());
 
