@@ -20,7 +20,8 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange: Capture the command sent to IMediator
         ArchiveCommand? capturedCommand = null;
-        fixture.MediatorMock
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
@@ -30,11 +31,11 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var command = $"archive {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         // Act: Run the application
-        var (exitCode, output) = await fixture.CallCliAsync(command);
+        var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
         // Assert: Verify the outcome
         exitCode.ShouldBe(0);
-        await fixture.MediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
+        await mediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
@@ -44,5 +45,62 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         capturedCommand.ContainerName.ShouldBe("testcontainer");
         capturedCommand.RemoveLocal.ShouldBeFalse();
         capturedCommand.Tier.ShouldBe(StorageTier.Archive);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NoPath_NotInContainer_FailsWithMissingParameter()
+    {
+        // Arrange
+        var command = $"archive --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command);
+
+            // Assert
+            exitCode.ShouldBe(1);
+            error.ShouldContain("Missing required parameter(s):\n<localroot>");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NoPath_InContainer_UsesArchiveRoot()
+    {
+        // Arrange
+        ArchiveCommand? capturedCommand = null;
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
+            .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
+
+        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+        var command = $"archive --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error)= await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(0);
+            await mediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
+
+            capturedCommand.ShouldNotBeNull();
+            capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
+            capturedCommand.AccountName.ShouldBe("testaccount");
+            capturedCommand.AccountKey.ShouldBe("testkey");
+            capturedCommand.Passphrase.ShouldBe("testpass");
+            capturedCommand.ContainerName.ShouldBe("testcontainer");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
+        }
     }
 }
