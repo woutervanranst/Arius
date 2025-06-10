@@ -514,11 +514,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request)
         {
+            var bs = await GetBlobStorageAsync();
+            var sr = await GetStateRepositoryAsync(bs);
+
             return new HandlerContext
             {
                 Request     = request,
-                BlobStorage = await GetBlobStorageAsync(),
-                StateRepo   = await GetStateRepositoryAsync(),
+                BlobStorage = bs,
+                StateRepo   = sr,
                 Hasher      = new Sha256Hasher(request.Passphrase),
                 FileSystem  = GetFileSystem()
             };
@@ -535,7 +538,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 return bs;
             }
 
-            async Task<StateRepository> GetStateRepositoryAsync()
+            async Task<StateRepository> GetStateRepositoryAsync(BlobStorage bs)
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
 

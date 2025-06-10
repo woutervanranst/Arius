@@ -5,6 +5,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using System.Collections.Concurrent;
 using System.Net;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Services;
 
@@ -38,15 +39,24 @@ internal class BlobStorage
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public IAsyncEnumerable<string> GetStatesAsync(CancellationToken cancellationToken = default)
+    public async Task<string[]> GetStatesAsync(CancellationToken cancellationToken = default)
     {
-        return blobContainerClient.GetBlobsAsync(prefix: "states/", cancellationToken: cancellationToken)
+        const string prefix = "states/";
+
+        return await blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
-            .Select(b => b.Name); 
-        //.Select(b => b.Name[(b.Name.IndexOf('/') + 1)..]); // remove the "states/" prefix
+            .Select(b => b.Name[prefix.Length ..]) // remove the "states/" prefix
+            .ToArrayAsync(cancellationToken: cancellationToken); 
     }
 
     // --- CHUNKS
+
+    public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
+    {
+        var bbc = blobContainerClient.GetBlockBlobClient($"chunks/{h}");
+
+        return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
+    }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
