@@ -39,7 +39,21 @@ internal class BlobStorage
         return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
     }
 
-    public async Task<Stream> OpenWriteAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    // --- STATES
+
+    /// <summary>
+    /// Get an ordered list of state names in the specified container.
+    /// </summary>
+    /// <returns></returns>
+    public IAsyncEnumerable<string> GetStatesAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        var bcc = GetBlobContainerClient(containerName);
+        return bcc.GetBlobsAsync(prefix: "states/", cancellationToken: cancellationToken)
+            .OrderBy(b => b.Name)
+            .Select(b => b.Name); 
+        //.Select(b => b.Name[(b.Name.IndexOf('/') + 1)..]); // remove the "states/" prefix
+    }
+
     // --- CHUNKS
 
     public async Task<Stream> OpenWriteChunkAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
