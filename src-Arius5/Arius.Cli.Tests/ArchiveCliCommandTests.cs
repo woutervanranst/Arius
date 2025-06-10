@@ -51,21 +51,15 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     public async Task ExecuteAsync_NoPath_NotInContainer_FailsWithMissingParameter()
     {
         // Arrange
+        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
         var command = $"archive --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
-        try
-        {
-            // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command);
+        // Act
+        var (exitCode, output, error) = await fixture.CallCliAsync(command);
 
-            // Assert
-            exitCode.ShouldBe(1);
-            error.ShouldContain("Missing required parameter(s):\n<localroot>");
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
-        }
+        // Assert
+        exitCode.ShouldBe(1);
+        error.ShouldContain("Missing required parameter(s):\n<localroot>");
     }
 
     [Fact]
