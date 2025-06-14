@@ -1,5 +1,5 @@
 using Arius.Core.Commands;
-using Wolverine;
+using MediatR;
 using NSubstitute;
 using Shouldly;
 
@@ -16,25 +16,25 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithAllOptions_SendsCorrectCommand()
+    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
-        var             busMock    = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         var tempPath = Path.GetTempPath();
         var command = $"restore {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --synchronize --download --keep-pointers";
 
         // Act
-        var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+        var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
         // Assert
         exitCode.ShouldBe(0);
-        await busMock.Received(1).InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+        await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
@@ -66,10 +66,10 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
-        var             busMock    = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
@@ -78,11 +78,11 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
-            await busMock.Received(1).InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+            await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
             capturedCommand.ShouldNotBeNull();
             capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
@@ -102,10 +102,10 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
@@ -115,7 +115,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -156,10 +156,10 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -169,7 +169,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -187,10 +187,10 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -200,7 +200,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);

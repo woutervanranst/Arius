@@ -3,7 +3,7 @@ using Arius.Core.Models;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
-using Wolverine;
+using MediatR;
 using Spectre.Console;
 using System.Collections.Concurrent;
 
@@ -11,11 +11,11 @@ namespace Arius.Cli.CliCommands;
 
 public abstract class ArchiveCliCommandBase : ICommand
 {
-    private readonly IMessageBus _bus;
+    private readonly IMediator _mediator;
 
-    public ArchiveCliCommandBase(IMessageBus bus)
+    public ArchiveCliCommandBase(IMediator mediator)
     {
-        _bus = bus;
+        _mediator = mediator;
     }
 
     public abstract DirectoryInfo LocalRoot { get; init; }
@@ -77,7 +77,7 @@ public abstract class ArchiveCliCommandBase : ICommand
 
                     // Send the command and start the progress display loop
                     var cancellationToken = console.RegisterCancellationHandler();
-                    var commandTask       = _bus.InvokeAsync(command, cancellationToken);
+                    var commandTask       = _mediator.Send(command, cancellationToken);
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
@@ -145,7 +145,7 @@ public abstract class ArchiveCliCommandBase : ICommand
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
 public class ArchiveCliCommand: ArchiveCliCommandBase
 {
-    public ArchiveCliCommand(IMessageBus bus) : base(bus)
+    public ArchiveCliCommand(IMediator mediator) : base(mediator)
     {
     }
 
@@ -158,7 +158,7 @@ public class ArchiveCliCommand: ArchiveCliCommandBase
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Docker]")]
 public class ArchiveDockerCliCommand : ArchiveCliCommandBase
 {
-    public ArchiveDockerCliCommand(IMessageBus bus) : base(bus)
+    public ArchiveDockerCliCommand(IMediator mediator) : base(mediator)
     {
     }
 

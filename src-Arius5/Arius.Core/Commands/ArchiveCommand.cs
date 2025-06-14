@@ -1,8 +1,9 @@
 ﻿using Arius.Core.Models;
+using MediatR;
 
 namespace Arius.Core.Commands;
 
-public record ArchiveCommand
+public record ArchiveCommand : IRequest
 {
     public required string        AccountName   { get; init; }
     public required string        AccountKey    { get; init; }

@@ -1,5 +1,5 @@
 using CliFx.Infrastructure;
-using Wolverine;
+using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -11,16 +11,16 @@ public class CliCommandTestsFixture
     {
     }
 
-    public async Task<(int ExitCode, string Output, string Error)> CallCliAsync(string command, IMessageBus? busMock = null)
+    public async Task<(int ExitCode, string Output, string Error)> CallCliAsync(string command, IMediator? mediatorMock = null)
     {
         using var console = new FakeInMemoryConsole();
 
-        var serviceProvider = busMock is null
+        var serviceProvider = mediatorMock is null
             ? Program.ConfigureServices(new ServiceCollection())
                 .BuildServiceProvider()
             : Program.ConfigureServices(new ServiceCollection())
-                .RemoveAll<IMessageBus>()
-                .AddSingleton(busMock)
+                .RemoveAll<IMediator>()
+                .AddSingleton(mediatorMock)
                 .BuildServiceProvider();
 
         var app = Program

@@ -26,11 +26,14 @@ public static class Bootstrapper
         // Add FluentValidation validators
         //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly()); // zie https://www.milanjovanovic.tech/blog/cqrs-validation-with-mediatr-pipeline-and-fluentvalidation#running-validation-from-the-use-case
 
-        // Add Wolverine for command handling
-        services.AddWolverine(options =>
+        // Add MediatR
+        services.AddMediatR(config =>
         {
-            // Discover handler methods in the current AppDomain assemblies
-            options.Discovery.IncludeAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+            // Add Handlers
+            config.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+
+            // Add pipeline validation behavior
+            //config.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
 
         //services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();

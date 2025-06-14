@@ -1,9 +1,10 @@
+using MediatR;
 using System.IO;
 using Arius.Core.Models;
 
 namespace Arius.Core.Commands;
 
-public record RestoreCommand
+public record RestoreCommand : IRequest
 {
     public required string        AccountName   { get; init; }
     public required string        AccountKey    { get; init; }

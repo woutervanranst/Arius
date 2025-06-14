@@ -2,18 +2,18 @@ using Arius.Core.Commands;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
-using Wolverine;
+using MediatR;
 using Spectre.Console;
 
 namespace Arius.Cli.CliCommands;
 
 public abstract class RestoreCliCommandBase : ICommand
 {
-    private readonly IMessageBus bus;
+    private readonly IMediator mediator;
 
-    public RestoreCliCommandBase(IMessageBus bus)
+    public RestoreCliCommandBase(IMediator mediator)
     {
-        this.bus = bus;
+        this.mediator = mediator;
     }
 
     public abstract DirectoryInfo LocalRoot { get; init; }
@@ -57,7 +57,7 @@ public abstract class RestoreCliCommandBase : ICommand
             };
 
             var cancellationToken = console.RegisterCancellationHandler();
-            await bus.InvokeAsync(command, cancellationToken);
+            await mediator.Send(command, cancellationToken);
         }
         catch (Exception e)
         {
@@ -69,7 +69,7 @@ public abstract class RestoreCliCommandBase : ICommand
 [Command("restore", Description = "Restores a directory from Azure Blob Storage.")]
 public class RestoreCliCommand : RestoreCliCommandBase
 {
-    public RestoreCliCommand(IMessageBus bus) : base(bus)
+    public RestoreCliCommand(IMediator mediator) : base(mediator)
     {
     }
 
@@ -82,7 +82,7 @@ public class RestoreCliCommand : RestoreCliCommandBase
 [Command("restore", Description = "Restores a directory from Azure Blob Storage. [Docker]")]
 public class RestoreDockerCliCommand : RestoreCliCommandBase
 {
-    public RestoreDockerCliCommand(IMessageBus bus) : base(bus)
+    public RestoreDockerCliCommand(IMediator mediator) : base(mediator)
     {
     }
 

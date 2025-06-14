@@ -1,6 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
-using Wolverine;
+using MediatR;
 using NSubstitute;
 using Shouldly;
 
@@ -17,14 +17,14 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithAllOptions_SendsCorrectCommand()
+    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
     {
-        // Arrange: Capture the command sent to IMessageBus
+        // Arrange: Capture the command sent to IMediator
         ArchiveCommand? capturedCommand = null;
-        var             busMock    = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         // Arrange: Set up the CLI arguments
@@ -32,11 +32,11 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var command = $"archive {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         // Act: Run the application
-        var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+        var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
         // Assert: Verify the outcome
         exitCode.ShouldBe(0);
-        await busMock.Received(1).InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
+        await mediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
@@ -67,10 +67,10 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         ArchiveCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
@@ -79,11 +79,11 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error)= await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error)= await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
-            await busMock.Received(1).InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
+            await mediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
 
             capturedCommand.ShouldNotBeNull();
             capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
@@ -103,10 +103,10 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         ArchiveCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
@@ -116,7 +116,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -157,10 +157,10 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         ArchiveCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -170,7 +170,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -188,10 +188,10 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange
         ArchiveCommand? capturedCommand = null;
-        var busMock = Substitute.For<IMessageBus>();
-        busMock
-            .InvokeAsync(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask)
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -201,7 +201,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(command, busMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
