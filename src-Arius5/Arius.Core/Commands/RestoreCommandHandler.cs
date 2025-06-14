@@ -2,7 +2,6 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Zio;
@@ -10,7 +9,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Commands;
 
-internal class RestoreCommandHandler : IRequestHandler<RestoreCommand>
+internal class RestoreCommandHandler
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly IOptions<AriusConfiguration> config;

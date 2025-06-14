@@ -12,7 +12,7 @@ Arius is a file archival system that encrypts, compresses, and uploads files to 
 
 ## Architecture
 
-The codebase follows a **CQRS pattern** using MediatR for command handling. The main workflow is implemented in `ArchiveCommandHandler` which:
+The codebase follows a **CQRS pattern** using Wolverine for command handling. The main workflow is implemented in `ArchiveCommandHandler` which:
 
 1. **Indexes** files from a local directory using the Zio filesystem abstraction
 2. **Hashes** files in parallel using SHA256
@@ -69,7 +69,7 @@ The CLI application requires configuration via user secrets:
 
 ## Key Dependencies
 
-- **MediatR**: CQRS command/query handling
+- **Wolverine**: CQRS command/query handling
 - **Zio**: Cross-platform filesystem abstraction
 - **Azure.Storage.Blobs**: Azure Blob Storage client
 - **Entity Framework Core**: SQLite persistence
