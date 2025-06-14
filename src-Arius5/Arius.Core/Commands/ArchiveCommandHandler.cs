@@ -3,7 +3,6 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
@@ -19,7 +18,7 @@ public record ProgressUpdate;
 public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
-internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
+internal class ArchiveCommandHandler
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly IOptions<AriusConfiguration>   config;
