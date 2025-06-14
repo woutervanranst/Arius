@@ -43,7 +43,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await HandlerContext.CreateAsync(request);
+        var newVersion     = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss.fffZ");
+        var handlerContext = await HandlerContext.CreateAsync(request, newVersion);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -512,18 +513,21 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     private class HandlerContext
     {
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request)
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, string version)
         {
-            var bs = await GetBlobStorageAsync();
-            var sr = await GetStateRepositoryAsync(bs);
+            var bs  = await GetBlobStorageAsync();
+            var src = new StateRepositoryCache(new DirectoryInfo("statecache"), bs, request.Passphrase);
+            var sr  = await GetStateRepositoryAsync(src);
 
             return new HandlerContext
             {
-                Request     = request,
-                BlobStorage = bs,
-                StateRepo   = sr,
-                Hasher      = new Sha256Hasher(request.Passphrase),
-                FileSystem  = GetFileSystem()
+                Request              = request,
+                BlobStorage          = bs,
+                StateRepositoryCache = src,
+                StateRepo            = sr,
+                Hasher               = new Sha256Hasher(request.Passphrase),
+                FileSystem           = GetFileSystem(),
+                Version              = version
             };
 
             async Task<BlobStorage> GetBlobStorageAsync()
@@ -538,20 +542,30 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 return bs;
             }
 
-            async Task<StateRepository> GetStateRepositoryAsync(BlobStorage bs)
+            async Task<StateRepository> GetStateRepositoryAsync(StateRepositoryCache src)
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
 
-                try
+                var lastVersion = await bs.GetStates().LastOrDefaultAsync();
+                var newVersion  = GetVersionFileName(version);
+
+                if (string.IsNullOrEmpty(lastVersion))
                 {
-                    return new StateRepository();
+                    // New repository
+                    return new StateRepository(newVersion);
                 }
-                catch (Exception e)
+                else
                 {
-                    throw;
+                    // Existing repository, start from last version
+                    var local = await src.GetLocalCacheAsync(lastVersion);
+                    var kak   = local.CopyTo(Path.Combine(local.DirectoryName, newVersion));
+
+                    return new StateRepository(newVersion);
                 }
-                
+
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
+
+                string GetVersionFileName(string version) => $"{version}.db";
             }
 
             FilePairFileSystem GetFileSystem()
@@ -563,10 +577,13 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
         }
 
-        public required ArchiveCommand     Request     { get; init; }
-        public required BlobStorage        BlobStorage { get; init; }
-        public required StateRepository    StateRepo   { get; init; }
-        public required Sha256Hasher       Hasher      { get; init; }
-        public required FilePairFileSystem FileSystem  { get; init; }
+        public required ArchiveCommand       Request              { get; init; }
+        public required BlobStorage          BlobStorage          { get; init; }
+        public required StateRepository      StateRepo            { get; init; }
+        public required StateRepositoryCache StateRepositoryCache { get; init; }
+        public required Sha256Hasher         Hasher               { get; init; }
+        public required FilePairFileSystem   FileSystem           { get; init; }
+        public          string               Version              { get; set; }
+        
     }
 }

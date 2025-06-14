@@ -7,14 +7,11 @@ public class StateRepository
 {
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
 
-    public StateRepository()
+    public StateRepository(string fullName)
     {
-        var stateDatabaseFile = new FileInfo("state.db");
-        //stateDatabaseFile.Delete();
-
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         dbContextOptions = optionsBuilder
-            .UseSqlite($"Data Source={stateDatabaseFile.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .UseSqlite($"Data Source={fullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
 
         using var context = GetContext();

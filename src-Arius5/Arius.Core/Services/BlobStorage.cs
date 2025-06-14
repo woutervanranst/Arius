@@ -3,9 +3,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
-using System.Collections.Concurrent;
 using System.Net;
-using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Services;
 
@@ -39,14 +37,20 @@ internal class BlobStorage
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public async Task<string[]> GetStatesAsync(CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
         const string prefix = "states/";
 
-        return await blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
-            .Select(b => b.Name[prefix.Length ..]) // remove the "states/" prefix
-            .ToArrayAsync(cancellationToken: cancellationToken); 
+            .Select(b => b.Name[prefix.Length ..]); // remove the "states/" prefix
+    }
+
+    public async Task<Stream> OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default)
+    {
+        var bbc = blobContainerClient.GetBlockBlobClient($"states/{stateName}");
+
+        return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
     // --- CHUNKS

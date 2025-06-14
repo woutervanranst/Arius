@@ -86,14 +86,16 @@ internal class RestoreCommandHandler : IRequestHandler<RestoreCommand>
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
 
-                try
-                {
-                    return new StateRepository();
-                }
-                catch (Exception e)
-                {
-                    throw;
-                }
+                throw new NotImplementedException();
+
+                //try
+                //{
+                //    return new StateRepository();
+                //}
+                //catch (Exception e)
+                //{
+                //    throw;
+                //}
 
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
             }
