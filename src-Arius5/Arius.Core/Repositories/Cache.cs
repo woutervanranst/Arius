@@ -1,5 +1,4 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Services;
+﻿using Arius.Core.Services;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
