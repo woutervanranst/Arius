@@ -1,5 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Arius.Core.Tests.Commands;
@@ -14,8 +15,8 @@ public class ArchiveCommandHandlerTests : IDisposable
     {
         fixture = new ();
 
-        logger = new();
-        handler = new ArchiveCommandHandler(logger, fixture.AriusConfiguration);
+        logger  = new();
+        handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 
     private ArchiveCommand CreateTestCommand()

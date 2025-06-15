@@ -550,7 +550,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Determining version name '{versionName}'...", 0));
 
             // Get the latest state from blob storage
-            var latestStateName = (await blobStorage.GetStatesAsync()).LastOrDefault();
+            var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
 
             FileInfo stateDatabaseFile;

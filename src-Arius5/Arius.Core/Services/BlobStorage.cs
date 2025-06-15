@@ -3,9 +3,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
-using System.Collections.Concurrent;
 using System.Net;
-using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Services;
 
@@ -35,44 +33,52 @@ internal class BlobStorage
 
     // --- STATES
 
+    private const string statesPrefix = "states/";
+
     /// <summary>
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public async Task<string[]> GetStatesAsync(CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
-        const string prefix = "states/";
-
-        return await blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix, cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
-            .Select(b => b.Name[prefix.Length ..]) // remove the "states/" prefix
-            .ToArrayAsync(cancellationToken: cancellationToken); 
+            .Select(b => b.Name[statesPrefix.Length ..]); // remove the "states/" prefix
+    }
+
+    public async Task<Stream> OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default)
+    {
+        var bbc = blobContainerClient.GetBlockBlobClient($"{statesPrefix}{stateName}");
+
+        return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
     public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
         await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
     }
 
     public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
         await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
     }
 
     // --- CHUNKS
 
+    private const string chunksPrefix = "chunks/";
+
     public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
-        var bbc = blobContainerClient.GetBlockBlobClient($"chunks/{h}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksPrefix}{h}");
 
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
-        var bbc = blobContainerClient.GetBlockBlobClient($"chunks/{h}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksPrefix}{h}");
 
         var bbowo = new BlockBlobOpenWriteOptions();
 
@@ -91,7 +97,7 @@ internal class BlobStorage
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
     {
         var actualTier = GetActualStorageTier(targetTier, length);
-        var bbc        = blobContainerClient.GetBlobClient($"chunks/{h}");
+        var bbc        = blobContainerClient.GetBlobClient($"{chunksPrefix}{h}");
 
         await bbc.SetAccessTierAsync(actualTier.ToAccessTier());
 
