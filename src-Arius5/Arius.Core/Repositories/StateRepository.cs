@@ -65,11 +65,15 @@ public class StateRepository
 
     // --- BINARYPROPERTIES
 
+    private static readonly Func<SqliteStateDatabaseContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
+        EF.CompileQuery((SqliteStateDatabaseContext dbContext, Hash h) =>
+            dbContext.Set<BinaryPropertiesDto>().SingleOrDefault(x => x.Hash == h));
+
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
         using var context = GetContext();
 
-        return context.BinaryProperties.Find(h);
+        return findBinaryProperty(context, h);
     }
 
     internal void AddBinaryProperties(params BinaryPropertiesDto[] bps)
