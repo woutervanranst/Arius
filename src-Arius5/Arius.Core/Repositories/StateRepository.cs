@@ -18,7 +18,7 @@ public class StateRepository
         StateDatabaseFile = stateDatabaseFile;
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         dbContextOptions = optionsBuilder
-            .UseSqlite($"Data Source={stateDatabaseFile.FullName}", sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
 
         using var context = GetContext();
