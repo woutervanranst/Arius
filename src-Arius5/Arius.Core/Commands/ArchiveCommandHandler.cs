@@ -46,7 +46,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
+        // Create the concrete dependencies here
+        var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+        var stateCacheRoot = new DirectoryInfo("statecache");
+
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -533,18 +537,18 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     internal class HandlerContext
     {
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
-         {
+        // Note the new parameters: IBlobStorage and DirectoryInfo
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
+        {
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
-            // Instantiate BlobStorage
+            // Instantiate BlobStorage -> This is now handled outside and injected
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-            var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
             var created = await blobStorage.CreateContainerIfNotExistsAsync();
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 
-            // Instantiate StateCache
-            var stateCache = new StateCache(new DirectoryInfo("statecache"));
+            // Instantiate StateCache with the injected directory
+            var stateCache = new StateCache(stateCacheRoot);
 
             // Determine the version name for this run
             var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
@@ -600,7 +604,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
 
         public required ArchiveCommand     Request     { get; init; }
-        public required BlobStorage        BlobStorage { get; init; }
+        public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
         public required FilePairFileSystem FileSystem  { get; init; }

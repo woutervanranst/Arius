@@ -7,7 +7,9 @@ using System.Net;
 
 namespace Arius.Core.Services;
 
-internal class BlobStorage
+using Arius.Core.Repositories;
+
+public class BlobStorage : IBlobStorage
 {
     private readonly string              connectionString;
     private readonly BlobServiceClient   blobServiceClient;
@@ -24,7 +26,7 @@ internal class BlobStorage
     /// Create Blob Container if it does not exist
     /// </summary>
     /// <returns>True if it was created</returns>
-    public async Task<bool> CreateContainerIfNotExistsAsync()
+    public async Task<bool> CreateContainerIfNotExistsAsync(CancellationToken cancellationToken = default)
     {
         var r = await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
@@ -39,9 +41,9 @@ internal class BlobStorage
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<string> GetStates()
     {
-        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix, cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix)
             .OrderBy(b => b.Name)
             .Select(b => b.Name[statesPrefix.Length ..]); // remove the "states/" prefix
     }
@@ -53,10 +55,10 @@ internal class BlobStorage
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
+    public async Task DownloadStateAsync(string stateName, FileInfo destination)
     {
         var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
-        await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
+        await blobClient.DownloadToAsync(destination.FullName);
     }
 
     public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)

@@ -108,12 +108,12 @@ public class StateRepository
         context.SaveChanges();
     }
 
-    //internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
-    //{
-    //    using var context = GetContext();
-    //    foreach (var pfe in context.PointerFileEntries)
-    //        yield return pfe;
-    //}
+    public IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
+    {
+        using var context = GetContext();
+        foreach (var pfe in context.PointerFileEntries)
+            yield return pfe;
+    }
 
     internal void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
     {
