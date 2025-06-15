@@ -53,14 +53,6 @@ internal class BlobStorage
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task<Stream> OpenWriteStateAsync(string stateName, CancellationToken cancellationToken = default)
-    {
-        var bbc = blobContainerClient.GetBlockBlobClient($"{statesPrefix}{stateName}");
-
-        // For state files, we always overwrite the existing state
-        return await bbc.OpenWriteAsync(overwrite: true, cancellationToken: cancellationToken);
-    }
-
     // --- CHUNKS
 
     private const string chunksPrefix = "chunks/";

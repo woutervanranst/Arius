@@ -43,11 +43,11 @@ internal class StateRepositoryCache
         stateCache = new Cache<FileInfo>(GetCached, LoadInCacheAsync);
     }
 
-    private FileInfo GetLocalFileInfo(string version) => localCacheRoot.GetFileInfo($"{version}.db");
+    private FileInfo GetLocalFileInfo(string version) => localCacheRoot.GetFileInfo(version);
 
     private FileInfo? GetCached(string version)
     {
-        if (GetLocalFileInfo(version) is { Exists: true } cachedCopy)
+        if (GetLocalFileInfo(version) is var cachedCopy && cachedCopy.Exists)
             return cachedCopy;
         else
             return null;
@@ -77,16 +77,5 @@ internal class StateRepositoryCache
     public async Task<FileInfo?> GetLocalCacheAsync(string version)
     {
         return await stateCache.GetOrLoadAsync(version);
-    }
-
-    internal async Task UploadLocalCacheAsync(string version, CancellationToken cancellationToken = default)
-    {
-        var localFileInfo = GetLocalFileInfo(version);
-
-        await using var sourceFileStream = localFileInfo.OpenRead();
-        await using var blobStream = await blobStorage.OpenWriteStateAsync(version, cancellationToken);
-        await sourceFileStream.CopyToAsync(blobStream, cancellationToken);
-
-        await blobStream.FlushAsync(cancellationToken);
     }
 }

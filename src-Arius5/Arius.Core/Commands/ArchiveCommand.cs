@@ -13,7 +13,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = 10;
+    public int Parallelism { get; init; } = 1;
 
     public int SmallFileBoundary { get; init; } = 2 * 1024 * 1024;
 
