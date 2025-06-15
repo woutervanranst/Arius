@@ -57,6 +57,12 @@ public class StateRepository
             logger.LogInformation("Vacuumed database but no change in size");
     }
 
+    public void Delete()
+    {
+        SqliteConnection.ClearAllPools();
+        StateDatabaseFile.Delete();
+    }
+
     // --- BINARYPROPERTIES
 
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)

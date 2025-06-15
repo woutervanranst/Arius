@@ -4,7 +4,6 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
 using MediatR;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
@@ -67,15 +66,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             // 7. Upload the new state file to blob storage
             if (handlerContext.StateRepo.HasChanges)
             {
+                logger.LogInformation("Changes detected in the database. Vacuuming and uploading state file.");
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 0));
                 handlerContext.StateRepo.Vacuum();
                 var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
                 await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 100));
             }
             else
             {
                 logger.LogInformation("No changes to the database. Skipping upload and deleting local state file.");
-                SqliteConnection.ClearAllPools();
-                handlerContext.StateRepo.StateDatabaseFile.Delete();
+                handlerContext.StateRepo.Delete();
             }
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
