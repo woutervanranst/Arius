@@ -18,7 +18,7 @@ public class StateRepository
         StateDatabaseFile = stateDatabaseFile;
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         dbContextOptions = optionsBuilder
-            .UseSqlite($"Data Source={stateDatabaseFile.FullName}", sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
 
         using var context = GetContext();
@@ -57,13 +57,23 @@ public class StateRepository
             logger.LogInformation("Vacuumed database but no change in size");
     }
 
+    public void Delete()
+    {
+        SqliteConnection.ClearAllPools();
+        StateDatabaseFile.Delete();
+    }
+
     // --- BINARYPROPERTIES
+
+    private static readonly Func<SqliteStateDatabaseContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
+        EF.CompileQuery((SqliteStateDatabaseContext dbContext, Hash h) =>
+            dbContext.Set<BinaryPropertiesDto>().SingleOrDefault(x => x.Hash == h));
 
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
         using var context = GetContext();
 
-        return context.BinaryProperties.Find(h);
+        return findBinaryProperty(context, h);
     }
 
     internal void AddBinaryProperties(params BinaryPropertiesDto[] bps)

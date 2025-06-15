@@ -55,13 +55,13 @@ internal class BlobStorage
 
     public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
         await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
     }
 
     public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
         await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
     }
 
