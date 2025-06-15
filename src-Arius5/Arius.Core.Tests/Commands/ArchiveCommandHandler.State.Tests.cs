@@ -2,9 +2,10 @@
 
 using Arius.Core.Commands;
 using Arius.Core.Repositories;
+using Arius.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,17 +18,19 @@ namespace Arius.Core.Tests.Commands;
 
 public class ArchiveCommandHandler_StateTests
 {
-    private readonly Mock<IBlobStorage> mockBlobStorage;
+    private readonly IBlobStorage mockBlobStorage;
     private readonly MemoryFileSystem   memoryFileSystem;
     private readonly DirectoryEntry     stateCacheRoot;
     private readonly ArchiveCommand     testCommand;
+    private readonly FilePairFileSystem fileSystem;
 
     public ArchiveCommandHandler_StateTests()
     {
-        mockBlobStorage = new Mock<IBlobStorage>();
+        mockBlobStorage = Substitute.For<IBlobStorage>();
         memoryFileSystem = new MemoryFileSystem();
         stateCacheRoot = new DirectoryEntry(memoryFileSystem, UPath.Root / "statecache");
-        
+        fileSystem = new FilePairFileSystem(memoryFileSystem);
+
         // Create a dummy command object for the test
         testCommand = new ArchiveCommand
         {
@@ -46,7 +49,7 @@ public class ArchiveCommandHandler_StateTests
     {
         // ARRANGE
         // 1. Mock BlobStorage to return no states
-        mockBlobStorage.Setup(b => b.GetStates()).Returns(AsyncEnumerable.Empty<string>());
+        mockBlobStorage.GetStates().Returns(AsyncEnumerable.Empty<string>());
 
         // 2. The in-memory statecache directory is empty
         stateCacheRoot.Create();
@@ -55,15 +58,16 @@ public class ArchiveCommandHandler_StateTests
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand,
             NullLoggerFactory.Instance,
-            mockBlobStorage.Object,
-            stateCacheRoot.ToDirectoryInfo());
+            mockBlobStorage,
+            stateCacheRoot.ToDirectoryInfo(),
+            fileSystem);
 
         // ASSERT
         // 1. It checked for remote states
-        mockBlobStorage.Verify(b => b.GetStates(), Times.Once);
+        mockBlobStorage.Received(1).GetStates();
 
         // 2. It did NOT try to download anything
-        mockBlobStorage.Verify(b => b.DownloadStateAsync(It.IsAny<string>(), It.IsAny<FileInfo>()), Times.Never);
+        mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>());
 
         // 3. A new state file was created in the in-memory file system
         var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite");
@@ -84,11 +88,12 @@ public class ArchiveCommandHandler_StateTests
         var latestStateFileOnDisk = stateCacheRoot.Path / $"{latestStateName}.sqlite";
 
         // 1. Mock BlobStorage to return one state
-        mockBlobStorage.Setup(b => b.GetStates()).Returns(new[] { latestStateName }.ToAsyncEnumerable());
+        mockBlobStorage.GetStates().Returns(new[] { latestStateName }.ToAsyncEnumerable());
 
         // 2. Mock the download to create a dummy file in our in-memory file system
-        mockBlobStorage.Setup(b => b.DownloadStateAsync(latestStateName, It.IsAny<FileInfo>()))
-            .Callback(() => memoryFileSystem.WriteAllText(latestStateFileOnDisk, "content of remote state"));
+        mockBlobStorage.DownloadStateAsync(latestStateName, Arg.Any<FileInfo>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(_ => memoryFileSystem.WriteAllText(latestStateFileOnDisk, "content of remote state"));
 
         // 3. The in-memory statecache directory is empty
         stateCacheRoot.Create();
@@ -97,12 +102,13 @@ public class ArchiveCommandHandler_StateTests
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand,
             NullLoggerFactory.Instance,
-            mockBlobStorage.Object,
-            stateCacheRoot.ToDirectoryInfo());
+            mockBlobStorage,
+            stateCacheRoot.ToDirectoryInfo(),
+            fileSystem);
 
         // ASSERT
         // 1. The download method was called exactly once
-        mockBlobStorage.Verify(b => b.DownloadStateAsync(latestStateName, It.Is<FileInfo>(fi => fi.Name.Contains(latestStateName))), Times.Once);
+        mockBlobStorage.Received(1).DownloadStateAsync(latestStateName, Arg.Is<FileInfo>(fi => fi.Name.Contains(latestStateName)));
 
         // 2. Two state files now exist in the cache: the downloaded one and the new version
         var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite").ToList();
@@ -128,7 +134,7 @@ public class ArchiveCommandHandler_StateTests
         var latestStateFileOnDisk = stateCacheRoot.Path / $"{latestStateName}.sqlite";
 
         // 1. Mock BlobStorage to return one state
-        mockBlobStorage.Setup(b => b.GetStates()).Returns(new[] { latestStateName }.ToAsyncEnumerable());
+        mockBlobStorage.GetStates().Returns(new[] { latestStateName }.ToAsyncEnumerable());
 
         // 2. Pre-populate the in-memory file system with the "already downloaded" state file
         stateCacheRoot.Create();
@@ -138,12 +144,13 @@ public class ArchiveCommandHandler_StateTests
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand,
             NullLoggerFactory.Instance,
-            mockBlobStorage.Object,
-            stateCacheRoot.ToDirectoryInfo());
+            mockBlobStorage,
+            stateCacheRoot.ToDirectoryInfo(),
+            fileSystem);
 
         // ASSERT
         // 1. The download method was NEVER called, because the file was found locally
-        mockBlobStorage.Verify(b => b.DownloadStateAsync(It.IsAny<string>(), It.IsAny<FileInfo>()), Times.Never);
+        mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>());
 
         // 2. Two state files still exist: the original local one and the new version
         var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite").ToList();
