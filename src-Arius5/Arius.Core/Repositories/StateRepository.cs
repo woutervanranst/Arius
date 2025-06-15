@@ -21,8 +21,9 @@ public class StateRepository
 
     private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
 
-    private void OnChanges(int changes) => hasChanges = hasChanges || changes > 0;
-    private bool hasChanges;
+    private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
+    public  bool HasChanges             { get; private set; }
+
 
     // --- BINARYPROPERTIES
 

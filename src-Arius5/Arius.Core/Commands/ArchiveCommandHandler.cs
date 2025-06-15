@@ -60,6 +60,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             // 6. Remove PointerFileEntries that do not exist on disk
             handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+
+            // 7. Upload the StateRepository if there are changes
+            if (handlerContext.StateRepo.HasChanges)
+            {
+                logger.LogInformation("Uploading StateRepository to blob storage...");
+                await handlerContext.StateRepositoryCache.UploadLocalCacheAsync(handlerContext.Version, cancellationToken);
+                logger.LogInformation("StateRepository uploaded successfully.");
+            }
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
@@ -544,26 +552,31 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             async Task<StateRepository> GetStateRepositoryAsync(StateRepositoryCache src)
             {
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
-
-                var lastVersion = await bs.GetStates().LastOrDefaultAsync();
-                var newVersion  = GetVersionFileName(version);
-
-                if (string.IsNullOrEmpty(lastVersion))
+                try
                 {
-                    // New repository
-                    return new StateRepository(newVersion);
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
+
+                    var lastVersion = await bs.GetStates().LastOrDefaultAsync();
+                    var newVersion  = GetVersionFileName(version);
+
+                    if (string.IsNullOrEmpty(lastVersion))
+                    {
+                        // New repository
+                        return new StateRepository(newVersion);
+                    }
+                    else
+                    {
+                        // Existing repository, start from last version
+                        var local = await src.GetLocalCacheAsync(lastVersion);
+                        var kak   = local.CopyTo(Path.Combine(local.DirectoryName, newVersion));
+
+                        return new StateRepository(newVersion);
+                    }
                 }
-                else
+                finally
                 {
-                    // Existing repository, start from last version
-                    var local = await src.GetLocalCacheAsync(lastVersion);
-                    var kak   = local.CopyTo(Path.Combine(local.DirectoryName, newVersion));
-
-                    return new StateRepository(newVersion);
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
                 }
-
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
 
                 string GetVersionFileName(string version) => $"{version}.db";
             }
