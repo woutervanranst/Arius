@@ -15,7 +15,7 @@ public record ArchiveCommand : IRequest
 
     public int Parallelism { get; init; } = 1;
 
-    public int SmallFileBoundary { get; init; } = 2 * 1024 * 1024;
+    public int SmallFileBoundary { get; init; } = 1024 * 1024;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }

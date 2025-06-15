@@ -23,14 +23,17 @@ public record FileProgressUpdate(string FileName, double Percentage, string? Sta
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
+    private readonly ILoggerFactory                 loggerFactory;
     private readonly IOptions<AriusConfiguration>   config;
 
     public ArchiveCommandHandler(
         ILogger<ArchiveCommandHandler> logger,
+        ILoggerFactory loggerFactory,
         IOptions<AriusConfiguration> config)
     {
-        this.logger = logger;
-        this.config = config;
+        this.logger        = logger;
+        this.loggerFactory = loggerFactory;
+        this.config        = config;
     }
 
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
@@ -44,7 +47,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await HandlerContext.CreateAsync(request);
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -62,10 +65,18 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
 
             // 7. Upload the new state file to blob storage
-            // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
-            SqliteConnection.ClearAllPools();
-            var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
-            await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
+            if (handlerContext.StateRepo.HasChanges)
+            {
+                handlerContext.StateRepo.Vacuum();
+                var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
+                await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
+            }
+            else
+            {
+                logger.LogInformation("No changes to the database. Skipping upload and deleting local state file.");
+                SqliteConnection.ClearAllPools();
+                handlerContext.StateRepo.StateDatabaseFile.Delete();
+            }
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
@@ -514,13 +525,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             SingleReader = singleReader
         });
 
+
+
     //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     //    => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
 
     private class HandlerContext
     {
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request)
-        {
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
+         {
+            var logger = loggerFactory.CreateLogger<HandlerContext>();
+
             // Instantiate BlobStorage
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
             var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
@@ -543,7 +558,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
                 var latestStateFile = stateCache.GetStateFilePath(latestStateName);
-                await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
+                if (!latestStateFile.Exists)
+                {
+                    await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
+                }
+                else
+                {
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"State file '{latestStateName}' already exists in cache", 100));
+                }
 
                 stateDatabaseFile = stateCache.GetStateFilePath(versionName);
                 stateCache.CopyStateFile(latestStateFile, stateDatabaseFile);
@@ -556,7 +578,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 
-            var stateRepo = new StateRepository(stateDatabaseFile);
+            var stateRepo = new StateRepository(stateDatabaseFile, loggerFactory.CreateLogger<StateRepository>());
 
             return new HandlerContext
             {

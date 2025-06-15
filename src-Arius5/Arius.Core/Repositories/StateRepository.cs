@@ -1,15 +1,20 @@
 ﻿using Arius.Core.Models;
+using Humanizer;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 
 public class StateRepository
 {
-    public FileInfo StateDatabaseFile { get; }
+    private readonly ILogger<StateRepository>                     logger;
+    public           FileInfo                                     StateDatabaseFile { get; }
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
 
-    public StateRepository(FileInfo stateDatabaseFile)
+    public StateRepository(FileInfo stateDatabaseFile, ILogger<StateRepository> logger)
     {
+        this.logger       = logger;
         StateDatabaseFile = stateDatabaseFile;
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         dbContextOptions = optionsBuilder
@@ -23,8 +28,34 @@ public class StateRepository
 
     private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
 
-    private void OnChanges(int changes) => hasChanges = hasChanges || changes > 0;
-    private bool hasChanges;
+    private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
+    public  bool HasChanges             { get; private set; }
+
+    public void Vacuum()
+    {
+        // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+        SqliteConnection.ClearAllPools();
+        var originalLength = StateDatabaseFile.Length;
+
+        using (var context = GetContext())
+        {
+            const string sql = "VACUUM;";
+            if (context.Database.ExecuteSqlRaw(sql) == 1)
+                throw new InvalidOperationException("Vacuum failed");
+
+            if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
+                throw new InvalidOperationException("Checkpoint failed due to active readers");
+        }
+
+        // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
+        SqliteConnection.ClearAllPools();
+        var vacuumedLength = StateDatabaseFile.Length;
+
+        if (originalLength != vacuumedLength)
+            logger.LogInformation("Vacuumed database from {originalLength} to {vacuumedLength}, saved {savedBytes}", originalLength.Bytes().Humanize(), vacuumedLength.Bytes().Humanize(), (originalLength - vacuumedLength).Bytes().Humanize());
+        else
+            logger.LogInformation("Vacuumed database but no change in size");
+    }
 
     // --- BINARYPROPERTIES
 
