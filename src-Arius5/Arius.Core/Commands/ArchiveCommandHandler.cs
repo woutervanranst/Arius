@@ -4,6 +4,7 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
 using MediatR;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
@@ -61,6 +62,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
 
             // 7. Upload the new state file to blob storage
+            // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+            SqliteConnection.ClearAllPools();
             var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
             await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
         }
