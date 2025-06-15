@@ -1,7 +1,5 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
-using FluentAssertions;
-using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Arius.Core.Tests.Commands;
