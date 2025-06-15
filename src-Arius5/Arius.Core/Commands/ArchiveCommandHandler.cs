@@ -4,6 +4,7 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
 using MediatR;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
@@ -22,14 +23,17 @@ public record FileProgressUpdate(string FileName, double Percentage, string? Sta
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
+    private readonly ILoggerFactory                 loggerFactory;
     private readonly IOptions<AriusConfiguration>   config;
 
     public ArchiveCommandHandler(
         ILogger<ArchiveCommandHandler> logger,
+        ILoggerFactory loggerFactory,
         IOptions<AriusConfiguration> config)
     {
-        this.logger = logger;
-        this.config = config;
+        this.logger        = logger;
+        this.loggerFactory = loggerFactory;
+        this.config        = config;
     }
 
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
@@ -43,8 +47,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var newVersion     = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss.fffZ");
-        var handlerContext = await HandlerContext.CreateAsync(request, newVersion);
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -60,6 +63,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             // 6. Remove PointerFileEntries that do not exist on disk
             handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+
+            // 7. Upload the new state file to blob storage
+            if (handlerContext.StateRepo.HasChanges)
+            {
+                handlerContext.StateRepo.Vacuum();
+                var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
+                await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
+            }
+            else
+            {
+                logger.LogInformation("No changes to the database. Skipping upload and deleting local state file.");
+                SqliteConnection.ClearAllPools();
+                handlerContext.StateRepo.StateDatabaseFile.Delete();
+            }
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
@@ -508,65 +525,69 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             SingleReader = singleReader
         });
 
+
+
     //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     //    => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
 
     private class HandlerContext
     {
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, string version)
-        {
-            var bs  = await GetBlobStorageAsync();
-            var src = new StateRepositoryCache(new DirectoryInfo("statecache"), bs, request.Passphrase);
-            var sr  = await GetStateRepositoryAsync(src);
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
+         {
+            var logger = loggerFactory.CreateLogger<HandlerContext>();
 
-            return new HandlerContext
+            // Instantiate BlobStorage
+            request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
+            var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var created = await blobStorage.CreateContainerIfNotExistsAsync();
+            request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
+
+            // Instantiate StateCache
+            var stateCache = new StateCache(new DirectoryInfo("statecache"));
+
+            // Determine the version name for this run
+            var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
+            request.ProgressReporter?.Report(new TaskProgressUpdate($"Determining version name '{versionName}'...", 0));
+
+            // Get the latest state from blob storage
+            var latestStateName = (await blobStorage.GetStatesAsync()).LastOrDefault();
+            request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
+
+            FileInfo stateDatabaseFile;
+            if (latestStateName is not null)
             {
-                Request              = request,
-                BlobStorage          = bs,
-                StateRepositoryCache = src,
-                StateRepo            = sr,
-                Hasher               = new Sha256Hasher(request.Passphrase),
-                FileSystem           = GetFileSystem(),
-                Version              = version
-            };
-
-            async Task<BlobStorage> GetBlobStorageAsync()
-            {
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-
-                var bs = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-                var created = await bs.CreateContainerIfNotExistsAsync();
-
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
-
-                return bs;
-            }
-
-            async Task<StateRepository> GetStateRepositoryAsync(StateRepositoryCache src)
-            {
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
-
-                var lastVersion = await bs.GetStates().LastOrDefaultAsync();
-                var newVersion  = GetVersionFileName(version);
-
-                if (string.IsNullOrEmpty(lastVersion))
+                // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
+                var latestStateFile = stateCache.GetStateFilePath(latestStateName);
+                if (!latestStateFile.Exists)
                 {
-                    // New repository
-                    return new StateRepository(newVersion);
+                    await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
                 }
                 else
                 {
-                    // Existing repository, start from last version
-                    var local = await src.GetLocalCacheAsync(lastVersion);
-                    var kak   = local.CopyTo(Path.Combine(local.DirectoryName, newVersion));
-
-                    return new StateRepository(newVersion);
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"State file '{latestStateName}' already exists in cache", 100));
                 }
 
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
-
-                string GetVersionFileName(string version) => $"{version}.db";
+                stateDatabaseFile = stateCache.GetStateFilePath(versionName);
+                stateCache.CopyStateFile(latestStateFile, stateDatabaseFile);
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Copied latest state to new version", 100));
             }
+            else
+            {
+                // If there is none, just create an empty staterepository with the new version
+                stateDatabaseFile = stateCache.GetStateFilePath(versionName);
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
+            }
+
+            var stateRepo = new StateRepository(stateDatabaseFile, loggerFactory.CreateLogger<StateRepository>());
+
+            return new HandlerContext
+            {
+                Request     = request,
+                BlobStorage = blobStorage,
+                StateRepo   = stateRepo,
+                Hasher      = new Sha256Hasher(request.Passphrase),
+                FileSystem  = GetFileSystem()
+            };
 
             FilePairFileSystem GetFileSystem()
             {
@@ -577,13 +598,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
         }
 
-        public required ArchiveCommand       Request              { get; init; }
-        public required BlobStorage          BlobStorage          { get; init; }
-        public required StateRepository      StateRepo            { get; init; }
-        public required StateRepositoryCache StateRepositoryCache { get; init; }
-        public required Sha256Hasher         Hasher               { get; init; }
-        public required FilePairFileSystem   FileSystem           { get; init; }
-        public          string               Version              { get; set; }
-        
+        public required ArchiveCommand     Request     { get; init; }
+        public required BlobStorage        BlobStorage { get; init; }
+        public required StateRepository    StateRepo   { get; init; }
+        public required Sha256Hasher       Hasher      { get; init; }
+        public required FilePairFileSystem FileSystem  { get; init; }
     }
 }

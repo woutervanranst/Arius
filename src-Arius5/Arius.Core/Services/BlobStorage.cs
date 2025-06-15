@@ -53,6 +53,18 @@ internal class BlobStorage
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
+    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
+    {
+        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
+    }
+
+    public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
+    {
+        var blobClient = blobContainerClient.GetBlobClient($"states/{stateName}");
+        await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
+    }
+
     // --- CHUNKS
 
     private const string chunksPrefix = "chunks/";
