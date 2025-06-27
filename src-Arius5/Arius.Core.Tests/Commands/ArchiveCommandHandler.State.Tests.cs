@@ -20,7 +20,7 @@ public class ArchiveCommandHandler_StateTests
 {
     private readonly IBlobStorage mockBlobStorage;
     private readonly MemoryFileSystem   memoryFileSystem;
-    private readonly DirectoryEntry     stateCacheRoot;
+    private readonly UPath              stateCacheRoot;
     private readonly ArchiveCommand     testCommand;
     private readonly FilePairFileSystem fileSystem;
 
@@ -28,7 +28,7 @@ public class ArchiveCommandHandler_StateTests
     {
         mockBlobStorage = Substitute.For<IBlobStorage>();
         memoryFileSystem = new MemoryFileSystem();
-        stateCacheRoot = new DirectoryEntry(memoryFileSystem, UPath.Root / "statecache");
+        stateCacheRoot = UPath.Root / "statecache";
         fileSystem = new FilePairFileSystem(memoryFileSystem);
 
         // Create a dummy command object for the test
@@ -52,14 +52,14 @@ public class ArchiveCommandHandler_StateTests
         mockBlobStorage.GetStates().Returns(AsyncEnumerable.Empty<string>());
 
         // 2. The in-memory statecache directory is empty
-        stateCacheRoot.Create();
+        memoryFileSystem.CreateDirectory(stateCacheRoot);
 
         // ACT
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand,
             NullLoggerFactory.Instance,
             mockBlobStorage,
-            stateCacheRoot.ToDirectoryInfo(),
+            stateCacheRoot,
             fileSystem);
 
         // ASSERT
@@ -70,7 +70,7 @@ public class ArchiveCommandHandler_StateTests
         mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>());
 
         // 3. A new state file was created in the in-memory file system
-        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite");
+        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot, "*.sqlite");
         stateFiles.Should().HaveCount(1);
 
         // 4. The context's repository points to this new file
@@ -85,7 +85,7 @@ public class ArchiveCommandHandler_StateTests
     {
         // ARRANGE
         var latestStateName = "2023-10-27T12-00-00";
-        var latestStateFileOnDisk = stateCacheRoot.Path / $"{latestStateName}.sqlite";
+        var latestStateFileOnDisk = stateCacheRoot / $"{latestStateName}.sqlite";
 
         // 1. Mock BlobStorage to return one state
         mockBlobStorage.GetStates().Returns(new[] { latestStateName }.ToAsyncEnumerable());
@@ -96,14 +96,14 @@ public class ArchiveCommandHandler_StateTests
             .AndDoes(_ => memoryFileSystem.WriteAllText(latestStateFileOnDisk, "content of remote state"));
 
         // 3. The in-memory statecache directory is empty
-        stateCacheRoot.Create();
+        memoryFileSystem.CreateDirectory(stateCacheRoot);
 
         // ACT
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand,
             NullLoggerFactory.Instance,
             mockBlobStorage,
-            stateCacheRoot.ToDirectoryInfo(),
+            stateCacheRoot,
             fileSystem);
 
         // ASSERT
@@ -111,7 +111,7 @@ public class ArchiveCommandHandler_StateTests
         mockBlobStorage.Received(1).DownloadStateAsync(latestStateName, Arg.Is<FileInfo>(fi => fi.Name.Contains(latestStateName)));
 
         // 2. Two state files now exist in the cache: the downloaded one and the new version
-        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite").ToList();
+        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot, "*.sqlite").ToList();
         stateFiles.Should().HaveCount(2);
 
         // 3. The downloaded file exists and has the correct content
@@ -131,13 +131,13 @@ public class ArchiveCommandHandler_StateTests
     {
         // ARRANGE
         var latestStateName = "2023-10-27T12-00-00";
-        var latestStateFileOnDisk = stateCacheRoot.Path / $"{latestStateName}.sqlite";
+        var latestStateFileOnDisk = stateCacheRoot / $"{latestStateName}.sqlite";
 
         // 1. Mock BlobStorage to return one state
         mockBlobStorage.GetStates().Returns(new[] { latestStateName }.ToAsyncEnumerable());
 
         // 2. Pre-populate the in-memory file system with the "already downloaded" state file
-        stateCacheRoot.Create();
+        memoryFileSystem.CreateDirectory(stateCacheRoot);
         memoryFileSystem.WriteAllText(latestStateFileOnDisk, "content of LOCAL state");
 
         // ACT
@@ -145,7 +145,7 @@ public class ArchiveCommandHandler_StateTests
             testCommand,
             NullLoggerFactory.Instance,
             mockBlobStorage,
-            stateCacheRoot.ToDirectoryInfo(),
+            stateCacheRoot,
             fileSystem);
 
         // ASSERT
@@ -153,7 +153,7 @@ public class ArchiveCommandHandler_StateTests
         mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>());
 
         // 2. Two state files still exist: the original local one and the new version
-        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot.Path, "*.sqlite").ToList();
+        var stateFiles = memoryFileSystem.EnumerateFiles(stateCacheRoot, "*.sqlite").ToList();
         stateFiles.Should().HaveCount(2);
 
         // 3. The new state file is a copy of the LOCAL one

@@ -37,3 +37,11 @@ internal static class UPathExtensions
     public static UPath RemoveSuffix(this UPath p, string value) 
         => new(p.FullName.RemoveSuffix(value, StringComparison.OrdinalIgnoreCase));
 }
+
+internal static class DirectoryInfoExtensions
+{
+    public static UPath ToUPath(this DirectoryInfo directoryInfo)
+    {
+        return new UPath(directoryInfo.FullName);
+    }
+}

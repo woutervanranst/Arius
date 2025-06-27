@@ -1,22 +1,29 @@
+using Zio;
+using Zio.FileSystems;
+
 namespace Arius.Core.Services;
 
 public class StateCache
 {
-    private readonly DirectoryInfo cacheDirectory;
+    private readonly Zio.IFileSystem fileSystem;
+    private readonly UPath           cacheRoot;
 
-    public StateCache(DirectoryInfo cacheDirectory)
+    public StateCache(Zio.IFileSystem fileSystem, UPath cacheRoot)
     {
-        this.cacheDirectory = cacheDirectory;
-        this.cacheDirectory.Create(); // Ensure the directory exists
+        this.fileSystem = fileSystem;
+        this.cacheRoot = cacheRoot;
+        fileSystem.CreateDirectory(cacheRoot);
     }
 
-    public FileInfo GetStateFilePath(string versionName)
+    public FileEntry GetStateFilePath(string versionName)
     {
-        return new FileInfo(Path.Combine(cacheDirectory.FullName, $"{versionName}.db"));
+        return fileSystem.GetFileEntry(cacheRoot / $"{versionName}.db");
     }
 
-    public void CopyStateFile(FileInfo sourceFile, FileInfo destinationFile)
+    public void CopyStateFile(FileEntry sourceFile, FileEntry destinationFile)
     {
-        sourceFile.CopyTo(destinationFile.FullName, overwrite: true);
+        using var sourceStream = sourceFile.Open(FileMode.Open, FileAccess.Read);
+        using var destinationStream = destinationFile.Open(FileMode.Create, FileAccess.Write);
+        sourceStream.CopyTo(destinationStream);
     }
 }
