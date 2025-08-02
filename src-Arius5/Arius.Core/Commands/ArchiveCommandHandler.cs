@@ -534,7 +534,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     internal class HandlerContext
     {
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
-         {
+        {
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
             // Instantiate BlobStorage
@@ -592,9 +592,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             FilePairFileSystem GetFileSystem()
             {
-                var pfs = new PhysicalFileSystem();
+                var pfs  = new PhysicalFileSystem();
                 var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-                var sfs = new SubFileSystem(pfs, root, true);
+                var sfs  = new SubFileSystem(pfs, root, true);
                 return new FilePairFileSystem(sfs, true);
             }
         }
