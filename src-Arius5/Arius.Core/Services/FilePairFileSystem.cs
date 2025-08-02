@@ -4,31 +4,10 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Services;
 
-using Arius.Core.Repositories;
-
-public class FilePairFileSystem : ComposeFileSystem, IFileSystem
+public class FilePairFileSystem : ComposeFileSystem
 {
-    public FilePairFileSystem(Zio.IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
+    public FilePairFileSystem(IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
     {
-    }
-
-    public IEnumerable<FileEntry> EnumerateFileEntries(UPath path, string searchPattern, SearchOption searchOption)
-    {
-        // This method is implemented by EnumeratePathsImpl
-        foreach (var upath in EnumeratePathsImpl(path, searchPattern, searchOption, SearchTarget.File))
-        {
-            yield return FallbackSafe.GetFileEntry(upath);
-        }
-    }
-
-    public bool FileExists(UPath path)
-    {
-        return FallbackSafe.FileExists(path);
-    }
-
-    public UPath ConvertPathToInternal(UPath path)
-    {
-        return FallbackSafe.ConvertPathFromInternal(path.FullName); // Convert UPath to string for the underlying method
     }
 
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)

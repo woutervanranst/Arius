@@ -49,17 +49,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // Create the concrete dependencies here
         var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
         var stateCacheRoot = new DirectoryInfo("statecache");
-        var fileSystem = GetFileSystem();
 
-        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot, (Arius.Core.Repositories.IFileSystem)fileSystem);
-
-        FilePairFileSystem GetFileSystem()
-        {
-            var pfs = new PhysicalFileSystem();
-            var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-            var sfs = new SubFileSystem(pfs, root, true);
-            return new FilePairFileSystem(sfs, true);
-        }
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -360,8 +351,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
-                    var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path).FullName;
-                    await tarWriter.WriteEntryAsync((string)fn, binaryHash.ToString(), cancellationToken);
+                    var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
+                    await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
 
                     await gzip.FlushAsync(cancellationToken);
                     await ms.FlushAsync(cancellationToken);
@@ -547,7 +538,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     internal class HandlerContext
     {
         // Note the new parameters: IBlobStorage and DirectoryInfo
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot, Arius.Core.Repositories.IFileSystem fileSystem)
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
         {
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
@@ -600,14 +591,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 BlobStorage = blobStorage,
                 StateRepo   = stateRepo,
                 Hasher      = new Sha256Hasher(request.Passphrase),
-                FileSystem  = fileSystem
+                FileSystem  = GetFileSystem()
             };
+
+            FilePairFileSystem GetFileSystem()
+            {
+                var pfs = new PhysicalFileSystem();
+                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
+                var sfs = new SubFileSystem(pfs, root, true);
+                return new FilePairFileSystem(sfs, true);
+            }
         }
 
         public required ArchiveCommand     Request     { get; init; }
         public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
-        public required Arius.Core.Repositories.IFileSystem FileSystem  { get; init; }
+        public required FilePairFileSystem FileSystem  { get; init; }
     }
 }
