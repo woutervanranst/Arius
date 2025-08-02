@@ -7,9 +7,7 @@ using System.Net;
 
 namespace Arius.Core.Services;
 
-using Arius.Core.Repositories;
-
-public class BlobStorage : IBlobStorage
+internal class BlobStorage
 {
     private readonly string              connectionString;
     private readonly BlobServiceClient   blobServiceClient;
@@ -26,7 +24,7 @@ public class BlobStorage : IBlobStorage
     /// Create Blob Container if it does not exist
     /// </summary>
     /// <returns>True if it was created</returns>
-    public async Task<bool> CreateContainerIfNotExistsAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> CreateContainerIfNotExistsAsync()
     {
         var r = await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
 
@@ -41,9 +39,9 @@ public class BlobStorage : IBlobStorage
     /// Get an ordered list of state names in the specified container.
     /// </summary>
     /// <returns></returns>
-    public IAsyncEnumerable<string> GetStates()
+    public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
-        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix)
+        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix, cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
             .Select(b => b.Name[statesPrefix.Length ..]); // remove the "states/" prefix
     }
@@ -55,10 +53,10 @@ public class BlobStorage : IBlobStorage
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task DownloadStateAsync(string stateName, FileInfo destination)
+    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
     {
         var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
-        await blobClient.DownloadToAsync(destination.FullName);
+        await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
     }
 
     public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)

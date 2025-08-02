@@ -135,7 +135,7 @@ internal class SqliteStateDatabaseContext : DbContext
     }
 }
 
-public record PointerFileEntryDto
+internal record PointerFileEntryDto
 {
     public Hash Hash { get; init; }
     public string RelativeName { get; init; }
@@ -144,7 +144,7 @@ public record PointerFileEntryDto
     public virtual BinaryPropertiesDto BinaryProperties { get; init; }
 }
 
-public record BinaryPropertiesDto
+internal record BinaryPropertiesDto
 {
     public         Hash                             Hash               { get; init; }
     public         Hash?                            ParentHash         { get; init; }
