@@ -12,7 +12,6 @@ using System.Threading.Channels;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
-using System.IO; // For FileInfo
 
 namespace Arius.Core.Commands;
 
@@ -49,10 +48,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         // Create the concrete dependencies here
         var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-        var stateCacheRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "statecache"));
+        var stateCacheRoot = new DirectoryInfo("statecache");
         var fileSystem = GetFileSystem();
 
-        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot.ToUPath(), (Arius.Core.Repositories.IFileSystem)fileSystem);
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot, (Arius.Core.Repositories.IFileSystem)fileSystem);
 
         FilePairFileSystem GetFileSystem()
         {
@@ -548,7 +547,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     internal class HandlerContext
     {
         // Note the new parameters: IBlobStorage and DirectoryInfo
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, UPath stateCacheRoot, Arius.Core.Repositories.IFileSystem fileSystem)
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot, Arius.Core.Repositories.IFileSystem fileSystem)
         {
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
@@ -558,7 +557,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 
             // Instantiate StateCache with the injected directory
-            var stateCache = new StateCache(((FilePairFileSystem)fileSystem).GetFileSystem(), stateCacheRoot);
+            var stateCache = new StateCache(stateCacheRoot);
 
             // Determine the version name for this run
             var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
@@ -568,16 +567,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
 
-            FileEntry stateDatabaseFile;
+            FileInfo stateDatabaseFile;
             if (latestStateName is not null)
             {
                 // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
                 var latestStateFile = stateCache.GetStateFilePath(latestStateName);
                 if (!latestStateFile.Exists)
                 {
-                    // Need to convert FileEntry to FileInfo for BlobStorage.DownloadStateAsync
-                    var tempFileInfo = new FileInfo(latestStateFile.FullName);
-                    await blobStorage.DownloadStateAsync(latestStateName, tempFileInfo);
+                    await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
                 }
                 else
                 {
@@ -595,8 +592,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 
-            // Need to convert FileEntry to FileInfo for StateRepository
-            var stateRepo = new StateRepository(new FileInfo(stateDatabaseFile.FullName), loggerFactory.CreateLogger<StateRepository>());
+            var stateRepo = new StateRepository(stateDatabaseFile, loggerFactory.CreateLogger<StateRepository>());
 
             return new HandlerContext
             {

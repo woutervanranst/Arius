@@ -8,16 +8,8 @@ using Arius.Core.Repositories;
 
 public class FilePairFileSystem : ComposeFileSystem, IFileSystem
 {
-    private readonly Zio.IFileSystem _fileSystem;
-
     public FilePairFileSystem(Zio.IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
     {
-        _fileSystem = fileSystem;
-    }
-
-    public Zio.IFileSystem GetFileSystem()
-    {
-        return _fileSystem;
     }
 
     public IEnumerable<FileEntry> EnumerateFileEntries(UPath path, string searchPattern, SearchOption searchOption)
