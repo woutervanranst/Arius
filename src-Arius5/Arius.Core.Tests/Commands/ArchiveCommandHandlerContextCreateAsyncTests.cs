@@ -1,5 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
+using Arius.Core.Repositories;
 using Arius.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,12 +12,14 @@ namespace Arius.Core.Tests.Commands;
 public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 {
     private readonly FakeLogger<ArchiveCommandHandler.HandlerContext> logger;
-    private readonly IBlobStorage mockBlobStorage;
-    private readonly DirectoryInfo tempStateDirectory;
-    private readonly ArchiveCommand testCommand;
+    private readonly IBlobStorage                                     mockBlobStorage;
+    private readonly DirectoryInfo                                    tempStateDirectory;
+    private readonly ArchiveCommand                                   testCommand;
+    private readonly Fixture                                          fixture;
 
     public ArchiveCommandHandlerContextCreateAsyncTests()
     {
+        fixture = new Fixture();
         logger = new FakeLogger<ArchiveCommandHandler.HandlerContext>();
         mockBlobStorage = Substitute.For<IBlobStorage>();
         
@@ -25,16 +28,24 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 
         testCommand = new ArchiveCommand
         {
-            AccountName = "testaccount",
-            AccountKey = "testkey",
-            ContainerName = "testcontainer",
-            Passphrase = "testpassphrase",
-            RemoveLocal = false,
-            Tier = StorageTier.Cool,
-            LocalRoot = new DirectoryInfo(Path.GetTempPath()),
-            Parallelism = 1,
+            AccountName       = fixture.RepositoryOptions.AccountName,
+            AccountKey        = fixture.RepositoryOptions.AccountKey,
+            ContainerName     = $"{fixture.RepositoryOptions.ContainerName}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}",
+            Passphrase        = fixture.RepositoryOptions.Passphrase,
+            RemoveLocal       = false,
+            Tier              = StorageTier.Cool,
+            LocalRoot         = fixture.TestRunSourceFolder,
+            Parallelism       = 1,
             SmallFileBoundary = 2 * 1024 * 1024
         };
+    }
+
+    private FileInfo CreateValidStateDatabase(string stateName)
+    {
+        var stateFile = new FileInfo(Path.Combine(tempStateDirectory.FullName, $"{stateName}.db"));
+        var stateRepo = new StateRepository(stateFile, NullLogger<StateRepository>.Instance);
+        // The constructor already creates the database structure via EnsureCreated()
+        return stateFile;
     }
 
     [Fact]
@@ -76,6 +87,15 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         mockBlobStorage.CreateContainerIfNotExistsAsync().Returns(true);
         mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
+        // Mock the download behavior to create a valid state file when download is called
+        mockBlobStorage.DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask)
+            .AndDoes(callInfo =>
+            {
+                var targetFile = callInfo.ArgAt<FileInfo>(1);
+                CreateValidStateDatabase(existingStateName);
+            });
+
         // Act
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand, 
@@ -116,9 +136,8 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         mockBlobStorage.CreateContainerIfNotExistsAsync().Returns(true);
         mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
-        // Pre-create the state file locally to simulate it already being cached
-        var existingStateFile = new FileInfo(Path.Combine(tempStateDirectory.FullName, $"{existingStateName}.db"));
-        await File.WriteAllTextAsync(existingStateFile.FullName, "dummy state content");
+        // Pre-create a valid state file locally to simulate it already being cached
+        CreateValidStateDatabase(existingStateName);
 
         // Act
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
@@ -150,9 +169,10 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 
     public void Dispose()
     {
-        if (tempStateDirectory.Exists)
-        {
-            tempStateDirectory.Delete(recursive: true);
-        }
+        fixture?.Dispose();
+        //if (tempStateDirectory.Exists)
+        //{
+        //    tempStateDirectory.Delete(recursive: true);
+        //}
     }
 }
