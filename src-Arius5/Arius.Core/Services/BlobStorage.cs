@@ -7,7 +7,7 @@ using System.Net;
 
 namespace Arius.Core.Services;
 
-internal class BlobStorage
+internal class BlobStorage : IBlobStorage
 {
     private readonly string              connectionString;
     private readonly BlobServiceClient   blobServiceClient;

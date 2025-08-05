@@ -535,16 +535,24 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
         {
+            // Use default implementation with dependency injection
+            var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var stateCacheRoot = new DirectoryInfo("statecache");
+            
+            return await CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);
+        }
+
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
+        {
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
-            // Instantiate BlobStorage
+            // Create blob container if needed
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-            var blobStorage = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
             var created = await blobStorage.CreateContainerIfNotExistsAsync();
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 
             // Instantiate StateCache
-            var stateCache = new StateCache(new DirectoryInfo("statecache"));
+            var stateCache = new StateCache(stateCacheRoot);
 
             // Determine the version name for this run
             var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
@@ -600,7 +608,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
 
         public required ArchiveCommand     Request     { get; init; }
-        public required BlobStorage        BlobStorage { get; init; }
+        public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
         public required FilePairFileSystem FileSystem  { get; init; }
