@@ -2,6 +2,7 @@ using Arius.Core.Commands;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
+using System.Runtime.InteropServices;
 
 namespace Arius.Core.Tests.Commands;
 
@@ -40,9 +41,14 @@ public class ArchiveCommandHandlerTests : IDisposable
     public async Task RunArchiveCommand()
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
+
+        // TODO Make this better
+        var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         var c      = CreateTestCommand() with
         {
-            LocalRoot = new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)")
+            LocalRoot = isWindows ? 
+                new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)") :
+                new DirectoryInfo("/mnt/c/Users/WouterVanRanst/Downloads/Photos-001 (1)")
         };
         await handler.Handle(c, CancellationToken.None);
 
