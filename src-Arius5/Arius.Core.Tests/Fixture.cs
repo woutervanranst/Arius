@@ -21,7 +21,9 @@ public abstract class FixtureBase : IDisposable
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<FixtureBase>(optional: true)
+#if DEBUG
+            .AddUserSecrets<FixtureBase>(optional: false)
+#endif
             .AddEnvironmentVariables()
             .Build();
 
