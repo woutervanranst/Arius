@@ -69,6 +69,9 @@ public class Fixture : FixtureBase
         if (!binaryFileRelativeName.IsAbsolute)
             throw new ArgumentException("Should start with /");
 
+        if ((attributes & FileAttributes.Hidden) != 0 && !binaryFileRelativeName.GetName().StartsWith("."))
+            throw new ArgumentException("Hidden files should start with a dot (.) in their name by Linux convention");
+
         var fe = new FileEntry(FileSystem, binaryFileRelativeName);
         fe.Directory.Create();
 
