@@ -3,12 +3,13 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
-using MediatR;
+using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
+using System.Threading.Tasks;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -19,7 +20,7 @@ public record ProgressUpdate;
 public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
-internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
+internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
@@ -44,7 +45,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
-    public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
@@ -132,6 +133,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             throw;
         }
+
+        return Unit.Value;
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>

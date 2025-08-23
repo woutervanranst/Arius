@@ -1,5 +1,5 @@
 using Arius.Core.Commands;
-using MediatR;
+using Mediator;
 using NSubstitute;
 using Shouldly;
 
@@ -16,14 +16,14 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
+    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatorCommand()
     {
         // Arrange
         RestoreCommand? capturedCommand = null;
         var             mediatorMock    = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         var tempPath = Path.GetTempPath();
@@ -69,7 +69,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var             mediatorMock    = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
@@ -105,7 +105,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
@@ -159,7 +159,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -190,7 +190,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");

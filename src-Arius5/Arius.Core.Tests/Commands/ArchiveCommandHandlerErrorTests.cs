@@ -47,7 +47,7 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
         };
 
         // Act
-        var act = () => handler.Handle(command, CancellationToken.None);
+        var act = () => handler.Handle(command, CancellationToken.None).AsTask();
 
         // Assert
         var e = await Should.ThrowAsync<FormatException>(act);
