@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,15 +9,15 @@
     <AssemblyName>arius</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CliFx" Version="2.3.6" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.23.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
-    <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="Shouldly" Version="4.3.0" />
-    <PackageReference Include="Spectre.Console" Version="0.50.0" />
-    <PackageReference Include="Mediator.Abstractions" Version="3.0.1" />
-    <PackageReference Include="Mediator.SourceGenerator" Version="3.0.1">
+    <PackageReference Include="CliFx" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="Mediator.Abstractions" />
+    <PackageReference Include="Mediator.SourceGenerator">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
