@@ -24,7 +24,7 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       # with:
       #   submodules: true # Check out WouterVanRanst.Utils - here we DO need it since we don't have nuget packages yet
 
@@ -65,7 +65,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       # with:
       #   submodules: true # Check out WouterVanRanst.Utils
 
@@ -108,7 +108,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         # with:
         #   submodules: true # Check out WouterVanRanst.Utils
 
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Get version from tag
         id: get_version_docker
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
       with:
         submodules: true # Check out WouterVanRanst.Utils
 
