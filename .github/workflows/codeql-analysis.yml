@@ -2,10 +2,16 @@ name: CodeQL Analysis
 
 on:
   push:
+    branches:
+      - '**'
     paths:
-      - 'src/Arius.Core/**'
-      - 'src/Arius.Cli/**'
-      - 'src/Arius.UI/**'
+      - 'src/**'
+      - '.github/workflows/codeql-analysis.yml'
+  pull_request:
+    branches:
+      - '**'
+    paths:
+      - 'src/**'
       - '.github/workflows/codeql-analysis.yml'
 
 jobs:
@@ -18,34 +24,27 @@ jobs:
       contents: read
       security-events: write
     defaults:
-        run:
-          working-directory: ./src
-
+      run:
+        working-directory: ./src
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'csharp' ]
-
+        language: ['csharp']
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        submodules: true # Check out WouterVanRanst.Utils
-
-    - name: Setup .NET Core
+        submodules: true
+    - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.x
-
+        dotnet-version: 9.x
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
-        queries: security-and-quality # https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#using-queries-in-ql-packs
- 
+        queries: security-and-quality
     - name: Build
-      run: |
-        dotnet build
-        
+      run: dotnet build Arius.sln --configuration Release
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3

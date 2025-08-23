@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Build
+        run: dotnet build Arius.sln --configuration Release
+
+      - name: Test
+        env:
+          RepositoryOptions__AccountKey: ${{ secrets.REPOSITORY_OPTIONS_ACCOUNT_KEY }}
+          RepositoryOptions__Passphrase: ${{ secrets.REPOSITORY_OPTIONS_PASSPHRASE }}
+          ARIUS_ACCOUNT_NAME: ariusci
+          ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+        run: |
+          dotnet test Arius.sln --configuration Release --no-build \
+            --filter "FullyQualifiedName!=Arius.Core.Tests.Commands.ArchiveCommandHandlerTests.RunArchiveCommand" \
+            --logger "junit;LogFilePath=TestResults/test-results.xml" \
+            --collect:"XPlat Code Coverage"
+
+      - name: Test Report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Report
+          path: '**/TestResults/test-results.xml'
+          reporter: java-junit
+
+      - name: Upload Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: '**/coverage.cobertura.xml'
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
