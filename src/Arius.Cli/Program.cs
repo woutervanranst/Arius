@@ -4,6 +4,7 @@ using CliFx;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System.Reflection;
 
 namespace Arius.Cli;
 
@@ -51,23 +52,36 @@ internal static class Program
     {
         var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
-        // Command discovery
-        //return new CliApplicationBuilder().AddCommandsFromThisAssembly();
+        var builder = new CliApplicationBuilder()
+            .SetTitle("arius")
+            .SetExecutableName("arius")
+            .SetVersion($"v{GetVersion()}");
 
         if (isRunningInContainer)
         {
-            return new CliApplicationBuilder()
-                .AddCommands([
-                    typeof(ArchiveDockerCliCommand), 
-                    typeof(RestoreDockerCliCommand)]);
+            builder.AddCommands([
+                typeof(ArchiveDockerCliCommand),
+                typeof(RestoreDockerCliCommand)]);
         }
         else
         {
-            return new CliApplicationBuilder()
-                .AddCommands([
-                    typeof(ArchiveCliCommand),
-                    typeof(RestoreCliCommand)]);
+            builder.AddCommands([
+                typeof(ArchiveCliCommand),
+                typeof(RestoreCliCommand)]);
         }
+
+        return builder;
+    }
+
+    private static string GetVersion()
+    {
+        // Prefer informational version so that suffixes like "local" are preserved
+        var informational = typeof(Program).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informational))
+            return informational;
+
+        return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
     }
 
     public static IServiceProvider CreateServiceProvider()
