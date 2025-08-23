@@ -1,5 +1,5 @@
 using CliFx.Infrastructure;
-using MediatR;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 

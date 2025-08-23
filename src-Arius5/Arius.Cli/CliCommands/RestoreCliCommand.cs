@@ -2,12 +2,12 @@ using Arius.Core.Commands;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
-using MediatR;
+using Mediator;
 using Spectre.Console;
 
 namespace Arius.Cli.CliCommands;
 
-public abstract class RestoreCliCommandBase : ICommand
+public abstract class RestoreCliCommandBase : CliFx.ICommand
 {
     private readonly IMediator mediator;
 

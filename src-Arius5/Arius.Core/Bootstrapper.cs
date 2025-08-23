@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel.DataAnnotations;
+using Mediator;
 
 namespace Arius.Core;
 
@@ -26,15 +27,8 @@ public static class Bootstrapper
         // Add FluentValidation validators
         //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly()); // zie https://www.milanjovanovic.tech/blog/cqrs-validation-with-mediatr-pipeline-and-fluentvalidation#running-validation-from-the-use-case
 
-        // Add MediatR
-        services.AddMediatR(config =>
-        {
-            // Add Handlers
-            config.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
-
-            // Add pipeline validation behavior
-            //config.AddOpenBehavior(typeof(ValidationBehavior<,>));
-        });
+        // Add Mediator
+        services.AddMediator();
 
         //services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
         //services.AddSingleton<AzureContainerFactory>();

@@ -3,13 +3,13 @@ using Arius.Core.Models;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
-using MediatR;
+using Mediator;
 using Spectre.Console;
 using System.Collections.Concurrent;
 
 namespace Arius.Cli.CliCommands;
 
-public abstract class ArchiveCliCommandBase : ICommand
+public abstract class ArchiveCliCommandBase : CliFx.ICommand
 {
     private readonly IMediator _mediator;
 
@@ -62,7 +62,7 @@ public abstract class ArchiveCliCommandBase : ICommand
                     var queue = new ConcurrentQueue<ProgressUpdate>();
                     var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
 
-                    // Create the MediatR command from the CLI arguments
+                    // Create the Mediator command from the CLI arguments
                     var command = new ArchiveCommand
                     {
                         AccountName      = AccountName,
@@ -77,7 +77,7 @@ public abstract class ArchiveCliCommandBase : ICommand
 
                     // Send the command and start the progress display loop
                     var cancellationToken = console.RegisterCancellationHandler();
-                    var commandTask       = _mediator.Send(command, cancellationToken);
+                    var commandTask       = _mediator.Send(command, cancellationToken).AsTask();
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
