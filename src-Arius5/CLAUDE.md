@@ -74,4 +74,4 @@ The CLI application requires configuration via user secrets:
 - **Azure.Storage.Blobs**: Azure Blob Storage client
 - **Entity Framework Core**: SQLite persistence
 - **Spectre.Console**: Rich console UI with progress reporting
-- **xUnit**: Test framework with FluentAssertions and NSubstitute
+- **xUnit**: Test framework with Shouldly and NSubstitute

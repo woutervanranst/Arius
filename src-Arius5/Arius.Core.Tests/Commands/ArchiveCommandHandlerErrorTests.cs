@@ -1,8 +1,8 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
+using Shouldly;
 
 namespace Arius.Core.Tests.Commands;
 
@@ -50,8 +50,8 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
         var act = () => handler.Handle(command, CancellationToken.None);
 
         // Assert
-        var e = await act.Should().ThrowAsync<FormatException>();
-        e.Which.Message.Should().Contain("No valid combination of account information found.");
+        var e = await Should.ThrowAsync<FormatException>(act);
+        e.Message.ShouldContain("No valid combination of account information found.");
     }
 
     public void Dispose()
