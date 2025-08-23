@@ -57,7 +57,7 @@ jobs:
         dotnet tool install --global dotnet-reportgenerator-globaltool
         reportgenerator "-reports:./Arius.Core.BehaviorTests/coverage.opencover.xml;./Arius.Core.Tests/coverage.opencover.xml" "-targetdir:." -reporttypes:Cobertura
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         files: |
           Cobertura.xml
