@@ -1,5 +1,5 @@
 using Arius.Core.Models;
-using FluentAssertions;
+using Shouldly;
 
 namespace Arius.Core.Tests.Models;
 
@@ -11,10 +11,10 @@ public class HashTests
         Hash h1 = "ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD";
         Hash h2 = "ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD";
 
-        h1.Equals(h2).Should().BeTrue();
-        h1.GetHashCode().Should().Be(h2.GetHashCode());
+        h1.Equals(h2).ShouldBeTrue();
+        h1.GetHashCode().ShouldBe(h2.GetHashCode());
 
-        (h1 == h2).Should().BeTrue();
+        (h1 == h2).ShouldBeTrue();
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public class HashTests
         Hash h1 = "ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD";
         Hash h2 = "ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD".ToLowerInvariant();
 
-        h1.Equals(h2).Should().BeTrue();
-        h1.GetHashCode().Should().Be(h2.GetHashCode());
+        h1.Equals(h2).ShouldBeTrue();
+        h1.GetHashCode().ShouldBe(h2.GetHashCode());
     }
 }

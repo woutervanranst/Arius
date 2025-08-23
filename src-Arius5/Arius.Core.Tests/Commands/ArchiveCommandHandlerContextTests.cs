@@ -2,10 +2,10 @@ using Arius.Core.Commands;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
+using Shouldly;
 
 namespace Arius.Core.Tests.Commands;
 
@@ -63,17 +63,17 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
             tempStateDirectory);
 
         // Assert
-        context.Should().NotBeNull();
-        context.Request.Should().Be(testCommand);
-        context.BlobStorage.Should().Be(mockBlobStorage);
-        context.StateRepo.Should().NotBeNull();
-        context.Hasher.Should().NotBeNull();
-        context.FileSystem.Should().NotBeNull();
+        context.ShouldNotBeNull();
+        context.Request.ShouldBe(testCommand);
+        context.BlobStorage.ShouldBe(mockBlobStorage);
+        context.StateRepo.ShouldNotBeNull();
+        context.Hasher.ShouldNotBeNull();
+        context.FileSystem.ShouldNotBeNull();
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = tempStateDirectory.GetFiles("*.db");
-        stateFiles.Should().HaveCount(1);
-        stateFiles[0].Name.Should().MatchRegex(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        stateFiles.Length.ShouldBe(1);
+        stateFiles[0].Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
 
         // Verify no download was attempted since no remote state exists
         await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
@@ -104,9 +104,9 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
             tempStateDirectory);
 
         // Assert
-        context.Should().NotBeNull();
-        context.Request.Should().Be(testCommand);
-        context.BlobStorage.Should().Be(mockBlobStorage);
+        context.ShouldNotBeNull();
+        context.Request.ShouldBe(testCommand);
+        context.BlobStorage.ShouldBe(mockBlobStorage);
 
         // Verify the remote state was downloaded
         await mockBlobStorage.Received(1).DownloadStateAsync(
@@ -116,15 +116,15 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = tempStateDirectory.GetFiles("*.db");
-        stateFiles.Should().HaveCountGreaterThan(0);
+        stateFiles.Length.ShouldBeGreaterThan(0);
         
         // Should have the downloaded state file and the new version
         var downloadedStateFile = stateFiles.FirstOrDefault(f => f.Name == $"{existingStateName}.db");
-        downloadedStateFile.Should().NotBeNull("the downloaded state file should exist");
+        downloadedStateFile.ShouldNotBeNull("the downloaded state file should exist");
         
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
-        newStateFile.Should().NotBeNull("a new state file should be created");
-        newStateFile.Name.Should().MatchRegex(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        newStateFile.ShouldNotBeNull("a new state file should be created");
+        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
     }
 
     [Fact]
@@ -147,24 +147,24 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
             tempStateDirectory);
 
         // Assert
-        context.Should().NotBeNull();
-        context.Request.Should().Be(testCommand);
-        context.BlobStorage.Should().Be(mockBlobStorage);
+        context.ShouldNotBeNull();
+        context.Request.ShouldBe(testCommand);
+        context.BlobStorage.ShouldBe(mockBlobStorage);
 
         // Verify no download was attempted since the file already exists locally
         await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = tempStateDirectory.GetFiles("*.db");
-        stateFiles.Should().HaveCountGreaterThan(1);
+        stateFiles.Length.ShouldBeGreaterThan(1);
         
         // Should have the existing state file and the new version
         var existingFile = stateFiles.FirstOrDefault(f => f.Name == $"{existingStateName}.db");
-        existingFile.Should().NotBeNull("the existing state file should still exist");
+        existingFile.ShouldNotBeNull("the existing state file should still exist");
         
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
-        newStateFile.Should().NotBeNull("a new state file should be created");
-        newStateFile.Name.Should().MatchRegex(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        newStateFile.ShouldNotBeNull("a new state file should be created");
+        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
     }
 
     public void Dispose()

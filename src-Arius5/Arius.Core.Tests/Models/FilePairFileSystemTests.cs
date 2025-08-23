@@ -1,5 +1,5 @@
 using Arius.Core.Models;
-using FluentAssertions;
+using Shouldly;
 using Zio;
 
 namespace Arius.Core.Tests.Models;
@@ -47,6 +47,8 @@ public class FilePairFileSystemTests : IClassFixture<Fixture>
         Assert.NotNull(files);
         Assert.Equal(expectedRelativePaths.Length, files.Count);
 
-        files.Select(fe => fe.FullName).Should().BeEquivalentTo(expectedRelativePaths);
+        files.Select(fe => fe.FullName)
+            .OrderBy(p => p)
+            .ShouldBe(expectedRelativePaths.OrderBy(p => p));
     }
 }

@@ -1,6 +1,6 @@
 using Arius.Core.Models;
 using Arius.Core.Services;
-using FluentAssertions;
+using Shouldly;
 using Zio;
 using Zio.FileSystems;
 
@@ -18,7 +18,7 @@ public class Sha256HasherTest
         var hash1 = await hasher.GetHashAsync(zeroBytes);
 
         var arius3HasherHash = (Hash)"88e667ac1167d96e7c42ec65daf9c096d374263a313c60b6d307ec3938300f98";
-        hash1.Should().Be(arius3HasherHash);
+        hash1.ShouldBe(arius3HasherHash);
     }
 
     [Fact]
@@ -38,6 +38,6 @@ public class Sha256HasherTest
         var hash1 = await hasher.GetHashAsync(bf);
 
         var arius3HasherHash = (Hash)"88e667ac1167d96e7c42ec65daf9c096d374263a313c60b6d307ec3938300f98";
-        hash1.Should().Be(arius3HasherHash);
+        hash1.ShouldBe(arius3HasherHash);
     }
 }
