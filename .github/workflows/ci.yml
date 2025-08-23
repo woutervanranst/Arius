@@ -41,7 +41,7 @@ jobs:
         run: |
           dotnet test Arius.sln --configuration Release --no-build \
             --filter "FullyQualifiedName!=Arius.Core.Tests.Commands.ArchiveCommandHandlerTests.RunArchiveCommand" \
-            --logger "junit;LogFilePath=TestResults/test-results.xml" \
+            --logger "trx;LogFileName=test-results.trx" \
             --collect:"XPlat Code Coverage"
 
       - name: Test Report
@@ -49,8 +49,8 @@ jobs:
         uses: dorny/test-reporter@v1
         with:
           name: Test Report
-          path: '**/TestResults/test-results.xml'
-          reporter: java-junit
+          path: '**/test-results.trx'
+          reporter: dotnet-trx
 
       - name: Upload Coverage to Codecov
         if: always()
