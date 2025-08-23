@@ -168,4 +168,4 @@ jobs:
         submodules: true # Check out WouterVanRanst.Utils
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1 # see https://github.com/softprops/action-gh-release for options
+      uses: softprops/action-gh-release@v2 # see https://github.com/softprops/action-gh-release for options
