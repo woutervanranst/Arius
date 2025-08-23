@@ -38,11 +38,11 @@ jobs:
           RepositoryOptions__Passphrase: ${{ secrets.REPOSITORY_OPTIONS_PASSPHRASE }}
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
-        run: |
-          dotnet test Arius.sln --configuration Release --no-build \
-            --filter "FullyQualifiedName!=Arius.Core.Tests.Commands.ArchiveCommandHandlerTests.RunArchiveCommand" \
-            --logger "trx;LogFileName=test-results.trx" \
-            --collect:"XPlat Code Coverage"
+        run: >-
+          dotnet test Arius.sln --configuration Release --no-build
+          --filter "FullyQualifiedName!=Arius.Core.Tests.Commands.ArchiveCommandHandlerTests.RunArchiveCommand"
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
 
       - name: Test Report
         if: always()
