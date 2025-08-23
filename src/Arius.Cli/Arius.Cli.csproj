@@ -18,11 +18,11 @@
     descriptive "local" suffix.
   -->
   <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
-    <!-- Use the run number as the patch version so the CLI prints e.g. v1.0.123 -->
-    <Version>1.0.$(GITHUB_RUN_NUMBER)</Version>
+    <!-- Use the run number as the patch version so the CLI prints e.g. v5.0.123 -->
+    <Version>5.0.$(GITHUB_RUN_NUMBER)</Version>
   </PropertyGroup>
   <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
-    <Version>1.0.0-local</Version>
+    <Version>5.0.0-local</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CliFx" />
