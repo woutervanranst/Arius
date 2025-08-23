@@ -8,6 +8,22 @@
     <UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
     <AssemblyName>arius</AssemblyName>
   </PropertyGroup>
+
+  <!--
+    Version information
+    When running in GitHub Actions we want the version number to reflect the run
+    that produced the build. The GITHUB_RUN_NUMBER variable is provided by the
+    Actions environment and increases with every run of the workflow. When this
+    variable is not available (e.g. when building locally) we fall back to a
+    descriptive "local" suffix.
+  -->
+  <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
+    <!-- Use the run number as the patch version so the CLI prints e.g. v1.0.123 -->
+    <Version>1.0.$(GITHUB_RUN_NUMBER)</Version>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
+    <Version>1.0.0-local</Version>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CliFx" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
