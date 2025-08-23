@@ -2,15 +2,16 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using MediatR;
+using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Zio;
 using Zio.FileSystems;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Commands;
 
-internal class RestoreCommandHandler : IRequestHandler<RestoreCommand>
+internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly IOptions<AriusConfiguration> config;
@@ -23,7 +24,7 @@ internal class RestoreCommandHandler : IRequestHandler<RestoreCommand>
         this.config = config;
     }
 
-    public async Task Handle(RestoreCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request);
 
@@ -52,6 +53,8 @@ internal class RestoreCommandHandler : IRequestHandler<RestoreCommand>
             logger.LogError(e, $"Error restoring chunk '{chunkHash.ToShortString()}'");
             throw;
         }
+
+        return Unit.Value;
     }
 
     private class HandlerContext

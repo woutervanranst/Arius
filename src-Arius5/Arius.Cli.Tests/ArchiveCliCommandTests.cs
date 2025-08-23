@@ -1,6 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
-using MediatR;
+using Mediator;
 using NSubstitute;
 using Shouldly;
 
@@ -17,14 +17,14 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
+    public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatorCommand()
     {
         // Arrange: Capture the command sent to IMediator
         ArchiveCommand? capturedCommand = null;
         var             mediatorMock    = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         // Arrange: Set up the CLI arguments
@@ -70,7 +70,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
@@ -106,7 +106,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
@@ -160,7 +160,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
@@ -191,7 +191,7 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var mediatorMock = Substitute.For<IMediator>();
         mediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(Unit.Value))
+            .Returns(new ValueTask<Unit>(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", "testkeyenv");
