@@ -1,26 +1,51 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Overview
 
-Arius is a file archival system that encrypts, compresses, and uploads files to Azure Blob Storage. The solution consists of three projects:
+Arius is a lightweight tiered archival solution for Azure Blob Storage. 
 
-- **Arius.Core**: Core business logic and domain models
-- **Arius.Cli**: Console application for running archive operations
-- **Arius.Core.Tests**: xUnit test project
+## Build and Test Commands
+
+```bash
+# Build the entire solution
+dotnet build Arius.sln
+
+# Run all tests
+dotnet test Arius.sln
+
+# Run a single test
+dotnet test Arius.sln --filter "FullyQualifiedName~<TestClassName>.<TestMethodName>"
+```
+
+## Running the Application
+
+```bash
+# Run CLI application
+cd Arius.Cli
+dotnet run -- [command] [options]
+
+# Archive command example
+dotnet run -- archive <path> --accountname <name> --accountkey <key> --passphrase <pass> --container <container>
+
+# Restore command example
+dotnet run -- restore <path> --accountname <name> --accountkey <key> --passphrase <pass> --container <container>
+```
 
 ## Architecture
 
-The codebase follows a **CQRS pattern** using MediatR for command handling. The main workflow is implemented in `ArchiveCommandHandler` which:
+The solution follows CQRS pattern with Mediator, using Domain-Driven Design principles:
 
-1. **Indexes** files from a local directory using the Zio filesystem abstraction
-2. **Hashes** files in parallel using SHA256
-3. **Uploads** files to Azure Blob Storage with AES256 encryption and gzip compression
-4. **Creates pointer files** (.pointer.arius) that reference the uploaded content by hash
-5. **Manages state** using SQLite with Entity Framework Core
+- **Arius.Core**: Core business logic containing Commands (with handlers), Models, Repositories, and Services
+- **Arius.Cli**: CLI application using CliFx framework with CliCommands that dispatch to Core handlers
+- **Commands flow**: CLI commands → Mediator → Command Handlers → Services/Repositories → Azure Storage
 
-### Key Components
+Key architectural decisions:
+- File-level deduplication for storage optimization
+- Client-side AES256 encryption for security
+- Pointer files (.pointer.arius) maintain local filesystem visibility while actual data resides in Azure
+- Entity Framework Core with SQLite for local metadata storage
+
+### Key Concepts
 
 - **FilePair**: Core domain model representing binary files and their corresponding pointer files
 - **Hash**: Immutable value object for SHA256 hashes with implicit conversions
@@ -28,50 +53,36 @@ The codebase follows a **CQRS pattern** using MediatR for command handling. The 
 - **FilePairFileSystem**: Zio-based filesystem abstraction for handling file pairs
 - **StateRepository**: SQLite-based persistence layer for tracking uploaded files
 
-### File Processing Strategy
+## Development Configuration
 
-- **Large files** (>2MB): Uploaded individually with parallel processing
-- **Small files** (≤2MB): Batched into TAR archives before upload to optimize costs
-- **Deduplication**: Files with identical hashes are uploaded only once
+The project uses:
+- **.NET 9.0** as target framework
+- **Central Package Management** via Directory.Packages.props
+- **User Secrets** for local development (UserSecretsId: 2c53e63e-555d-44f4-a474-29c01fb8c564)
+- **Nullable reference types** enabled
+- **Dependency Injection** configured in Program.cs
 
-## Development Commands
+Required environment variables for integration tests:
+- `ARIUS_ACCOUNT_NAME`
+- `ARIUS_ACCOUNT_KEY`
+- `RepositoryOptions__AccountKey`
+- `RepositoryOptions__Passphrase`
 
-### Build
-```bash
-dotnet build
-```
+## Code Patterns
 
-### Run Tests
-```bash
-dotnet test
-```
-
-### Run a Single Test Project
-```bash
-dotnet test Arius.Core.Tests
-```
-
-### Run CLI Application
-```bash
-dotnet run --project Arius.Cli
-```
-
-## Configuration
-
-The CLI application requires configuration via user secrets:
-- `ArchiveSettings:AccountName`: Azure Storage account name
-- `ArchiveSettings:AccountKey`: Azure Storage account key
-- `ArchiveSettings:ContainerName`: Blob container name
-- `ArchiveSettings:Passphrase`: Encryption passphrase
-- `ArchiveSettings:LocalRoot`: Local directory to archive
-- `ArchiveSettings:RemoveLocal`: Whether to remove local files after archiving
-- `ArchiveSettings:Tier`: Storage tier (Hot, Cool, Archive)
+When implementing new features:
+1. Create command/query in Arius.Core/Commands
+2. Implement handler using IRequestHandler<TCommand, TResult>
+3. Add CLI command in Arius.Cli/CliCommands inheriting from ICommand
+4. Use IMediator to dispatch from CLI to Core handler
+5. Write unit tests in corresponding .Tests projects using xUnit, NSubstitute, and Shouldly
 
 ## Key Dependencies
 
-- **MediatR**: CQRS command/query handling
-- **Zio**: Cross-platform filesystem abstraction
-- **Azure.Storage.Blobs**: Azure Blob Storage client
-- **Entity Framework Core**: SQLite persistence
-- **Spectre.Console**: Rich console UI with progress reporting
-- **xUnit**: Test framework with Shouldly and NSubstitute
+- **Azure.Storage.Blobs**: Azure Blob Storage integration
+- **CliFx**: Command-line interface framework
+- **Mediator**: CQRS implementation
+- **Serilog**: Structured logging
+- **Spectre.Console**: Enhanced console output
+- **Zio**: File system abstraction (only used in Arius.Core)
+- **xUnit, NSubstitute, Shouldly**: Testing stack
