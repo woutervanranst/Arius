@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+  pull_request:
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   checks: write
 
@@ -58,3 +66,64 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Determine version
+        id: get_version
+        run: |
+          BASE_VERSION=$(grep -Po '(?<=<Version>)[^<]+' Arius.Cli/Arius.Cli.csproj | head -n 1)
+          BASE_VERSION=${BASE_VERSION/\$\(GITHUB_RUN_NUMBER\)/$GITHUB_RUN_NUMBER}
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "VERSION=${BASE_VERSION}" >> $GITHUB_ENV
+            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+          else
+            echo "VERSION=${BASE_VERSION}-prerelease" >> $GITHUB_ENV
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+          fi
+
+      - name: Publish
+        run: dotnet publish Arius.Cli/Arius.Cli.csproj --configuration Release --output publish
+
+      - name: Package artifact
+        run: tar czf arius-cli-${VERSION}.tar.gz -C publish .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arius-cli-${{ env.VERSION }}
+          path: arius-cli-${{ env.VERSION }}.tar.gz
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:${VERSION}"
+          docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
+          docker push $IMAGE_NAME
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          files: arius-cli-${{ env.VERSION }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
