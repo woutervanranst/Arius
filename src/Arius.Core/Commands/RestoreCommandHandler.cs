@@ -72,8 +72,15 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 BlobStorage = bs,
                 StateRepo = sr,
                 Hasher = new Sha256Hasher(request.Passphrase),
+                TargetPaths = GetTargetPaths()
                 //FileSystem = GetFileSystem()
             };
+
+            UPath[] GetTargetPaths()
+            {
+                var pfs = new PhysicalFileSystem();
+                return request.Targets.Select(target => pfs.ConvertPathFromInternal(target)).ToArray();
+            }
 
             async Task<BlobStorage> GetBlobStorageAsync()
             {
@@ -118,6 +125,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         public required BlobStorage        BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
+        public required UPath[]            TargetPaths { get; init; }
         //public required FilePairFileSystem FileSystem  { get; init; }
     }
 }

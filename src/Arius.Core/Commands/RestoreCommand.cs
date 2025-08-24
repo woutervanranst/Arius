@@ -1,5 +1,4 @@
 using Mediator;
-using System.IO;
 using Arius.Core.Models;
 
 namespace Arius.Core.Commands;
@@ -10,7 +9,7 @@ public record RestoreCommand : ICommand
     public required string        AccountKey    { get; init; }
     public required string        ContainerName { get; init; }
     public required string        Passphrase    { get; init; }
-    public required DirectoryInfo LocalRoot     { get; init; }
+    public required string[]      Targets       { get; init; }
     public required bool          Synchronize   { get; init; }
     public required bool          Download      { get; init; }
     public required bool          KeepPointers  { get; init; }

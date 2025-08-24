@@ -8,6 +8,7 @@
 
   <ItemGroup>
         <PackageReference Include="Azure.Storage.Blobs" />
+        <PackageReference Include="FluentValidation" />
         <PackageReference Include="Humanizer.Core" />
         <PackageReference Include="Mediator.Abstractions" />
         <PackageReference Include="Mediator.SourceGenerator">

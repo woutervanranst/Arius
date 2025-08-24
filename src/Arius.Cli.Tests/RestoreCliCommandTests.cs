@@ -37,7 +37,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
-        capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
+        capturedCommand.Targets.ShouldBe([tempPath]);
         capturedCommand.AccountName.ShouldBe("testaccount");
         capturedCommand.AccountKey.ShouldBe("testkey");
         capturedCommand.Passphrase.ShouldBe("testpass");
@@ -58,7 +58,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
         // Assert
         exitCode.ShouldBe(1);
-        error.ShouldContain("Missing required parameter(s):\n<localroot>");
+        error.ShouldContain("Missing required parameter(s):\n<targets...>");
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
             await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
             capturedCommand.ShouldNotBeNull();
-            capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
+            capturedCommand.Targets.ShouldBe(["/archive"]);
             capturedCommand.AccountName.ShouldBe("testaccount");
             capturedCommand.AccountKey.ShouldBe("testkey");
             capturedCommand.Passphrase.ShouldBe("testpass");
