@@ -2,6 +2,8 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Exceptions;
+using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -63,6 +65,12 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         public static async Task<HandlerContext> CreateAsync(RestoreCommand request)
         {
+            var validationResult = await new RestoreCommandValidator().ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                throw new Exceptions.ValidationException(validationResult.Errors);
+            }
+            
             var bs = await GetBlobStorageAsync();
             var sr = await GetStateRepositoryAsync(bs);
 

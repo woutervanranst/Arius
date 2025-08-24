@@ -1,4 +1,5 @@
 using Arius.Core.Commands;
+using Arius.Core.Exceptions;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using Mediator;
@@ -6,6 +7,7 @@ using Spectre.Console;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using CliFx.Exceptions;
 
 namespace Arius.Cli.CliCommands;
 
@@ -60,6 +62,10 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
 
             var cancellationToken = console.RegisterCancellationHandler();
             await mediator.Send(command, cancellationToken);
+        }
+        catch (ValidationException e)
+        {
+            throw new CommandException(e.Message, showHelp: true);
         }
         catch (Exception e)
         {

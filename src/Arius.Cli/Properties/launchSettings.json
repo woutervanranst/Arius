@@ -6,7 +6,7 @@
     },
     "arius restore": {
       "commandName": "Project",
-      "commandLineArgs": "restore C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 -n ariusci -c test -p woutervr"
+      "commandLineArgs": "restore \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p woutervr"
     }
   }
 }
