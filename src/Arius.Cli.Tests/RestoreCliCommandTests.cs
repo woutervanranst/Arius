@@ -391,13 +391,13 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var tempFile = Path.Combine(tempDir.FullName, "file with spaces.txt");
         File.WriteAllText(tempFile, "content");
 
-        // Use the array overload to properly pass paths with spaces
-        var args = new[] { "restore", tempFile, "--accountname", "testaccount", "--accountkey", "testkey", "--passphrase", "testpass", "--container", "testcontainer" };
+        // Use quoted command string to test paths with spaces
+        var command = $"restore \"{tempFile}\" --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(args, mediatorMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -430,13 +430,13 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         File.WriteAllText(tempFile1, "content1");
         File.WriteAllText(tempFile2, "content2");
 
-        // Use the array overload to properly pass paths with spaces
-        var args = new[] { "restore", tempFile1, tempFile2, "--accountname", "testaccount", "--accountkey", "testkey", "--passphrase", "testpass", "--container", "testcontainer" };
+        // Use quoted command string to test paths with spaces
+        var command = $"restore \"{tempFile1}\" \"{tempFile2}\" --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(args, mediatorMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
@@ -465,13 +465,13 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
         var tempDir = Directory.CreateTempSubdirectory("directory with spaces");
 
-        // Use the array overload to properly pass paths with spaces
-        var args = new[] { "restore", tempDir.FullName, "--accountname", "testaccount", "--accountkey", "testkey", "--passphrase", "testpass", "--container", "testcontainer" };
+        // Use quoted command string to test paths with spaces
+        var command = $"restore \"{tempDir.FullName}\" --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         try
         {
             // Act
-            var (exitCode, output, error) = await fixture.CallCliAsync(args, mediatorMock);
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
             // Assert
             exitCode.ShouldBe(0);
