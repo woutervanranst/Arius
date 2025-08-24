@@ -52,6 +52,9 @@ internal static class Program
     {
         var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
 
+        // Command discovery
+        //return new CliApplicationBuilder().AddCommandsFromThisAssembly();
+
         var builder = new CliApplicationBuilder()
             .SetTitle("arius")
             .SetExecutableName("arius")
@@ -71,17 +74,17 @@ internal static class Program
         }
 
         return builder;
-    }
 
-    private static string GetVersion()
-    {
-        // Prefer informational version so that suffixes like "local" are preserved
-        var informational = typeof(Program).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-        if (!string.IsNullOrWhiteSpace(informational))
-            return informational;
+        static string GetVersion()
+        {
+            // Prefer informational version so that suffixes like "local" are preserved
+            var informational = typeof(Program).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(informational))
+                return informational;
 
-        return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+            return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+        }
     }
 
     public static IServiceProvider CreateServiceProvider()
