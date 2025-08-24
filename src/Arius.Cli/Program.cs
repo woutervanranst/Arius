@@ -81,11 +81,12 @@ internal static class Program
 
         static string GetVersion()
         {
-            // Prefer informational version so that suffixes like "local" are preserved
-            var informational = typeof(Program).Assembly
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (!string.IsNullOrWhiteSpace(informational))
-                return informational;
+            //// Prefer informational version so that suffixes like "local" are preserved
+            //var version = typeof(Program).Assembly
+            //    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+            if (!string.IsNullOrWhiteSpace(version))
+                return version;
 
             return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
         }
