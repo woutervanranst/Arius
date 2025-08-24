@@ -86,3 +86,10 @@ When implementing new features:
 - **Spectre.Console**: Enhanced console output
 - **Zio**: File system abstraction (only used in Arius.Core)
 - **xUnit, NSubstitute, Shouldly**: Testing stack
+- **FluentValidation**: Command validation
+
+## Development Notes
+
+- Add FluentValidation to validate the commands
+- For unit tests, do not create temp directories & files, instead investigate to use/augment the existing Fixture which scaffolds already a lot of it
+- You do NOT need to take care of backwards compatibility
