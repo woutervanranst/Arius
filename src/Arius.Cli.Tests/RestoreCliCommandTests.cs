@@ -212,4 +212,105 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
             Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_SingleFile_SendsCorrectMediatorCommand()
+    {
+        // Arrange
+        RestoreCommand? capturedCommand = null;
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Unit>(Unit.Value))
+            .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
+
+        var tempFile = Path.GetTempFileName();
+        var command = $"restore {tempFile} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(0);
+            await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+
+            capturedCommand.ShouldNotBeNull();
+            capturedCommand.Targets.ShouldBe([tempFile]);
+            capturedCommand.AccountName.ShouldBe("testaccount");
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_MultipleFiles_SendsCorrectMediatorCommand()
+    {
+        // Arrange
+        RestoreCommand? capturedCommand = null;
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Unit>(Unit.Value))
+            .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
+
+        var tempFile1 = Path.GetTempFileName();
+        var tempFile2 = Path.GetTempFileName();
+        var command = $"restore {tempFile1} {tempFile2} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(0);
+            await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+
+            capturedCommand.ShouldNotBeNull();
+            capturedCommand.Targets.ShouldBe([tempFile1, tempFile2]);
+            capturedCommand.AccountName.ShouldBe("testaccount");
+        }
+        finally
+        {
+            File.Delete(tempFile1);
+            File.Delete(tempFile2);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_Directory_SendsCorrectMediatorCommand()
+    {
+        // Arrange
+        RestoreCommand? capturedCommand = null;
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<Unit>(Unit.Value))
+            .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
+
+        var tempDir = Directory.CreateTempSubdirectory("restore-test");
+        var command = $"restore {tempDir.FullName} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(0);
+            await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+
+            capturedCommand.ShouldNotBeNull();
+            capturedCommand.Targets.ShouldBe([tempDir.FullName]);
+            capturedCommand.AccountName.ShouldBe("testaccount");
+        }
+        finally
+        {
+            tempDir.Delete(true);
+        }
+    }
 }
