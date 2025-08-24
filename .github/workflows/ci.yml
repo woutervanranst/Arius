@@ -46,7 +46,7 @@ jobs:
 
       - name: Test Report
         if: always()
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v2
         with:
           name: Test Report
           path: '**/test-results.trx'
