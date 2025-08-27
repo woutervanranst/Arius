@@ -4,6 +4,7 @@ using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Mediator;
+using Serilog;
 using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
@@ -120,6 +121,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         }
         catch (Exception e)
         {
+            Log.Fatal(e, "Unhandled exception");
             throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
         //catch (ValidationException e)

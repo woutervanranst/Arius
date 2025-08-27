@@ -34,19 +34,20 @@ internal static class Program
         {
             Log.Information("Starting Arius CLI...");
 
-            return await CreateBuilder()
+            var exitCode = await CreateBuilder()
                 .UseTypeActivator(CreateServiceProvider().GetService)
                 .Build()
                 .RunAsync(args);
-        }
-        catch (Exception ex)
-        {
-            Log.Fatal(ex, "Application terminated unexpectedly");
-            return 1; // Return a non-zero exit code for failure
+            
+            if (exitCode == 0)
+            {
+                Log.Information("Arius CLI finished successfully.");
+            }
+            
+            return exitCode;
         }
         finally
         {
-            Log.Information("Arius CLI finished.");
             // Ensure all buffered logs are written to the file before exiting
             await Log.CloseAndFlushAsync();
         }
