@@ -6,7 +6,7 @@
     },
     "arius archive validationerror": {
       "commandName": "Project",
-      "commandLineArgs": "archive archive C:\\ -c ss -p dd"
+      "commandLineArgs": "archive C:\\ -c ss -p dd"
     },
     "arius restore": {
       "commandName": "Project",
