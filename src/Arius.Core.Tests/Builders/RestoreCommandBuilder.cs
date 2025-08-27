@@ -9,9 +9,8 @@ public class RestoreCommandBuilder
     private string                     containerName;
     private string                     passphrase;
     private string[]                   targets;
-    private bool                       synchronize;
     private bool                       download;
-    private bool                       keepPointers;
+    private bool                       includePointers;
     private IProgress<ProgressUpdate>? progressReporter;
 
     public RestoreCommandBuilder()
@@ -43,9 +42,8 @@ public class RestoreCommandBuilder
             targets       = ["dummy"];
         }
 
-        synchronize      = false;
         download         = false;
-        keepPointers     = false;
+        includePointers  = false;
         progressReporter = null;
     }
 
@@ -79,12 +77,6 @@ public class RestoreCommandBuilder
         return this;
     }
 
-    public RestoreCommandBuilder WithSynchronize(bool synchronize)
-    {
-        this.synchronize = synchronize;
-        return this;
-    }
-
     public RestoreCommandBuilder WithDownload(bool download)
     {
         this.download = download;
@@ -93,7 +85,7 @@ public class RestoreCommandBuilder
 
     public RestoreCommandBuilder WithKeepPointers(bool keepPointers)
     {
-        this.keepPointers = keepPointers;
+        this.includePointers = keepPointers;
         return this;
     }
 
@@ -112,9 +104,8 @@ public class RestoreCommandBuilder
             ContainerName    = containerName,
             Passphrase       = passphrase,
             Targets          = targets,
-            Synchronize      = synchronize,
             Download         = download,
-            KeepPointers     = keepPointers,
+            IncludePointers  = includePointers,
             ProgressReporter = progressReporter
         };
     }

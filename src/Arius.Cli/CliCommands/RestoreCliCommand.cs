@@ -34,14 +34,11 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
     [CommandOption("passphrase", 'p', IsRequired = true, Description = "Passphrase for decryption.")]
     public required string Passphrase { get; init; }
 
-    [CommandOption("synchronize", Description = "Synchronize the local directory with the remote state.")]
-    public bool Synchronize { get; init; } = false;
-
     [CommandOption("download", Description = "Download the files.")]
     public bool Download { get; init; } = false;
 
-    [CommandOption("keep-pointers", Description = "Keep the pointer files after restore.")]
-    public bool KeepPointers { get; init; } = false;
+    [CommandOption("include-pointers", Description = "Keep the pointer files after restore.")]
+    public bool IncludePointers { get; init; } = false;
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
@@ -49,14 +46,13 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
         {
             var command = new RestoreCommand
             {
-                AccountName   = AccountName,
-                AccountKey    = AccountKey,
-                ContainerName = ContainerName,
-                Passphrase    = Passphrase,
-                Synchronize   = Synchronize,
-                Download      = Download,
-                KeepPointers  = KeepPointers,
-                Targets       = Targets,
+                AccountName     = AccountName,
+                AccountKey      = AccountKey,
+                ContainerName   = ContainerName,
+                Passphrase      = Passphrase,
+                Download        = Download,
+                IncludePointers = IncludePointers,
+                Targets         = Targets,
                 //ProgressReporter = pu
             };
 

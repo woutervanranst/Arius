@@ -27,7 +27,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         var tempPath = Path.GetTempPath();
-        var command  = $"restore {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --synchronize --download --keep-pointers";
+        var command  = $"restore {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --download --include-pointers";
 
         // Act
         var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
@@ -42,9 +42,8 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         capturedCommand.AccountKey.ShouldBe("testkey");
         capturedCommand.Passphrase.ShouldBe("testpass");
         capturedCommand.ContainerName.ShouldBe("testcontainer");
-        capturedCommand.Synchronize.ShouldBeTrue();
         capturedCommand.Download.ShouldBeTrue();
-        capturedCommand.KeepPointers.ShouldBeTrue();
+        capturedCommand.IncludePointers.ShouldBeTrue();
     }
 
     [Fact]
