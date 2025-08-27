@@ -3,6 +3,7 @@ using Humanizer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
 
@@ -69,7 +70,9 @@ public class StateRepository
 
     private static readonly Func<SqliteStateDatabaseContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
         EF.CompileQuery((SqliteStateDatabaseContext dbContext, Hash h) =>
-            dbContext.Set<BinaryPropertiesDto>().AsNoTracking().SingleOrDefault(x => x.Hash == h));
+            dbContext.Set<BinaryPropertiesDto>()
+                .AsNoTracking()
+                .SingleOrDefault(x => x.Hash == h));
 
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
@@ -110,14 +113,31 @@ public class StateRepository
         context.SaveChanges();
     }
 
+    private static readonly Func<SqliteStateDatabaseContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
+        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeNamePrefix) =>
+            dbContext.PointerFileEntries
+                .AsNoTracking()
+                .Where(x => x.RelativeName.StartsWith(relativeNamePrefix)));
+
+    private static readonly Func<SqliteStateDatabaseContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
+        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeNamePrefix) =>
+            dbContext.PointerFileEntries
+                .AsNoTracking()
+                .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
+                .Include(x => x.BinaryProperties));
+
     internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
         using var context = GetContext();
 
-        foreach (var pfe in context.PointerFileEntries
-                     .AsNoTracking()
-                     .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
-                     .Include(x => includeBinaryProperties ? x.BinaryProperties : null!))
+        // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
+        var dbRelativeNamePrefix = relativeNamePrefix.RemovePrefix('/');
+        
+        var query = includeBinaryProperties 
+            ? findPointerFileEntriesWithBinaryProperties(context, dbRelativeNamePrefix)
+            : findPointerFileEntries(context, dbRelativeNamePrefix);
+
+        foreach (var pfe in query)
         {
             yield return pfe;
         }
