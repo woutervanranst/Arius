@@ -65,7 +65,7 @@ public class FakeStateDatabaseBuilder
     public FileInfo Build()
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
-        var stateRepo = new StateRepository(stateFile, NullLogger<StateRepository>.Instance);
+        var stateRepo = new StateRepository(stateFile, true, NullLogger<StateRepository>.Instance);
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties
