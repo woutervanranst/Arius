@@ -97,5 +97,8 @@ When implementing new features:
 
 ## Code Style Preferences
 
+- Do not use the XUnit assertions. Use Shouldy whenever possible.
+- Use FakeLogger instead of NullLogger
+
 ### Helper Methods
 Prefer **local methods** over private static methods for helper functionality that is only used within a single method
