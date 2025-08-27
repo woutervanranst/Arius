@@ -14,7 +14,8 @@ public enum FilePairType
 
 public class FilePair : FileEntry
 {
-    public static FilePair FromBinaryFileFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+    public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
+    public static FilePair FromBinaryFilePath(IFileSystem fileSystem, UPath binaryFilePath) => new(fileSystem, binaryFilePath);
     private FilePair(IFileSystem fileSystem, UPath binaryFilePath) : base(fileSystem, binaryFilePath)
     {
         BinaryFile = BinaryFile.FromFileEntry(this);
