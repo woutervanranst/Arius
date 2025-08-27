@@ -11,7 +11,8 @@
       "Bash(dotnet build:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "mcp__serena__replace_symbol_body"
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__insert_after_symbol"
     ],
     "deny": [],
     "ask": []
