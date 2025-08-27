@@ -117,6 +117,14 @@ jobs:
           docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
           docker push $IMAGE_NAME
 
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v4
+        with:
+          commitMode: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -124,7 +132,6 @@ jobs:
           name: v${{ env.VERSION }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           files: arius-cli-${{ env.VERSION }}.tar.gz
-          generate_release_notes: true
+          body: ${{ steps.build_changelog.outputs.changelog }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
