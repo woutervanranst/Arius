@@ -3,6 +3,7 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using System;
 using System.Text;
 using Zio;
 using Zio.FileSystems;
@@ -54,7 +55,7 @@ public class Fixture : FixtureBase
 
     public Fixture()
     {
-        TestRunSourceFolder = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "Arius.Core.Tests", DateTime.Now.ToString("yyyyMMddHHmmss")));
+        TestRunSourceFolder = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "Arius.Core.Tests", $"{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}"));
         TestRunSourceFolder.Create();
 
         var pfs = new PhysicalFileSystem();
