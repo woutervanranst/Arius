@@ -1,4 +1,5 @@
 using Arius.Core.Commands;
+using Arius.Core.Exceptions;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using Mediator;
@@ -6,6 +7,7 @@ using Spectre.Console;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using CliFx.Exceptions;
 
 namespace Arius.Cli.CliCommands;
 
@@ -18,7 +20,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
         this.mediator = mediator;
     }
 
-    public abstract DirectoryInfo LocalRoot { get; init; }
+    public abstract string[] Targets { get; init; }
 
     [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
@@ -54,12 +56,16 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                 Synchronize   = Synchronize,
                 Download      = Download,
                 KeepPointers  = KeepPointers,
-                LocalRoot     = LocalRoot,
+                Targets       = Targets,
                 //ProgressReporter = pu
             };
 
             var cancellationToken = console.RegisterCancellationHandler();
             await mediator.Send(command, cancellationToken);
+        }
+        catch (ValidationException e)
+        {
+            throw new CommandException(e.Message, showHelp: true);
         }
         catch (Exception e)
         {
@@ -75,8 +81,8 @@ public class RestoreCliCommand : RestoreCliCommandBase
     {
     }
 
-    [CommandParameter(0, Description = "Path to the local root directory to archive.")]
-    public override required DirectoryInfo LocalRoot { get; init; }
+    [CommandParameter(0, Description = "Directory or files to restore.")]
+    public override required string[] Targets { get; init; }
 }
 
 
@@ -88,9 +94,9 @@ public class RestoreDockerCliCommand : RestoreCliCommandBase
     {
     }
 
-    public override required DirectoryInfo LocalRoot
+    public override required string[] Targets
     {
-        get => new("/archive");
-        init => throw new InvalidOperationException("LocalRoot cannot be set in Docker");
+        get => ["/archive"];
+        init => throw new InvalidOperationException("Targets cannot be set in Docker");
     }
 }

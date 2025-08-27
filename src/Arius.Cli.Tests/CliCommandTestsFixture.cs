@@ -2,6 +2,7 @@ using CliFx.Infrastructure;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Text;
 
 namespace Arius.Cli.Tests;
 
@@ -29,11 +30,47 @@ public class CliCommandTestsFixture
             .UseConsole(console)
             .Build();
 
-        var args = command.Split(' ');
+        var args = ParseArguments(command); // Split the string into an array of arguments taking into account quoted strings (paths with spaces)
         var r    = await app.RunAsync(args);
         var o    = console.ReadOutputString();
         var e    = console.ReadErrorString();
 
         return (r, o, e);
+    }
+
+    private static string[] ParseArguments(string command)
+    {
+        var args = new List<string>();
+        var currentArg = new StringBuilder();
+        var inQuotes = false;
+
+        for (int i = 0; i < command.Length; i++)
+        {
+            char c = command[i];
+
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ' ' && !inQuotes)
+            {
+                if (currentArg.Length > 0)
+                {
+                    args.Add(currentArg.ToString());
+                    currentArg.Clear();
+                }
+            }
+            else
+            {
+                currentArg.Append(c);
+            }
+        }
+
+        if (currentArg.Length > 0)
+        {
+            args.Add(currentArg.ToString());
+        }
+
+        return args.ToArray();
     }
 }
