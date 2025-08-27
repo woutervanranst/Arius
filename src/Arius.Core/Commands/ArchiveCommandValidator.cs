@@ -6,13 +6,7 @@ public class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 {
     public ArchiveCommandValidator()
     {
-        this.AddAccountNameValidation(x => x.AccountName);
-        this.AddAccountKeyValidation(x => x.AccountKey);
-        this.AddContainerNameValidation(x => x.ContainerName);
-
-        RuleFor(x => x.Passphrase)
-            .NotEmpty()
-            .WithMessage("Passphrase cannot be empty.");
+        Include(new RepositoryCommandValidator());
 
         RuleFor(x => x.LocalRoot)
             .NotNull()

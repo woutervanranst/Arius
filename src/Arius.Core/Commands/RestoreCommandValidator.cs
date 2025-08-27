@@ -6,13 +6,7 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
 {
     public RestoreCommandValidator()
     {
-        this.AddAccountNameValidation(x => x.AccountName);
-        this.AddAccountKeyValidation(x => x.AccountKey);
-        this.AddContainerNameValidation(x => x.ContainerName);
-
-        RuleFor(x => x.Passphrase)
-            .NotEmpty()
-            .WithMessage("Passphrase cannot be empty.");
+        Include(new RepositoryCommandValidator());
 
         RuleFor(x => x.Targets)
             .NotEmpty()
@@ -25,7 +19,6 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
         RuleFor(x => x.Targets)
             .Must(BeValidTargetCombination)
             .WithMessage("Targets must be either: an empty directory, a non-empty directory, one file, or multiple files. Cannot mix files and directories.");
-
 
         static bool AllPathsExist(string[] targets)
         {

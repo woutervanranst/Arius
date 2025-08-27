@@ -1,14 +1,9 @@
 ﻿using Arius.Core.Models;
-using Mediator;
 
 namespace Arius.Core.Commands;
 
-public record ArchiveCommand : ICommand
+public record ArchiveCommand : RepositoryCommand
 {
-    public required string        AccountName   { get; init; }
-    public required string        AccountKey    { get; init; }
-    public required string        ContainerName { get; init; }
-    public required string        Passphrase    { get; init; }
     public required bool          RemoveLocal   { get; init; }
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
