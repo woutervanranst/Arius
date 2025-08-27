@@ -20,6 +20,14 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             .Must(targets => targets.Length > 0)
             .WithMessage("No target(s) specified.");
 
+        RuleFor(x => x.LocalRoot)
+            .NotNull()
+            .WithMessage("LocalRoot must be specified.");
+
+        RuleFor(x => x.LocalRoot)
+            .Must(localRoot => localRoot.Exists)
+            .WithMessage("LocalRoot directory must exist.");
+
         // TODO: directories should end with /
     }
 }

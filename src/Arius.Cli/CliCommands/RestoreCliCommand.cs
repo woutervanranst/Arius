@@ -5,6 +5,7 @@ using CliFx.Infrastructure;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace Arius.Cli.CliCommands;
@@ -20,7 +21,10 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
         this.logger   = logger;
     }
 
-    public abstract string[] Targets { get; init; }
+    [CommandParameter(0, Description = "Directory or files to restore.")]
+    public virtual required string[] Targets { get; init; }
+
+    public abstract DirectoryInfo LocalRoot { get; init; }
 
     [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
@@ -50,9 +54,10 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                 AccountKey      = AccountKey,
                 ContainerName   = ContainerName,
                 Passphrase      = Passphrase,
+                LocalRoot       = LocalRoot,
+                Targets         = Targets,
                 Download        = Download,
                 IncludePointers = IncludePointers,
-                Targets         = Targets,
                 //ProgressReporter = pu
             };
 
@@ -82,8 +87,8 @@ public class RestoreCliCommand : RestoreCliCommandBase
     {
     }
 
-    [CommandParameter(0, Description = "Directory or files to restore.")]
-    public override required string[] Targets { get; init; }
+    [CommandOption("root", 'r', Description = "Root directory for restore operation.")]
+    public override DirectoryInfo LocalRoot { get; init; } = new(Environment.CurrentDirectory);
 }
 
 
@@ -95,9 +100,9 @@ public class RestoreDockerCliCommand : RestoreCliCommandBase
     {
     }
 
-    public override required string[] Targets
+    public override required DirectoryInfo LocalRoot
     {
-        get => ["/archive"];
-        init => throw new InvalidOperationException("Targets cannot be set in Docker");
+        get => new("/archive");
+        init => throw new InvalidOperationException("LocalRoot cannot be set in Docker");
     }
 }

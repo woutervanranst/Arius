@@ -160,7 +160,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             FilePairFileSystem GetFileSystem()
             {
                 var pfs = new PhysicalFileSystem();
-                var root = pfs.ConvertPathFromInternal(Environment.CurrentDirectory);
+                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
                 var sfs  = new SubFileSystem(pfs, root, true);
                 return new FilePairFileSystem(sfs, true);
             }

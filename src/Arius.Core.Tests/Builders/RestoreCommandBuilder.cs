@@ -11,6 +11,7 @@ public class RestoreCommandBuilder
     private string[]                   targets;
     private bool                       download;
     private bool                       includePointers;
+    private DirectoryInfo              localRoot;
     private IProgress<ProgressUpdate>? progressReporter;
 
     public RestoreCommandBuilder()
@@ -44,6 +45,7 @@ public class RestoreCommandBuilder
 
         download         = false;
         includePointers  = false;
+        localRoot        = new DirectoryInfo(Environment.CurrentDirectory);
         progressReporter = null;
     }
 
@@ -68,6 +70,12 @@ public class RestoreCommandBuilder
     public RestoreCommandBuilder WithPassphrase(string passphrase)
     {
         this.passphrase = passphrase;
+        return this;
+    }
+
+    public RestoreCommandBuilder WithLocalRoot(DirectoryInfo localRoot)
+    {
+        this.localRoot = localRoot;
         return this;
     }
 
@@ -106,6 +114,7 @@ public class RestoreCommandBuilder
             Targets          = targets,
             Download         = download,
             IncludePointers  = includePointers,
+            LocalRoot        = localRoot,
             ProgressReporter = progressReporter
         };
     }
