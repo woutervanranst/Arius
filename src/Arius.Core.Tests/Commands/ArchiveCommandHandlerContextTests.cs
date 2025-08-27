@@ -1,6 +1,5 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
-using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;

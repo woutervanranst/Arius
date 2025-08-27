@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel.DataAnnotations;
-using Mediator;
 
 namespace Arius.Core;
 

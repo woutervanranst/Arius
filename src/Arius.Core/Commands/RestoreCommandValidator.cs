@@ -1,5 +1,4 @@
 using FluentValidation;
-using System.IO;
 
 namespace Arius.Core.Commands;
 

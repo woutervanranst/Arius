@@ -1,6 +1,5 @@
 using Arius.Core.Commands;
 using FluentValidation.TestHelper;
-using Shouldly;
 
 namespace Arius.Core.Tests.Commands;
 

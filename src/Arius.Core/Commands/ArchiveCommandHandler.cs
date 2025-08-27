@@ -9,7 +9,6 @@ using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
