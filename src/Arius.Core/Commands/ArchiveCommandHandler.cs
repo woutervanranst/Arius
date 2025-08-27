@@ -592,7 +592,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 
-            var stateRepo = new StateRepository(stateFile, loggerFactory.CreateLogger<StateRepository>());
+            var stateRepo = new StateRepository(stateFile, true, loggerFactory.CreateLogger<StateRepository>());
 
             return new HandlerContext
             {

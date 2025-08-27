@@ -12,7 +12,7 @@ public class StateRepository
     public           FileInfo                                     StateDatabaseFile { get; }
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
 
-    public StateRepository(FileInfo stateDatabaseFile, ILogger<StateRepository> logger)
+    public StateRepository(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepository> logger)
     {
         this.logger       = logger;
         StateDatabaseFile = stateDatabaseFile;
@@ -23,7 +23,9 @@ public class StateRepository
 
         using var context = GetContext();
         //context.Database.Migrate();
-        context.Database.EnsureCreated();
+        
+        if (ensureCreated)
+            context.Database.EnsureCreated();
     }
 
     private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
