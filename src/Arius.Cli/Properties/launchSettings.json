@@ -2,7 +2,7 @@
   "profiles": {
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\\Sam\" -n ariusci -c test -p woutervr --tier hot"
+      "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p woutervr --tier hot"
     },
     "arius archive validationerror": {
       "commandName": "Project",
