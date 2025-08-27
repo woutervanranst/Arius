@@ -1,15 +1,10 @@
-using Arius.Core.Extensions;
-using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using Arius.Core.Exceptions;
-using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Zio;
 using Zio.FileSystems;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Commands;
 

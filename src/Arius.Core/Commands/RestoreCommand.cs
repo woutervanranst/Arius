@@ -1,5 +1,4 @@
 using Mediator;
-using Arius.Core.Models;
 
 namespace Arius.Core.Commands;
 
