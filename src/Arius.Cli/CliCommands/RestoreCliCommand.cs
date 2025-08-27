@@ -1,10 +1,8 @@
 using Arius.Core.Commands;
-using Arius.Core.Exceptions;
 using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Mediator;
-using Spectre.Console;
 using System;
 using System.Threading.Tasks;
 

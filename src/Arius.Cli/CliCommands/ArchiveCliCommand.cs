@@ -9,7 +9,6 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
-using Arius.Core.Exceptions;
 
 namespace Arius.Cli.CliCommands;
 

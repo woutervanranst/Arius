@@ -1,5 +1,6 @@
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -63,7 +64,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             var validationResult = await new RestoreCommandValidator().ValidateAsync(request);
             if (!validationResult.IsValid)
             {
-                throw new Exceptions.ValidationException(validationResult.Errors);
+                throw new ValidationException(validationResult.Errors);
             }
             
             var bs = await GetBlobStorageAsync();
