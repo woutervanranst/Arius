@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "arius5"
+    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -15,7 +15,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "arius5"
+    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -25,7 +25,7 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "arius5"
+    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"
