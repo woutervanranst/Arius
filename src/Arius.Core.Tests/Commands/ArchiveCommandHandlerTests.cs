@@ -3,22 +3,22 @@ using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using System.Runtime.InteropServices;
+using Shouldly.Configuration;
 
 namespace Arius.Core.Tests.Commands;
 
-public class ArchiveCommandHandlerTests : IDisposable
+public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
 {
+    private readonly Fixture                           fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
-    private readonly Fixture                           fixture;
 
-    public ArchiveCommandHandlerTests()
+    public ArchiveCommandHandlerTests(Fixture fixture)
     {
-        fixture = new ();
-        logger  = new();
-        handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
+        this.fixture = fixture;
+        logger       = new();
+        handler      = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
-
 
 
     [Fact]
