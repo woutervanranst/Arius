@@ -2,6 +2,7 @@
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using FluentValidation;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -546,6 +547,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
         {
+            var validationResult = await new ArchiveCommandValidator().ValidateAsync(request);
+            if (!validationResult.IsValid)
+            {
+                throw new ValidationException(validationResult.Errors);
+            }
+
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
             // Create blob container if needed
