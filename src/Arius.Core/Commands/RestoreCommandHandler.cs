@@ -24,7 +24,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
     public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await HandlerContext.CreateAsync(request);
+        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
         throw new NotImplementedException();
 

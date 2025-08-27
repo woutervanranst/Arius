@@ -15,7 +15,7 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
     {
         this.fixture = fixture;
         logger       = new();
-        handler      = new RestoreCommandHandler(logger, fixture.AriusConfiguration);
+        handler      = new RestoreCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 
     [Fact]
