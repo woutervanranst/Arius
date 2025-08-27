@@ -98,53 +98,24 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (pfe, innerCancellationToken) =>
             {
+                // 1. Get the blob from storage
                 await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
 
+                // 2. Get the decrypted and decompressed stream
                 await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
 
-
+                // 3. Write to the target file
                 var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
-
                 fp.BinaryFile.Directory.Create();
                 
+                await using var targetFileStream = fp.BinaryFile.OpenWrite();
 
-                var targetFileStream = fp.BinaryFile.OpenWrite();
-
-                await decryptionStream.CopyToAsync(targetFileStream, cancellationToken);
-                await targetFileStream.FlushAsync(cancellationToken); // Explicitly flush
+                await decryptionStream.CopyToAsync(targetFileStream, innerCancellationToken);
+                await targetFileStream.FlushAsync(innerCancellationToken); // Explicitly flush
 
             });
 
 
-
-
-    // Example code to restore a single chunk to a temporary file
-
-    //var chunkHash = (Hash)"3e12370e300aef3a239a8a063dc618e581f8f1f5e16f690ed73b3ca5d627369e";
-    //var targetFilePath = Path.GetTempFileName();
-
-    //logger.LogInformation($"Restoring chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
-
-    //try
-    //{
-    //    // 1. Get the blob from storage
-    //    await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(chunkHash, cancellationToken);
-
-    //    // 2. Get the decrypted and decompressed stream
-    //    await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-
-    //    // 3. Write to the target file
-    //    await using var targetFileStream = File.OpenWrite(targetFilePath);
-    //    await decryptionStream.CopyToAsync(targetFileStream, cancellationToken);
-    //    await targetFileStream.FlushAsync(cancellationToken); // Explicitly flush
-
-    //    logger.LogInformation($"Successfully restored chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
-    //}
-    //catch (Exception e)
-    //{
-    //    logger.LogError(e, $"Error restoring chunk '{chunkHash.ToShortString()}'");
-    //    throw;
-    //}
 
 
     internal class HandlerContext
@@ -203,15 +174,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 BlobStorage = blobStorage,
                 StateRepo   = stateRepo,
                 Hasher      = new Sha256Hasher(request.Passphrase),
-                //LocalRoot   = fs.ConvertPathFromInternal(request.LocalRoot.FullName),
                 Targets     = GetTargets(),
                 FileSystem  = fs
             };
 
             UPath[] GetTargets()
             {
-                //return request.Targets.Select(target => fs.ConvertPathFromInternal(target[2..] /*remove the leading './'*/)).ToArray();
-                return request.Targets.Select(target => (UPath)target[1..]).ToArray();
+                return request.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
             }
 
             FilePairFileSystem GetFileSystem()
@@ -227,7 +196,6 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
-        //public required UPath              LocalRoot   { get; init; }
         public required UPath[]            Targets     { get; init; }
         public required FilePairFileSystem FileSystem  { get; init; }
     }

@@ -22,7 +22,7 @@ public class FilePair : FileEntry
     {
         var pointerFilePath = (UPath)pfe.RelativeName;
         var binaryFilePath = pointerFilePath.GetBinaryFilePath();
-        return FilePair.FromBinaryFilePath(fileSystem, binaryFilePath);
+        return FromBinaryFilePath(fileSystem, binaryFilePath);
     }
     private FilePair(IFileSystem fileSystem, UPath binaryFilePath) : base(fileSystem, binaryFilePath)
     {
