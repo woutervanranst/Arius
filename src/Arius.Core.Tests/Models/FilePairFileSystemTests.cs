@@ -44,11 +44,8 @@ public class FilePairFileSystemTests : IClassFixture<Fixture>
         var files = fixture.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories).ToList();
 
         // Assert
-        Assert.NotNull(files);
-        Assert.Equal(expectedRelativePaths.Length, files.Count);
-
+        files.ShouldNotBeNull();
         files.Select(fe => fe.FullName)
-            .OrderBy(p => p)
-            .ShouldBe(expectedRelativePaths.OrderBy(p => p));
+            .ShouldBe(expectedRelativePaths, ignoreOrder: true);
     }
 }
