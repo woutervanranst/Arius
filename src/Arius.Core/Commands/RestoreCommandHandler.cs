@@ -1,3 +1,5 @@
+using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using FluentValidation;
@@ -12,21 +14,59 @@ namespace Arius.Core.Commands;
 internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 {
     private readonly ILogger<RestoreCommandHandler> logger;
-    private readonly IOptions<AriusConfiguration> config;
+    private readonly ILoggerFactory                 loggerFactory;
+    private readonly IOptions<AriusConfiguration>   config;
 
     public RestoreCommandHandler(
         ILogger<RestoreCommandHandler> logger,
+        ILoggerFactory loggerFactory,
         IOptions<AriusConfiguration> config)
     {
-        this.logger = logger;
-        this.config = config;
+        this.logger        = logger;
+        this.loggerFactory = loggerFactory;
+        this.config        = config;
     }
 
     public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
-        throw new NotImplementedException();
+        return await Handle(handlerContext, cancellationToken);
+    }
+
+    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    {
+        // 1. Get all PointerFileEntries to restore
+        foreach (var targetPath in handlerContext.TargetPaths)
+        {
+            if (IsFile(targetPath))
+            {
+                // This is a File
+                var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
+                var fp = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
+
+                var x = handlerContext.StateRepo.GetPointerFileEntry(fp.FullName, true);
+                if (x is null)
+                {
+                    // TODO what if the file does not exist
+                }
+
+
+
+
+            }
+            else
+            {
+                // This is a Directory
+                
+            }
+        }
+
+
+        static bool IsDirectory(UPath path) => path.FullName.EndsWith(UPath.DirectorySeparator);
+        static bool IsFile(UPath path)      => !IsDirectory(path);
+
+        // Example code to restore a single chunk to a temporary file
 
         //var chunkHash = (Hash)"3e12370e300aef3a239a8a063dc618e581f8f1f5e16f690ed73b3ca5d627369e";
         //var targetFilePath = Path.GetTempFileName();
@@ -54,78 +94,88 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         //    throw;
         //}
 
-        //return Unit.Value;
+        return Unit.Value;
     }
 
-    private class HandlerContext
+    internal class HandlerContext
     {
-        public static async Task<HandlerContext> CreateAsync(RestoreCommand request)
+        public static async Task<HandlerContext> CreateAsync(RestoreCommand request, ILoggerFactory loggerFactory)
+        {
+            // Use default implementation with dependency injection
+            var blobStorage    = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var stateCacheRoot = new DirectoryInfo("statecache");
+
+            return await CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);
+        }
+
+        public static async Task<HandlerContext> CreateAsync(RestoreCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
         {
             await new RestoreCommandValidator().ValidateAndThrowAsync(request);
 
-            var bs = await GetBlobStorageAsync();
-            var sr = await GetStateRepositoryAsync(bs);
+            var logger = loggerFactory.CreateLogger<HandlerContext>();
+
+            // Check if container exists
+            var exists = await blobStorage.ContainerExistsAsync();
+            if (!exists)
+            {
+                throw new InvalidOperationException($"The specified container '{request.ContainerName}' does not exist in the storage account.");
+            }
+
+            // Instantiate StateCache
+            var stateCache = new StateCache(stateCacheRoot);
+
+            // Get the lateste state from blob storage
+            var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
+
+            if (latestStateName == null)
+            {
+                throw new InvalidOperationException("No state files found in the specified container. Cannot proceed with restore.");
+            }
+
+            var latestStateFile = stateCache.GetStateFilePath(latestStateName);
+            if (!latestStateFile.Exists)
+            {
+                logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");
+                await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
+            }
+            else
+            {
+                logger.LogInformation($"Using cached state file '{latestStateName}' from local cache.");
+            }
+
+            var stateRepo = new StateRepository(latestStateFile, false, loggerFactory.CreateLogger<StateRepository>());
+
+            var fs = GetFileSystem();
 
             return new HandlerContext
             {
-                Request = request,
-                BlobStorage = bs,
-                StateRepo = sr,
-                Hasher = new Sha256Hasher(request.Passphrase),
-                TargetPaths = GetTargetPaths()
-                //FileSystem = GetFileSystem()
+                Request     = request,
+                BlobStorage = blobStorage,
+                StateRepo   = stateRepo,
+                Hasher      = new Sha256Hasher(request.Passphrase),
+                TargetPaths = GetTargetPaths(),
+                FileSystem  = fs
             };
 
             UPath[] GetTargetPaths()
             {
+                return request.Targets.Select(target => fs.ConvertPathFromInternal(target)).ToArray();
+            }
+
+            FilePairFileSystem GetFileSystem()
+            {
                 var pfs = new PhysicalFileSystem();
-                return request.Targets.Select(target => pfs.ConvertPathFromInternal(target)).ToArray();
+                var root = pfs.ConvertPathFromInternal(Environment.CurrentDirectory);
+                var sfs  = new SubFileSystem(pfs, root, true);
+                return new FilePairFileSystem(sfs, true);
             }
-
-            async Task<BlobStorage> GetBlobStorageAsync()
-            {
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-
-                var bs = new BlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-                var created = await bs.CreateContainerIfNotExistsAsync();
-
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
-
-                return bs;
-            }
-
-            async Task<StateRepository> GetStateRepositoryAsync(BlobStorage bs)
-            {
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
-
-                return null;
-
-                //try
-                //{
-                //    return new StateRepository();
-                //}
-                //catch (Exception e)
-                //{
-                //    throw;
-                //}
-
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
-            }
-
-            //FilePairFileSystem GetFileSystem()
-            //{
-            //    var pfs = new PhysicalFileSystem();
-            //    var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-            //    var sfs = new SubFileSystem(pfs, root, true);
-            //    return new FilePairFileSystem(sfs, true);
-            //}
         }
 
         public required RestoreCommand     Request     { get; init; }
-        public required BlobStorage        BlobStorage { get; init; }
+        public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
         public required UPath[]            TargetPaths { get; init; }
-        //public required FilePairFileSystem FileSystem  { get; init; }
+        public required FilePairFileSystem FileSystem  { get; init; }
     }
 }

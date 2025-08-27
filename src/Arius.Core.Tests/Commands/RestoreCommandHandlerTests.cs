@@ -1,5 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Tests.Builders;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
 
@@ -23,9 +24,12 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
     {
         // Arrange
         var command = new RestoreCommandBuilder(fixture)
-            .WithTargets("test-pointer-file.txt.pointer.arius")
+            .WithContainerName("test")
+            .WithTargets("Sam/IMG20250126194816 - Copy.jpg")
             .Build();
-        
+
+        // TODO directory without trailing /
+
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
         
