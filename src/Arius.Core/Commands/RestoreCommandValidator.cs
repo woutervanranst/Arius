@@ -13,36 +13,13 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             .WithMessage("At least one target path must be specified.");
 
         RuleFor(x => x.Targets)
-            .Must(targets => targets.All(target => target.StartsWith(Path.DirectorySeparatorChar)))
-            .WithMessage($"All targets must start with '{Path.DirectorySeparatorChar}'.");
+            .Must(targets => targets.All(target => target.StartsWith("./")))
+            .WithMessage("All targets must start with './'.");
 
         RuleFor(x => x.Targets)
-            .Must(BeValidTargetCombination)
-            .WithMessage("Targets must be either: an empty directory, a non-empty directory, one file, or multiple files. Cannot mix files and directories.");
+            .Must(targets => targets.Length > 0)
+            .WithMessage("No target(s) specified.");
 
         // TODO: directories should end with /
-
-        static bool BeValidTargetCombination(string[] targets)
-        {
-            if (targets.Length == 0)
-                return false;
-
-            var files       = targets.Where(IsFile).ToArray();
-            var directories = targets.Where(IsDirectory).ToArray();
-
-            // Cannot mix files and directories
-            if (files.Length > 0 && directories.Length > 0)
-                return false;
-
-            // If all are directories, must be exactly one
-            if (directories.Length > 0)
-                return directories.Length == 1;
-
-            // If all are files, can be one or more
-            return files.Length >= 1;
-
-            static bool IsDirectory(string path) => path.EndsWith(Path.DirectorySeparatorChar);
-            static bool IsFile(string path)      => !IsDirectory(path);
-        }
     }
 }

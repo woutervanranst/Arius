@@ -36,7 +36,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
     {
         // Arrange
         var command = new RestoreCommandBuilder()
-            .WithTargets("/non/existent/path")
+            .WithTargets("./non/existent/path")
             .Build();
 
         // Act

@@ -25,7 +25,7 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
         // Arrange
         var command = new RestoreCommandBuilder(fixture)
             .WithContainerName("test")
-            .WithTargets("Sam/IMG20250126194816 - Copy.jpg")
+            .WithTargets("./IMG20250126195020.jpg", "./Sam/")
             .Build();
 
         // TODO directory without trailing /
@@ -90,10 +90,14 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
     public async Task Restore_EmptyDirectory_RestoreAllPointerFiles()
     {
         // Arrange
+        //var command = new RestoreCommandBuilder(fixture)
+        //    .WithTargets("empty-directory")
+        //    .Build();
         var command = new RestoreCommandBuilder(fixture)
-            .WithTargets("empty-directory")
+            .WithContainerName("test")
+            .WithTargets("/Sam/")
             .Build();
-        
+
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
         

@@ -1,11 +1,11 @@
 using Arius.Core.Extensions;
-using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
 
@@ -34,37 +34,32 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         return await Handle(handlerContext, cancellationToken);
     }
 
-    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    private IEnumerable<PointerFileEntryDto> GetPointerFileEntriesToRestore(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        // 1. Get all PointerFileEntries to restore
         foreach (var targetPath in handlerContext.TargetPaths)
         {
-            if (IsFile(targetPath))
+            var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
+            var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
+            var pfes           = handlerContext.StateRepo.GetPointerFileEntries(fp.FullName, true);
+
+            foreach (var pfe in pfes)
             {
-                // This is a File
-                var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
-                var fp = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
+                yield return pfe;
 
-                var x = handlerContext.StateRepo.GetPointerFileEntry(fp.FullName, true);
-                if (x is null)
-                {
-                    // TODO what if the file does not exist
-                }
-
-
-
-
-            }
-            else
-            {
-                // This is a Directory
-                
             }
         }
+    }
+
+    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    {
 
 
-        static bool IsDirectory(UPath path) => path.FullName.EndsWith(UPath.DirectorySeparator);
-        static bool IsFile(UPath path)      => !IsDirectory(path);
+        // 1. Get all PointerFileEntries to restore
+        var x = GetPointerFileEntriesToRestore(handlerContext, cancellationToken).ToArray();
+
+
+
+        
 
         // Example code to restore a single chunk to a temporary file
 
@@ -159,7 +154,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
             UPath[] GetTargetPaths()
             {
-                return request.Targets.Select(target => fs.ConvertPathFromInternal(target)).ToArray();
+                return request.Targets.Select(target => fs.ConvertPathFromInternal(target[2..] /*remove the leading './'*/)).ToArray();
             }
 
             FilePairFileSystem GetFileSystem()
