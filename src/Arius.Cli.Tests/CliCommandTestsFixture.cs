@@ -30,7 +30,7 @@ public class CliCommandTestsFixture
             .UseConsole(console)
             .Build();
 
-        var args = ParseArguments(command);
+        var args = ParseArguments(command); // Split the string into an array of arguments taking into account quoted strings (paths with spaces)
         var r    = await app.RunAsync(args);
         var o    = console.ReadOutputString();
         var e    = console.ReadErrorString();
