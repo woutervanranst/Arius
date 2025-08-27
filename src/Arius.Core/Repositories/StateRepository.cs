@@ -110,21 +110,17 @@ public class StateRepository
         context.SaveChanges();
     }
 
-    private static readonly Func<SqliteStateDatabaseContext, string, PointerFileEntryDto?> findPointerFileEntryByRelativeName =
-        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeName) =>
-            dbContext.Set<PointerFileEntryDto>().AsNoTracking().SingleOrDefault(x => x.RelativeName == relativeName));
-
-    private static readonly Func<SqliteStateDatabaseContext, string, PointerFileEntryDto?> findPointerFileEntryByRelativeNameWithBinaryProperties =
-        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeName) =>
-            dbContext.Set<PointerFileEntryDto>().AsNoTracking().Include(x => x.BinaryProperties).SingleOrDefault(x => x.RelativeName == relativeName));
-
-    internal PointerFileEntryDto? GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false)
+    internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
         using var context = GetContext();
 
-        return includeBinaryProperties 
-            ? findPointerFileEntryByRelativeNameWithBinaryProperties(context, relativeName)
-            : findPointerFileEntryByRelativeName(context, relativeName);
+        foreach (var pfe in context.PointerFileEntries
+                     .AsNoTracking()
+                     .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
+                     .Include(x => includeBinaryProperties ? x.BinaryProperties : null!))
+        {
+            yield return pfe;
+        }
     }
 
     //internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
