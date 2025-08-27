@@ -565,9 +565,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
             // Get the latest state from blob storage
             var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
+            
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
-
-            FileInfo stateDatabaseFile;
+            FileInfo stateFile;
             if (latestStateName is not null)
             {
                 // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
@@ -581,18 +581,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                     request.ProgressReporter?.Report(new TaskProgressUpdate($"State file '{latestStateName}' already exists in cache", 100));
                 }
 
-                stateDatabaseFile = stateCache.GetStateFilePath(versionName);
-                stateCache.CopyStateFile(latestStateFile, stateDatabaseFile);
+                stateFile = stateCache.GetStateFilePath(versionName);
+                stateCache.CopyStateFile(latestStateFile, stateFile);
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Copied latest state to new version", 100));
             }
             else
             {
                 // If there is none, just create an empty staterepository with the new version
-                stateDatabaseFile = stateCache.GetStateFilePath(versionName);
+                stateFile = stateCache.GetStateFilePath(versionName);
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 
-            var stateRepo = new StateRepository(stateDatabaseFile, loggerFactory.CreateLogger<StateRepository>());
+            var stateRepo = new StateRepository(stateFile, loggerFactory.CreateLogger<StateRepository>());
 
             return new HandlerContext
             {
