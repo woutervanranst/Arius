@@ -19,7 +19,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
     public void Validate_EmptyTargets_ShouldHaveValidationError()
     {
         // Arrange
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [] };
 
         // Act
@@ -34,7 +34,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
     public void Validate_NonExistentPath_ShouldHaveValidationError()
     {
         // Arrange
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = ["/non/existent/path"] };
 
         // Act
@@ -50,7 +50,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
     {
         // Arrange
         var emptyDir = fixture.TestRunSourceFolder.CreateSubdirectory("empty");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [emptyDir.FullName] };
 
         // Act
@@ -66,7 +66,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
         // Arrange
         var nonEmptyDir = fixture.TestRunSourceFolder.CreateSubdirectory("nonempty");
         File.WriteAllText(Path.Combine(nonEmptyDir.FullName, "test.txt"), "content");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [nonEmptyDir.FullName] };
 
         // Act
@@ -82,7 +82,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
         // Arrange
         var testFile = Path.Combine(fixture.TestRunSourceFolder.FullName, "single.txt");
         File.WriteAllText(testFile, "content");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [testFile] };
 
         // Act
@@ -100,7 +100,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
         var file2 = Path.Combine(fixture.TestRunSourceFolder.FullName, "file2.txt");
         File.WriteAllText(file1, "content1");
         File.WriteAllText(file2, "content2");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [file1, file2] };
 
         // Act
@@ -117,7 +117,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
         var testFile = Path.Combine(fixture.TestRunSourceFolder.FullName, "test.txt");
         File.WriteAllText(testFile, "content");
         var testDir = fixture.TestRunSourceFolder.CreateSubdirectory("testdir");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [testFile, testDir.FullName] };
 
         // Act
@@ -134,7 +134,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
         // Arrange
         var dir1 = fixture.TestRunSourceFolder.CreateSubdirectory("dir1");
         var dir2 = fixture.TestRunSourceFolder.CreateSubdirectory("dir2");
-        var command = CreateValidCommand();
+        var command = CreateTestCommand();
         command = command with { Targets = [dir1.FullName, dir2.FullName] };
 
         // Act
@@ -145,7 +145,7 @@ public class RestoreCommandValidatorTests : IClassFixture<Fixture>
             .WithErrorMessage("Targets must be either: an empty directory, a non-empty directory, one file, or multiple files. Cannot mix files and directories.");
     }
 
-    private static RestoreCommand CreateValidCommand()
+    private static RestoreCommand CreateTestCommand()
     {
         return new RestoreCommand
         {
