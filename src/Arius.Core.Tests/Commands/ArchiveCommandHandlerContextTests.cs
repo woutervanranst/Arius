@@ -26,18 +26,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         tempStateDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), $"arius-test-{Guid.NewGuid()}"));
         tempStateDirectory.Create();
 
-        testCommand = new ArchiveCommand
-        {
-            AccountName       = fixture.RepositoryOptions.AccountName,
-            AccountKey        = fixture.RepositoryOptions.AccountKey,
-            ContainerName     = $"{fixture.RepositoryOptions.ContainerName}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}",
-            Passphrase        = fixture.RepositoryOptions.Passphrase,
-            RemoveLocal       = false,
-            Tier              = StorageTier.Cool,
-            LocalRoot         = fixture.TestRunSourceFolder,
-            Parallelism       = 1,
-            SmallFileBoundary = 2 * 1024 * 1024
-        };
+        testCommand = new ArchiveCommandBuilder(fixture).Build();
     }
 
     [Fact]
