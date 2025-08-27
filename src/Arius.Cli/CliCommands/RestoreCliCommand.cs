@@ -21,27 +21,27 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
         this.logger   = logger;
     }
 
-    [CommandParameter(0, Description = "Directory or files to restore.")]
-    public virtual required string[] Targets { get; init; }
-
-    public abstract DirectoryInfo LocalRoot { get; init; }
-
     [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
 
     [CommandOption("accountkey", 'k', IsRequired = true, Description = "Azure Storage Account key.", EnvironmentVariable = "ARIUS_ACCOUNT_KEY")]
     public required string AccountKey { get; init; }
 
-    [CommandOption("container", 'c', IsRequired = true, Description = "Azure Blob Storage container name.")]
+    [CommandOption("container", 'c', IsRequired = true, Description = "Azure Storage container name.")]
     public required string ContainerName { get; init; }
 
     [CommandOption("passphrase", 'p', IsRequired = true, Description = "Passphrase for decryption.")]
     public required string Passphrase { get; init; }
 
+    public abstract DirectoryInfo LocalRoot { get; init; }
+
+    [CommandParameter(0, Description = "Directory or files to restore.", IsRequired = false)]
+    public string[] Targets { get; init; } = ["./"];
+
     [CommandOption("download", Description = "Download the files.")]
     public bool Download { get; init; } = false;
 
-    [CommandOption("include-pointers", Description = "Keep the pointer files after restore.")]
+    [CommandOption("include-pointers", Description = "Create respective pointer files alongside the binaries.")]
     public bool IncludePointers { get; init; } = false;
 
     public async ValueTask ExecuteAsync(IConsole console)
