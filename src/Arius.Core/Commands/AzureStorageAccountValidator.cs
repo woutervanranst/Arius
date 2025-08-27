@@ -33,7 +33,7 @@ public static class AzureStorageAccountValidator
         if (string.IsNullOrEmpty(containerName))
             return false;
 
-        if (containerName.Length < 3 || containerName.Length > 63)
+        if (containerName.Length is < 3 or > 63)
             return false;
 
         if (containerName.StartsWith('-') || containerName.EndsWith('-'))
