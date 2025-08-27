@@ -51,7 +51,7 @@ internal class BlobStorage : IBlobStorage
 
     // --- STATES
 
-    private const string statesPrefix = "states/";
+    private const string statesFolderPrefix = "states/";
 
     /// <summary>
     /// Get an ordered list of state names in the specified container.
@@ -59,44 +59,44 @@ internal class BlobStorage : IBlobStorage
     /// <returns></returns>
     public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
-        return blobContainerClient.GetBlobsAsync(prefix: statesPrefix, cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: statesFolderPrefix, cancellationToken: cancellationToken)
             .OrderBy(b => b.Name)
-            .Select(b => b.Name[statesPrefix.Length ..]); // remove the "states/" prefix
+            .Select(b => b.Name[statesFolderPrefix.Length ..]); // remove the "states/" prefix
     }
 
     public async Task<Stream> OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default)
     {
-        var bbc = blobContainerClient.GetBlockBlobClient($"{statesPrefix}{stateName}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"{statesFolderPrefix}{stateName}");
 
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
     public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
         await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
     }
 
     public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"{statesPrefix}/{stateName}");
+        var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
         await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
     }
 
     // --- CHUNKS
 
-    private const string chunksPrefix = "chunks/";
+    private const string chunksFolderPrefix = "chunks/";
 
     public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
-        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksPrefix}{h}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
 
         return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
-        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksPrefix}{h}");
+        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
 
         var bbowo = new BlockBlobOpenWriteOptions();
 
@@ -115,7 +115,7 @@ internal class BlobStorage : IBlobStorage
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
     {
         var actualTier = GetActualStorageTier(targetTier, length);
-        var bbc        = blobContainerClient.GetBlobClient($"{chunksPrefix}{h}");
+        var bbc        = blobContainerClient.GetBlobClient($"{chunksFolderPrefix}{h}");
 
         await bbc.SetAccessTierAsync(actualTier.ToAccessTier());
 
