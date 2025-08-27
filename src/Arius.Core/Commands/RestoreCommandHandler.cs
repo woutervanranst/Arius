@@ -61,12 +61,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         public static async Task<HandlerContext> CreateAsync(RestoreCommand request)
         {
-            var validationResult = await new RestoreCommandValidator().ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
-            
+            await new RestoreCommandValidator().ValidateAndThrowAsync(request);
+
             var bs = await GetBlobStorageAsync();
             var sr = await GetStateRepositoryAsync(bs);
 

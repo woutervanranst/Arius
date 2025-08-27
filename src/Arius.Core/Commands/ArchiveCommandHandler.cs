@@ -547,11 +547,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IBlobStorage blobStorage, DirectoryInfo stateCacheRoot)
         {
-            var validationResult = await new ArchiveCommandValidator().ValidateAsync(request);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
+            await new ArchiveCommandValidator().ValidateAndThrowAsync(request);
 
             var logger = loggerFactory.CreateLogger<HandlerContext>();
 
