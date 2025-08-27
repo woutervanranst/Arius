@@ -16,6 +16,8 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             .Must(BeValidTargetCombination)
             .WithMessage("Targets must be either: an empty directory, a non-empty directory, one file, or multiple files. Cannot mix files and directories.");
 
+        // TODO:  files & directories should not start with /
+        // TODO: directories should end with /
 
         static bool BeValidTargetCombination(string[] targets)
         {
@@ -36,7 +38,7 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             // If all are files, can be one or more
             return files.Length >= 1;
 
-            static bool IsDirectory(string path) => path.EndsWith('/') || path.EndsWith('\\');
+            static bool IsDirectory(string path) => path.EndsWith(Path.DirectorySeparatorChar);
             static bool IsFile(string path)      => !IsDirectory(path);
         }
     }
