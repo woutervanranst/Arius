@@ -13,7 +13,8 @@
       "mcp__context7__get-library-docs",
       "mcp__serena__replace_symbol_body",
       "mcp__serena__insert_after_symbol",
-      "mcp__serena__find_referencing_symbols"
+      "mcp__serena__find_referencing_symbols",
+      "mcp__serena__activate_project"
     ],
     "deny": [],
     "ask": []
