@@ -13,10 +13,13 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             .WithMessage("At least one target path must be specified.");
 
         RuleFor(x => x.Targets)
+            .Must(targets => targets.All(target => target.StartsWith(Path.DirectorySeparatorChar)))
+            .WithMessage($"All targets must start with '{Path.DirectorySeparatorChar}'.");
+
+        RuleFor(x => x.Targets)
             .Must(BeValidTargetCombination)
             .WithMessage("Targets must be either: an empty directory, a non-empty directory, one file, or multiple files. Cannot mix files and directories.");
 
-        // TODO:  files & directories should not start with /
         // TODO: directories should end with /
 
         static bool BeValidTargetCombination(string[] targets)
