@@ -169,5 +169,3 @@ jobs:
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1 # see https://github.com/softprops/action-gh-release for options
-      with:
-        generate_release_notes: true

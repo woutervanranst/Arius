@@ -124,6 +124,7 @@ jobs:
           name: v${{ env.VERSION }}
           prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           files: arius-cli-${{ env.VERSION }}.tar.gz
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
