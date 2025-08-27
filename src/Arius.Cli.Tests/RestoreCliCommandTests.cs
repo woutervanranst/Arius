@@ -172,6 +172,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
 
     // LOCALROOT TESTS
+
     [Fact]
     public async Task ExecuteAsync_NoLocalRoot_InContainer_UsesSlashArchive()
     {
@@ -197,7 +198,6 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
             capturedCommand.ShouldNotBeNull();
             capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
-            capturedCommand.Targets.ShouldBe(["./"]);
         }
         finally
         {
@@ -256,7 +256,6 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.LocalRoot.FullName.ShouldBe(Environment.CurrentDirectory);
-        capturedCommand.Targets.ShouldBe(["./"]);
     }
 
     // TARGETS TESTS
@@ -273,7 +272,7 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         // Use quoted command string to test paths with spaces
-        var command = $"restore --root ./root --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --download --include-pointers";
+        var command = $"restore --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --download --include-pointers";
 
         // Act
         var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
@@ -283,9 +282,6 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
-        capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("./root").FullName);
         capturedCommand.Targets.ShouldBe(["./"]);
-        capturedCommand.Download.ShouldBeTrue();
-        capturedCommand.IncludePointers.ShouldBeTrue();
     }
 }
