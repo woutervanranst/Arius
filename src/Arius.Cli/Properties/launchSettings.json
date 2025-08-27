@@ -4,6 +4,10 @@
       "commandName": "Project",
       "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\\Sam\" -n ariusci -c test -p woutervr --tier hot"
     },
+    "arius archive validationerror": {
+      "commandName": "Project",
+      "commandLineArgs": "archive archive C:\\ -c ss -p dd"
+    },
     "arius restore": {
       "commandName": "Project",
       "commandLineArgs": "restore \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p woutervr"

@@ -62,14 +62,18 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
             var cancellationToken = console.RegisterCancellationHandler();
             await mediator.Send(command, cancellationToken);
         }
-        catch (ValidationException e)
-        {
-            throw new CommandException(e.Message, showHelp: true);
-        }
         catch (Exception e)
         {
-            AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+            throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
+        //catch (ValidationException e)
+        //{
+        //    throw new CommandException(e.Message, showHelp: true);
+        //}
+        //catch (Exception e)
+        //{
+        //    AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+        //}
     }
 }
 

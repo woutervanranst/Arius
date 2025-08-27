@@ -15,7 +15,6 @@ public class ArchiveCommandHandlerTests : IDisposable
     public ArchiveCommandHandlerTests()
     {
         fixture = new ();
-
         logger  = new();
         handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }

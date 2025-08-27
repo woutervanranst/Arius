@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Models;
 using CliFx.Attributes;
+using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Mediator;
 using Spectre.Console;
@@ -8,6 +9,7 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Exceptions;
 
 namespace Arius.Cli.CliCommands;
 
@@ -43,13 +45,13 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        AnsiConsole.Write(
-            new FigletText("Arius")
-                .LeftJustified()
-                .Color(Color.Red));
-
         try
         {
+            AnsiConsole.Write(
+                new FigletText("Arius")
+                    .LeftJustified()
+                    .Color(Color.Red));
+
             await AnsiConsole.Progress()
                 .AutoRefresh(true)
                 .AutoClear(false)
@@ -119,8 +121,16 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         }
         catch (Exception e)
         {
-            AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+            throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
+        //catch (ValidationException e)
+        //{
+        //    throw new CommandException(e.Message, showHelp: true);
+        //}
+        //catch (Exception e)
+        //{
+        //    AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+        //}
     }
 
     // --- Helper methods moved from Program.cs ---
