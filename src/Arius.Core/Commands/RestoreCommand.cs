@@ -7,5 +7,7 @@ public record RestoreCommand : RepositoryCommand
     public required bool          Download        { get; init; }
     public required bool          IncludePointers { get; init; }
 
+    public int DownloadParallelism { get; init; } = 1;
+
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }

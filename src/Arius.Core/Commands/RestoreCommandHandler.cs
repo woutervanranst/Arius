@@ -6,6 +6,7 @@ using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Threading.Channels;
+using Arius.Core.Models;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -42,50 +43,20 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
-        var createPointerFileEntriesTask = CreatePointerFileEntriesToRestoreTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-
+        var pointerFileEntriesToRestoreTask = CreatePointerFileEntriesToRestoreTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var downloadBinariesTask            = CreateDownloadBinariesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
         try
         {
-            await Task.WhenAll(createPointerFileEntriesTask);
+            await Task.WhenAll(pointerFileEntriesToRestoreTask, downloadBinariesTask);
         }
         catch (Exception)
         {
             // TODO
         }
-        
-
-        // Example code to restore a single chunk to a temporary file
-
-        //var chunkHash = (Hash)"3e12370e300aef3a239a8a063dc618e581f8f1f5e16f690ed73b3ca5d627369e";
-        //var targetFilePath = Path.GetTempFileName();
-
-        //logger.LogInformation($"Restoring chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
-
-        //try
-        //{
-        //    // 1. Get the blob from storage
-        //    await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(chunkHash, cancellationToken);
-
-        //    // 2. Get the decrypted and decompressed stream
-        //    await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-
-        //    // 3. Write to the target file
-        //    await using var targetFileStream = File.OpenWrite(targetFilePath);
-        //    await decryptionStream.CopyToAsync(targetFileStream, cancellationToken);
-        //    await targetFileStream.FlushAsync(cancellationToken); // Explicitly flush
-
-        //    logger.LogInformation($"Successfully restored chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
-        //}
-        //catch (Exception e)
-        //{
-        //    logger.LogError(e, $"Error restoring chunk '{chunkHash.ToShortString()}'");
-        //    throw;
-        //}
 
         return Unit.Value;
     }
-
 
     private Task CreatePointerFileEntriesToRestoreTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
@@ -93,7 +64,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             try
             {
                 // 1. Get all PointerFileEntries to restore
-                foreach (var targetPath in handlerContext.TargetPaths)
+                foreach (var targetPath in handlerContext.Targets)
                 {
                     var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
                     var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
@@ -121,6 +92,60 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
 
         }, cancellationToken);
+
+    private Task CreateDownloadBinariesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+        Parallel.ForEachAsync(pointerFileEntriesToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
+            new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
+            async (pfe, innerCancellationToken) =>
+            {
+                await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
+
+                await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
+
+
+                var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
+
+                fp.BinaryFile.Directory.Create();
+                
+
+                var targetFileStream = fp.BinaryFile.OpenWrite();
+
+                await decryptionStream.CopyToAsync(targetFileStream, cancellationToken);
+                await targetFileStream.FlushAsync(cancellationToken); // Explicitly flush
+
+            });
+
+
+
+
+    // Example code to restore a single chunk to a temporary file
+
+    //var chunkHash = (Hash)"3e12370e300aef3a239a8a063dc618e581f8f1f5e16f690ed73b3ca5d627369e";
+    //var targetFilePath = Path.GetTempFileName();
+
+    //logger.LogInformation($"Restoring chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
+
+    //try
+    //{
+    //    // 1. Get the blob from storage
+    //    await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(chunkHash, cancellationToken);
+
+    //    // 2. Get the decrypted and decompressed stream
+    //    await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
+
+    //    // 3. Write to the target file
+    //    await using var targetFileStream = File.OpenWrite(targetFilePath);
+    //    await decryptionStream.CopyToAsync(targetFileStream, cancellationToken);
+    //    await targetFileStream.FlushAsync(cancellationToken); // Explicitly flush
+
+    //    logger.LogInformation($"Successfully restored chunk '{chunkHash.ToShortString()}' to '{targetFilePath}'");
+    //}
+    //catch (Exception e)
+    //{
+    //    logger.LogError(e, $"Error restoring chunk '{chunkHash.ToShortString()}'");
+    //    throw;
+    //}
+
 
     internal class HandlerContext
     {
@@ -178,13 +203,15 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 BlobStorage = blobStorage,
                 StateRepo   = stateRepo,
                 Hasher      = new Sha256Hasher(request.Passphrase),
-                TargetPaths = GetTargetPaths(),
+                //LocalRoot   = fs.ConvertPathFromInternal(request.LocalRoot.FullName),
+                Targets     = GetTargets(),
                 FileSystem  = fs
             };
 
-            UPath[] GetTargetPaths()
+            UPath[] GetTargets()
             {
-                return request.Targets.Select(target => fs.ConvertPathFromInternal(target[2..] /*remove the leading './'*/)).ToArray();
+                //return request.Targets.Select(target => fs.ConvertPathFromInternal(target[2..] /*remove the leading './'*/)).ToArray();
+                return request.Targets.Select(target => (UPath)target[1..]).ToArray();
             }
 
             FilePairFileSystem GetFileSystem()
@@ -200,7 +227,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         public required IBlobStorage       BlobStorage { get; init; }
         public required StateRepository    StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
-        public required UPath[]            TargetPaths { get; init; }
+        //public required UPath              LocalRoot   { get; init; }
+        public required UPath[]            Targets     { get; init; }
         public required FilePairFileSystem FileSystem  { get; init; }
     }
 }

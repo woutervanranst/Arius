@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Repositories;
 using System.Text.Json;
 using Zio;
 
@@ -16,6 +17,13 @@ public class FilePair : FileEntry
 {
     public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
     public static FilePair FromBinaryFilePath(IFileSystem fileSystem, UPath binaryFilePath) => new(fileSystem, binaryFilePath);
+
+    internal static FilePair FromPointerFileEntry(IFileSystem fileSystem, PointerFileEntryDto pfe)
+    {
+        var pointerFilePath = (UPath)pfe.RelativeName;
+        var binaryFilePath = pointerFilePath.GetBinaryFilePath();
+        return FilePair.FromBinaryFilePath(fileSystem, binaryFilePath);
+    }
     private FilePair(IFileSystem fileSystem, UPath binaryFilePath) : base(fileSystem, binaryFilePath)
     {
         BinaryFile = BinaryFile.FromFileEntry(this);
@@ -89,6 +97,9 @@ public class BinaryFile : FileEntry
     //    private static readonly SIO.FileStreamOptions smallFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 1024 };
     //    private static readonly SIO.FileStreamOptions largeFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
     //    public SIO.Stream OpenWrite() => _fileSystem.File.Open(_fullNamePath, Length <= 1024 ? smallFileStreamWriteOptions : largeFileStreamWriteOptions);
+    
+    // TODO optimize
+    public Stream OpenWrite() => File.Open(this.ConvertPathToInternal(), FileMode.CreateNew);
 
     public PointerFile GetPointerFile()
     {

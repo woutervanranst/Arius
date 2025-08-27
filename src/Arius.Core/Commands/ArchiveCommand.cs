@@ -8,7 +8,7 @@ public record ArchiveCommand : RepositoryCommand
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = 1;
+    public int Parallelism { get; init; } = 5; //Todo split up per purpose
 
     public int SmallFileBoundary { get; init; } = 1024 * 1024;
 
