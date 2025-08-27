@@ -31,9 +31,21 @@ internal class BlobStorage : IBlobStorage
             var r = await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
             return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
         }
-        catch (RequestFailedException ex)
+        catch (RequestFailedException e)
         {
-            throw new InvalidOperationException($"Failed to create or access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", ex);
+            throw new InvalidOperationException($"Failed to create or access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", e);
+        }
+    }
+
+    public async Task<bool> ContainerExistsAsync()
+    {
+        try
+        {
+            return await blobContainerClient.ExistsAsync();
+        }
+        catch (RequestFailedException e)
+        {
+            throw new InvalidOperationException($"Failed to access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", e);
         }
     }
 
