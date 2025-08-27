@@ -85,7 +85,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
             .AndDoes(callInfo =>
             {
                 var targetFile = callInfo.ArgAt<FileInfo>(1);
-                new StateDatabaseBuilder(tempStateDirectory.FullName, existingStateName).Build();
+                new FakeStateDatabaseBuilder(tempStateDirectory.FullName, existingStateName).Build();
             });
 
         // Act
@@ -129,7 +129,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
         // Pre-create a valid state file locally to simulate it already being cached
-        new StateDatabaseBuilder(tempStateDirectory.FullName, existingStateName).Build();
+        new FakeStateDatabaseBuilder(tempStateDirectory.FullName, existingStateName).Build();
 
         // Act
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
