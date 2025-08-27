@@ -2,6 +2,7 @@ using Arius.Core.Commands;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
@@ -42,10 +43,8 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 
     private FileInfo CreateValidStateDatabase(string stateName)
     {
-        var stateFile = new FileInfo(Path.Combine(tempStateDirectory.FullName, $"{stateName}.db"));
-        var stateRepo = new StateRepository(stateFile, NullLogger<StateRepository>.Instance);
-        // The constructor already creates the database structure via EnsureCreated()
-        return stateFile;
+        return new StateDatabaseBuilder(tempStateDirectory.FullName, stateName)
+            .Build();
     }
 
     [Fact]
