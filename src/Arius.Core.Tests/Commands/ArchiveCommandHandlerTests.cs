@@ -1,5 +1,5 @@
 using Arius.Core.Commands;
-using Arius.Core.Models;
+using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using System.Runtime.InteropServices;
@@ -20,21 +20,6 @@ public class ArchiveCommandHandlerTests : IDisposable
         handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 
-    private ArchiveCommand CreateTestCommand()
-    {
-        return new ArchiveCommand
-        {
-            AccountName       = fixture.RepositoryOptions.AccountName,
-            AccountKey        = fixture.RepositoryOptions.AccountKey,
-            ContainerName     = $"{fixture.RepositoryOptions.ContainerName}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}",
-            Passphrase        = fixture.RepositoryOptions.Passphrase,
-            RemoveLocal       = false,
-            Tier              = StorageTier.Cool,
-            LocalRoot         = fixture.TestRunSourceFolder,
-            Parallelism       = 1,
-            SmallFileBoundary = 2 * 1024 * 1024
-        };
-    }
 
 
     [Fact]
@@ -44,12 +29,11 @@ public class ArchiveCommandHandlerTests : IDisposable
 
         // TODO Make this better
         var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        var c      = CreateTestCommand() with
-        {
-            LocalRoot = isWindows ? 
-                new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)") :
-                new DirectoryInfo("/mnt/c/Users/WouterVanRanst/Downloads/Photos-001 (1)")
-        };
+        var c = new ArchiveCommandBuilder(fixture)
+            .WithLocalRoot(isWindows ? 
+                new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)") : 
+                new DirectoryInfo("/mnt/c/Users/WouterVanRanst/Downloads/Photos-001 (1)"))
+            .Build();
         await handler.Handle(c, CancellationToken.None);
 
     }

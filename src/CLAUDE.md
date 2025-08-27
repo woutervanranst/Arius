@@ -93,3 +93,4 @@ When implementing new features:
 - Add FluentValidation to validate the commands
 - For unit tests, do not create temp directories & files, instead investigate to use/augment the existing Fixture which scaffolds already a lot of it
 - You do NOT need to take care of backwards compatibility
+- Naming convention for local fields is camelCase (without leading _)
