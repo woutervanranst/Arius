@@ -88,7 +88,7 @@ internal class SqliteStateDatabaseContext : DbContext
     {
         public RemovePointerFileExtensionConverter()
             : base(
-                v => v.RemovePrefix("/").RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
+                v => v.RemovePrefix('/').RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
                 v => $"/{v}{PointerFile.Extension}" // Convert from Provider to Model (db to code)
             ) { }
     }
