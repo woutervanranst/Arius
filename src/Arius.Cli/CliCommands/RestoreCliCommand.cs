@@ -3,7 +3,7 @@ using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Mediator;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -11,11 +11,13 @@ namespace Arius.Cli.CliCommands;
 
 public abstract class RestoreCliCommandBase : CliFx.ICommand
 {
-    private readonly IMediator mediator;
+    private readonly IMediator                      mediator;
+    private readonly ILogger<RestoreCliCommandBase> logger;
 
-    public RestoreCliCommandBase(IMediator mediator)
+    public RestoreCliCommandBase(IMediator mediator, ILogger<RestoreCliCommandBase> logger)
     {
         this.mediator = mediator;
+        this.logger   = logger;
     }
 
     public abstract string[] Targets { get; init; }
@@ -63,7 +65,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
         }
         catch (Exception e)
         {
-            Log.Fatal(e, "Unhandled exception");
+            logger.LogError(e, "Unhandled exception");
             throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
         //catch (ValidationException e)
@@ -80,7 +82,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
 [Command("restore", Description = "Restores a directory from Azure Blob Storage.")]
 public class RestoreCliCommand : RestoreCliCommandBase
 {
-    public RestoreCliCommand(IMediator mediator) : base(mediator)
+    public RestoreCliCommand(IMediator mediator, ILogger<RestoreCliCommand> logger) : base(mediator, logger)
     {
     }
 
@@ -93,7 +95,7 @@ public class RestoreCliCommand : RestoreCliCommandBase
 [Command("restore", Description = "Restores a directory from Azure Blob Storage. [Docker]")]
 public class RestoreDockerCliCommand : RestoreCliCommandBase
 {
-    public RestoreDockerCliCommand(IMediator mediator) : base(mediator)
+    public RestoreDockerCliCommand(IMediator mediator, ILogger<RestoreDockerCliCommand> logger) : base(mediator, logger)
     {
     }
 

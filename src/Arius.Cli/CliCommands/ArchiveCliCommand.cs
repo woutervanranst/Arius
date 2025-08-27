@@ -4,7 +4,7 @@ using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
 using Mediator;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
@@ -15,11 +15,13 @@ namespace Arius.Cli.CliCommands;
 
 public abstract class ArchiveCliCommandBase : CliFx.ICommand
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator                      mediator;
+    private readonly ILogger<ArchiveCliCommandBase> logger;
 
-    public ArchiveCliCommandBase(IMediator mediator)
+    public ArchiveCliCommandBase(IMediator mediator, ILogger<ArchiveCliCommandBase> logger)
     {
-        _mediator = mediator;
+        this.mediator   = mediator;
+        this.logger = logger;
     }
 
     public abstract DirectoryInfo LocalRoot { get; init; }
@@ -81,7 +83,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
                     // Send the command and start the progress display loop
                     var cancellationToken = console.RegisterCancellationHandler();
-                    var commandTask       = _mediator.Send(command, cancellationToken).AsTask();
+                    var commandTask       = mediator.Send(command, cancellationToken).AsTask();
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
@@ -121,7 +123,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         }
         catch (Exception e)
         {
-            Log.Fatal(e, "Unhandled exception");
+            logger.LogError(e, "Unhandled exception");
             throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
         //catch (ValidationException e)
@@ -158,7 +160,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
 public class ArchiveCliCommand: ArchiveCliCommandBase
 {
-    public ArchiveCliCommand(IMediator mediator) : base(mediator)
+    public ArchiveCliCommand(IMediator mediator, ILogger<ArchiveCliCommand> logger) : base(mediator, logger)
     {
     }
 
@@ -171,7 +173,7 @@ public class ArchiveCliCommand: ArchiveCliCommandBase
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Docker]")]
 public class ArchiveDockerCliCommand : ArchiveCliCommandBase
 {
-    public ArchiveDockerCliCommand(IMediator mediator) : base(mediator)
+    public ArchiveDockerCliCommand(IMediator mediator, ILogger<ArchiveDockerCliCommand> logger) : base(mediator, logger)
     {
     }
 
