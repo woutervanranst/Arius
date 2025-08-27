@@ -5,6 +5,7 @@ using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Threading.Channels;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -27,6 +28,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         this.config        = config;
     }
 
+    private readonly Channel<PointerFileEntryDto> pointerFileEntriesToRestoreChannel = ChannelExtensions.CreateBounded<PointerFileEntryDto>(capacity: 25, singleWriter: true, singleReader: false);
+
     public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
@@ -34,31 +37,22 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         return await Handle(handlerContext, cancellationToken);
     }
 
-    private IEnumerable<PointerFileEntryDto> GetPointerFileEntriesToRestore(HandlerContext handlerContext, CancellationToken cancellationToken)
-    {
-        foreach (var targetPath in handlerContext.TargetPaths)
-        {
-            var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
-            var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
-            var pfes           = handlerContext.StateRepo.GetPointerFileEntries(fp.FullName, true);
-
-            foreach (var pfe in pfes)
-            {
-                yield return pfe;
-
-            }
-        }
-    }
-
     internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
+        using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var       errorCancellationToken       = errorCancellationTokenSource.Token;
+
+        var createPointerFileEntriesTask = CreatePointerFileEntriesToRestoreTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
 
-        // 1. Get all PointerFileEntries to restore
-        var x = GetPointerFileEntriesToRestore(handlerContext, cancellationToken).ToArray();
-
-
-
+        try
+        {
+            await Task.WhenAll(createPointerFileEntriesTask);
+        }
+        catch (Exception)
+        {
+            // TODO
+        }
         
 
         // Example code to restore a single chunk to a temporary file
@@ -91,6 +85,42 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
         return Unit.Value;
     }
+
+
+    private Task CreatePointerFileEntriesToRestoreTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+        Task.Run(async () =>
+        {
+            try
+            {
+                // 1. Get all PointerFileEntries to restore
+                foreach (var targetPath in handlerContext.TargetPaths)
+                {
+                    var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
+                    var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
+                    var pfes           = handlerContext.StateRepo.GetPointerFileEntries(fp.FullName, true);
+
+                    foreach (var pfe in pfes)
+                    {
+                        await pointerFileEntriesToRestoreChannel.Writer.WriteAsync(pfe, cancellationToken);
+                    }
+                }
+
+                pointerFileEntriesToRestoreChannel.Writer.Complete();
+            }
+            catch (OperationCanceledException)
+            {
+                pointerFileEntriesToRestoreChannel.Writer.Complete();
+                throw;
+            }
+            catch (Exception)
+            {
+                pointerFileEntriesToRestoreChannel.Writer.Complete();
+                errorCancellationTokenSource.Cancel();
+                throw;
+            }
+
+
+        }, cancellationToken);
 
     internal class HandlerContext
     {

@@ -38,10 +38,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
-    private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 20,        singleWriter: true, singleReader: false);
-    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
+    private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20,        singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     // private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = Channel.CreateUnbounded<FilePairWithHash>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = true }); // unbounded since there can be a deadlock 
-    private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
+    private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
@@ -49,6 +49,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
     {
         var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
 
+        return await Handle(handlerContext, cancellationToken);
+    }
+
+    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    {
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
@@ -520,14 +525,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }
     }
 
-    private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter, bool singleReader)
-        => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            AllowSynchronousContinuations = false,
-            SingleWriter = singleWriter,
-            SingleReader = singleReader
-        });
 
 
 

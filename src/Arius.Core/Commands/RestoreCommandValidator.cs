@@ -27,7 +27,5 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
         RuleFor(x => x.LocalRoot)
             .Must(localRoot => localRoot.Exists)
             .WithMessage("LocalRoot directory must exist.");
-
-        // TODO: directories should end with /
     }
 }
