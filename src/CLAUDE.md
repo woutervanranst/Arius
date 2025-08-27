@@ -94,3 +94,8 @@ When implementing new features:
 - For unit tests, do not create temp directories & files, instead investigate to use/augment the existing Fixture which scaffolds already a lot of it
 - You do NOT need to take care of backwards compatibility
 - Naming convention for local fields is camelCase (without leading _)
+
+## Code Style Preferences
+
+### Helper Methods
+Prefer **local methods** over private static methods for helper functionality that is only used within a single method
