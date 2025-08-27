@@ -69,7 +69,7 @@ public class StateRepository
 
     private static readonly Func<SqliteStateDatabaseContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
         EF.CompileQuery((SqliteStateDatabaseContext dbContext, Hash h) =>
-            dbContext.Set<BinaryPropertiesDto>().SingleOrDefault(x => x.Hash == h));
+            dbContext.Set<BinaryPropertiesDto>().AsNoTracking().SingleOrDefault(x => x.Hash == h));
 
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
@@ -87,6 +87,10 @@ public class StateRepository
     }
 
     // --- POINTERFILEENTRIES
+
+    private static readonly Func<SqliteStateDatabaseContext, string, PointerFileEntryDto?> findPointerFileEntryByRelativeName =
+        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeName) =>
+            dbContext.Set<PointerFileEntryDto>().AsNoTracking().SingleOrDefault(x => x.RelativeName == relativeName));
 
     internal void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
     {
@@ -108,6 +112,13 @@ public class StateRepository
         }
 
         context.SaveChanges();
+    }
+
+    internal PointerFileEntryDto? GetPointerFileEntryByRelativeName(string relativeName)
+    {
+        using var context = GetContext();
+
+        return findPointerFileEntryByRelativeName(context, relativeName);
     }
 
     //internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
