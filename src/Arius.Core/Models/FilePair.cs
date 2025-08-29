@@ -81,20 +81,93 @@ public class BinaryFile : FileEntry
         if (path.IsPointerFilePath())
             throw new ArgumentException("This is a PointerFile path", nameof(path));
     }
-
-    private static readonly FileStreamOptions smallFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 1024 };
-    private static readonly FileStreamOptions largeFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 32768, Options = FileOptions.Asynchronous };
-    public Stream OpenRead() => File.Open(this.ConvertPathToInternal(), Length <= 1024 ? smallFileStreamReadOptions : largeFileStreamReadOptions);
-
-    //    private static readonly SIO.FileStreamOptions smallFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 1024 };
-    //    private static readonly SIO.FileStreamOptions largeFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
-    //    public SIO.Stream OpenWrite() => _fileSystem.File.Open(_fullNamePath, Length <= 1024 ? smallFileStreamWriteOptions : largeFileStreamWriteOptions);
-
+    
     public PointerFile GetPointerFile()
     {
         var fe = new FileEntry(FileSystem, Path.GetPointerFilePath());
         return PointerFile.FromFileEntry(fe);
     }
+
+    // Pre-allocated FileStreamOptions instances to avoid allocations on every call
+      private static class ReadOptions
+      {
+          internal static readonly FileStreamOptions Size4KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 4096 };
+          internal static readonly FileStreamOptions Size8KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 8192 };
+          internal static readonly FileStreamOptions Size32KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 32768, Options = FileOptions.SequentialScan
+   };
+          internal static readonly FileStreamOptions Size64KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 65536, Options = FileOptions.Asynchronous |
+   FileOptions.SequentialScan };
+          internal static readonly FileStreamOptions Size256KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 262144, Options = FileOptions.Asynchronous
+   | FileOptions.SequentialScan };
+      }
+
+      private static class WriteOptions
+      {
+          internal static readonly FileStreamOptions Size4KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 4096 };
+          internal static readonly FileStreamOptions Size8KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 8192 };
+          internal static readonly FileStreamOptions Size32KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 32768, Options =
+  FileOptions.SequentialScan };
+          internal static readonly FileStreamOptions Size64KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 65536, Options =
+  FileOptions.Asynchronous | FileOptions.SequentialScan };
+          internal static readonly FileStreamOptions Size256KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 262144, Options =
+  FileOptions.Asynchronous | FileOptions.SequentialScan };
+      }
+
+      public Stream OpenRead()
+      {
+          [MethodImpl(MethodImplOptions.AggressiveInlining)]
+          static FileStreamOptions GetOptimalOptions(long fileLength)
+          {
+              const int KB = 1024;
+              const int MB = 1024 * 1024;
+
+              return fileLength switch
+              {
+                  < 4 * KB => ReadOptions.Size4KB,
+                  < 64 * KB => ReadOptions.Size8KB,
+                  < 1 * MB => ReadOptions.Size32KB,
+                  < 10 * MB => ReadOptions.Size64KB,
+                  _ => ReadOptions.Size256KB
+              };
+          }
+
+          if (FileSystem is MemoryFileSystem)
+          {
+              return FileSystem.OpenFile(Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+          }
+          else
+          {
+              return File.Open(this.ConvertPathToInternal(), GetOptimalOptions(Length));
+          }
+      }
+
+      public Stream OpenWrite()
+      {
+          [MethodImpl(MethodImplOptions.AggressiveInlining)]
+          static FileStreamOptions GetOptimalOptions(long fileLength)
+          {
+              const int KB = 1024;
+              const int MB = 1024 * 1024;
+
+              return fileLength switch
+              {
+                  < 4 * KB => WriteOptions.Size4KB,
+                  < 64 * KB => WriteOptions.Size8KB,
+                  < 1 * MB => WriteOptions.Size32KB,
+                  < 10 * MB => WriteOptions.Size64KB,
+                  _ => WriteOptions.Size256KB
+              };
+          }
+
+          if (FileSystem is MemoryFileSystem)
+          {
+              return FileSystem.OpenFile(Path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+          }
+          else
+          {
+              return File.Open(this.ConvertPathToInternal(), GetOptimalOptions(Length));
+          }
+      }
 }
 
 public class PointerFile : FileEntry
