@@ -323,6 +323,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
+        // TODO perhaps look again into InMemoryGzippedTar https://chat.deepseek.com/a/chat/s/9e9b24a3-9d37-4fb7-a1f4-89ace469b508
+
         MemoryStream ms = null;
         TarWriter tarWriter = null;
         GZipStream gzip = null;
