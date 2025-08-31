@@ -89,7 +89,9 @@ internal class BlobStorage : IBlobStorage
         var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
         var blobStream = await bbc.OpenReadAsync(cancellationToken: cancellationToken);
         
-        return await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        
+        return new GZipStream(decryptedStream, CompressionMode.Decompress);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, string passphrase, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
