@@ -2,6 +2,7 @@
 using Arius.Core.Repositories;
 using System.Text.Json;
 using Zio;
+using Zio.FileSystems;
 
 namespace Arius.Core.Models;
 
@@ -90,21 +91,72 @@ public class BinaryFile : FileEntry
             throw new ArgumentException("This is a PointerFile path", nameof(path));
     }
 
-    private static readonly FileStreamOptions smallFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 1024 };
-    private static readonly FileStreamOptions largeFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 32768, Options = FileOptions.Asynchronous };
-    public Stream OpenRead() => File.Open(this.ConvertPathToInternal(), Length <= 1024 ? smallFileStreamReadOptions : largeFileStreamReadOptions);
-
-    //    private static readonly SIO.FileStreamOptions smallFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 1024 };
-    //    private static readonly SIO.FileStreamOptions largeFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
-    //    public SIO.Stream OpenWrite() => _fileSystem.File.Open(_fullNamePath, Length <= 1024 ? smallFileStreamWriteOptions : largeFileStreamWriteOptions);
-    
-    // TODO optimize
-    public Stream OpenWrite() => File.Open(this.ConvertPathToInternal(), FileMode.CreateNew);
-
     public PointerFile GetPointerFile()
     {
         var fe = new FileEntry(FileSystem, Path.GetPointerFilePath());
         return PointerFile.FromFileEntry(fe);
+    }
+
+    public Stream OpenRead()
+    {
+        // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
+        if (FileSystem is MemoryFileSystem)
+        {
+            return FileSystem.OpenFile(Path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        }
+        else
+        {
+            var options = Length switch
+            {
+                < 4 * 1024         => ReadOptions.BufferSize4KB,
+                < 64 * 1024        => ReadOptions.BufferSize8KB,
+                < 1 * 1024 * 1024  => ReadOptions.BufferSize32KB,
+                < 10 * 1024 * 1024 => ReadOptions.BufferSize64KB,
+                _                  => ReadOptions.BufferSize256KB
+            };
+
+            return File.Open(this.ConvertPathToInternal(), options);
+        }
+    }
+
+    public Stream OpenWrite()
+    {
+        // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
+        if (FileSystem is MemoryFileSystem)
+        {
+            return FileSystem.OpenFile(Path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
+        }
+        else
+        {
+            var options = Length switch
+            {
+                < 4 * 1024         => WriteOptions.BufferSize4KB,
+                < 64 * 1024        => WriteOptions.BufferSize8KB,
+                < 1 * 1024 * 1024  => WriteOptions.BufferSize32KB,
+                < 10 * 1024 * 1024 => WriteOptions.BufferSize64KB,
+                _                  => WriteOptions.BufferSize256KB
+            };
+            return File.Open(this.ConvertPathToInternal(), options);
+        }
+    }
+
+    // Pre-allocated FileStreamOptions instances to avoid allocations on every call
+    private static class ReadOptions
+    {
+        internal static readonly FileStreamOptions BufferSize4KB   = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 4096 };
+        internal static readonly FileStreamOptions BufferSize8KB   = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 8192 };
+        internal static readonly FileStreamOptions BufferSize32KB  = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 32768, Options  = FileOptions.SequentialScan };
+        internal static readonly FileStreamOptions BufferSize64KB  = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 65536, Options  = FileOptions.Asynchronous | FileOptions.SequentialScan };
+        internal static readonly FileStreamOptions BufferSize256KB = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 262144, Options = FileOptions.Asynchronous | FileOptions.SequentialScan };
+    }
+
+    private static class WriteOptions
+    {
+        internal static readonly FileStreamOptions BufferSize4KB   = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 4096 };
+        internal static readonly FileStreamOptions BufferSize8KB   = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 8192 };
+        internal static readonly FileStreamOptions BufferSize32KB  = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 32768, Options  = FileOptions.SequentialScan };
+        internal static readonly FileStreamOptions BufferSize64KB  = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 65536, Options  = FileOptions.Asynchronous | FileOptions.SequentialScan };
+        internal static readonly FileStreamOptions BufferSize256KB = new() { Mode = FileMode.OpenOrCreate, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 262144, Options = FileOptions.Asynchronous | FileOptions.SequentialScan };
     }
 }
 
