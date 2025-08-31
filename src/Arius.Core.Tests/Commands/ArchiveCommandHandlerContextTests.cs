@@ -11,7 +11,7 @@ namespace Arius.Core.Tests.Commands;
 public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 {
     private readonly FakeLogger<ArchiveCommandHandler.HandlerContext> logger;
-    private readonly IBlobStorage                                     mockBlobStorage;
+    private readonly IChunkStorage                                     mockChunkStorage;
     private readonly DirectoryInfo                                    tempStateDirectory;
     private readonly ArchiveCommand                                   testCommand;
     private readonly Fixture                                          fixture;
@@ -20,7 +20,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     {
         fixture = new Fixture();
         logger = new FakeLogger<ArchiveCommandHandler.HandlerContext>();
-        mockBlobStorage = Substitute.For<IBlobStorage>();
+        mockChunkStorage = Substitute.For<IChunkStorage>();
         
         tempStateDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), $"arius-test-{Guid.NewGuid()}"));
         tempStateDirectory.Create();
@@ -32,21 +32,21 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     public async Task CreateAsync_WhenNoRemoteStateExists_ShouldCreateNewStateFile()
     {
         // Arrange
-        mockBlobStorage.CreateContainerIfNotExistsAsync().Returns(true);
-        mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<string>());
+        mockChunkStorage.CreateContainerIfNotExistsAsync().Returns(true);
+        mockChunkStorage.GetStates(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<string>());
 
         // Act
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand, 
             NullLoggerFactory.Instance, 
-            mockBlobStorage, 
+            mockChunkStorage, 
             tempStateDirectory);
 
         // Assert
         context.ShouldNotBeNull();
         context.Request.ShouldBe(testCommand);
-        context.BlobStorage.ShouldBe(mockBlobStorage);
-        context.StateRepo.ShouldNotBeNull();
+        context.ChunkStorage.ShouldBe(mockChunkStorage);
+        context.StateRepository.ShouldNotBeNull();
         context.Hasher.ShouldNotBeNull();
         context.FileSystem.ShouldNotBeNull();
 
@@ -56,7 +56,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         stateFiles[0].Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
 
         // Verify no download was attempted since no remote state exists
-        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
+        await mockChunkStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -64,11 +64,11 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     {
         // Arrange
         const string existingStateName = "2024-01-01T12-00-00";
-        mockBlobStorage.CreateContainerIfNotExistsAsync().Returns(true);
-        mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
+        mockChunkStorage.CreateContainerIfNotExistsAsync().Returns(true);
+        mockChunkStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
         // Mock the download behavior to create a valid state file when download is called
-        mockBlobStorage.DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>())
+        mockChunkStorage.DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
             .AndDoes(callInfo =>
             {
@@ -80,16 +80,16 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand, 
             NullLoggerFactory.Instance, 
-            mockBlobStorage, 
+            mockChunkStorage, 
             tempStateDirectory);
 
         // Assert
         context.ShouldNotBeNull();
         context.Request.ShouldBe(testCommand);
-        context.BlobStorage.ShouldBe(mockBlobStorage);
+        context.ChunkStorage.ShouldBe(mockChunkStorage);
 
         // Verify the remote state was downloaded
-        await mockBlobStorage.Received(1).DownloadStateAsync(
+        await mockChunkStorage.Received(1).DownloadStateAsync(
             existingStateName, 
             Arg.Is<FileInfo>(fi => fi.Name == $"{existingStateName}.db"), 
             Arg.Any<CancellationToken>());
@@ -113,8 +113,8 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         // Arrange
         const string existingStateName = "2024-01-01T12-00-00";
         
-        mockBlobStorage.CreateContainerIfNotExistsAsync().Returns(true);
-        mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
+        mockChunkStorage.CreateContainerIfNotExistsAsync().Returns(true);
+        mockChunkStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
         // Pre-create a valid state file locally to simulate it already being cached
         new StateRepositoryBuilder().Build(tempStateDirectory.FullName, existingStateName);
@@ -123,16 +123,16 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
             testCommand, 
             NullLoggerFactory.Instance, 
-            mockBlobStorage, 
+            mockChunkStorage, 
             tempStateDirectory);
 
         // Assert
         context.ShouldNotBeNull();
         context.Request.ShouldBe(testCommand);
-        context.BlobStorage.ShouldBe(mockBlobStorage);
+        context.ChunkStorage.ShouldBe(mockChunkStorage);
 
         // Verify no download was attempted since the file already exists locally
-        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
+        await mockChunkStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = tempStateDirectory.GetFiles("*.db");

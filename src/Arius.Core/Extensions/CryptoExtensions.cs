@@ -1,5 +1,4 @@
-﻿using System.IO.Compression;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 
 namespace Arius.Core.Extensions;
