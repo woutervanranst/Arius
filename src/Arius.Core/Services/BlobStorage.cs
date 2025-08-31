@@ -1,4 +1,5 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -82,11 +83,12 @@ internal class BlobStorage : IBlobStorage
 
     private const string chunksFolderPrefix = "chunks/";
 
-    public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
+    public async Task<Stream> OpenReadChunkAsync(Hash h, string passphrase, CancellationToken cancellationToken = default)
     {
         var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
-
-        return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
+        var blobStream = await bbc.OpenReadAsync(cancellationToken: cancellationToken);
+        
+        return await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)

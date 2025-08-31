@@ -96,20 +96,17 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (pfe, innerCancellationToken) =>
             {
-                // 1. Get the blob from storage
-                await using var blobStream = await handlerContext.BlobStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
+                // 1. Get the decrypted blob stream from storage
+                await using var ss = await handlerContext.BlobStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, handlerContext.Request.Passphrase, cancellationToken);
 
-                // 2. Get the decrypted and decompressed stream
-                await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-
-                // 3. Write to the target file
+                // 2. Write to the target file
                 var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
                 fp.BinaryFile.Directory.Create();
 
-                await using var targetFileStream = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
+                await using var ts = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
 
-                await decryptionStream.CopyToAsync(targetFileStream, innerCancellationToken);
-                await targetFileStream.FlushAsync(innerCancellationToken); // Explicitly flush
+                await ss.CopyToAsync(ts, innerCancellationToken);
+                await ts.FlushAsync(innerCancellationToken); // Explicitly flush
 
 
                 // todo hydrate
