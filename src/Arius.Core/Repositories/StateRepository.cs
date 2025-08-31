@@ -25,13 +25,13 @@ internal class StateRepository : IStateRepository
 {
     private readonly ILogger<StateRepository>                     logger;
     public           FileInfo                                     StateDatabaseFile { get; }
-    private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
+    private readonly DbContextOptions<SqliteStateRepositoryContext> dbContextOptions;
 
     public StateRepository(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepository> logger)
     {
         this.logger       = logger;
         StateDatabaseFile = stateDatabaseFile;
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateRepositoryContext>();
         dbContextOptions = optionsBuilder
             .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
@@ -43,7 +43,7 @@ internal class StateRepository : IStateRepository
             context.Database.EnsureCreated();
     }
 
-    private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
+    private SqliteStateRepositoryContext GetContext() => new(dbContextOptions, OnChanges);
 
     private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
     public  bool HasChanges             { get; private set; }
@@ -82,8 +82,8 @@ internal class StateRepository : IStateRepository
 
     // --- BINARYPROPERTIES
 
-    private static readonly Func<SqliteStateDatabaseContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
-        EF.CompileQuery((SqliteStateDatabaseContext dbContext, Hash h) =>
+    private static readonly Func<SqliteStateRepositoryContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
+        EF.CompileQuery((SqliteStateRepositoryContext dbContext, Hash h) =>
             dbContext.Set<BinaryPropertiesDto>()
                 .AsNoTracking()
                 .SingleOrDefault(x => x.Hash == h));
@@ -111,6 +111,8 @@ internal class StateRepository : IStateRepository
 
         context.BulkInsertOrUpdate(pfes);
 
+        HasChanges = true; // TODO : use the OnChanges callback of BulkInsertOrUpdate when available
+
         //foreach (var pfe in pfes)
         //{
         //    var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
@@ -129,14 +131,14 @@ internal class StateRepository : IStateRepository
         //context.SaveChanges();
     }
 
-    private static readonly Func<SqliteStateDatabaseContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
-        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeNamePrefix) =>
+    private static readonly Func<SqliteStateRepositoryContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
+        EF.CompileQuery((SqliteStateRepositoryContext dbContext, string relativeNamePrefix) =>
             dbContext.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix)));
 
-    private static readonly Func<SqliteStateDatabaseContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
-        EF.CompileQuery((SqliteStateDatabaseContext dbContext, string relativeNamePrefix) =>
+    private static readonly Func<SqliteStateRepositoryContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
+        EF.CompileQuery((SqliteStateRepositoryContext dbContext, string relativeNamePrefix) =>
             dbContext.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
@@ -172,5 +174,8 @@ internal class StateRepository : IStateRepository
 
         var entriesToDelete = context.PointerFileEntries.Where(shouldBeDeleted).ToArray();
         context.BulkDelete(entriesToDelete);
+
+        if (entriesToDelete.Any())
+            HasChanges = true;
     }
 }

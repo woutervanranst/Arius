@@ -5,11 +5,11 @@ using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
 
-internal class SqliteStateDatabaseContext : DbContext
+internal class SqliteStateRepositoryContext : DbContext
 {
     private readonly Action<int> onChanges;
 
-    public SqliteStateDatabaseContext(DbContextOptions<SqliteStateDatabaseContext> options, Action<int> onChanges)
+    public SqliteStateRepositoryContext(DbContextOptions<SqliteStateRepositoryContext> options, Action<int> onChanges)
         : base(options)
     {
         this.onChanges = onChanges;
