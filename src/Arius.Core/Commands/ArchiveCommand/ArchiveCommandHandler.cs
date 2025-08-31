@@ -269,32 +269,29 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             // Upload
-            await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
+            await using var encryptedStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
                 h: hash,
+                passphrase: handlerContext.Request.Passphrase,
                 contentType: ChunkContentType,
                 metadata: null,
                 progress: null,
                 cancellationToken: cancellationToken);
-            await using var cryptoStream = await blobStream.GetCryptoStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-            await using var gzs          = new GZipStream(cryptoStream, CompressionLevel.Optimal);
 
             await using var ss = filePair.BinaryFile.OpenRead();
-            await ss.CopyToAsync(gzs, bufferSize: 81920, cancellationToken);
+            await ss.CopyToAsync(encryptedStream, bufferSize: 81920, cancellationToken);
 
             // Flush all buffers
-            await gzs.FlushAsync(cancellationToken);
-            await cryptoStream.FlushAsync(cancellationToken);
-            await blobStream.FlushAsync(cancellationToken);
+            await encryptedStream.FlushAsync(cancellationToken);
 
             // Update tier
-            var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(hash, blobStream.Position, handlerContext.Request.Tier);
+            var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(hash, encryptedStream.Position, handlerContext.Request.Tier);
 
             // Add to db
             handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
             {
                 Hash         = hash,
                 OriginalSize = ss.Position,
-                ArchivedSize = blobStream.Position,
+                ArchivedSize = encryptedStream.Position,
                 StorageTier  = actualTier
             });
 
@@ -426,21 +423,20 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         foreach (var (tarredFilePair, _, _) in tarredFilePairs)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
 
-        await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
+        await using var encryptedStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
             h: tarHash,
+            passphrase: handlerContext.Request.Passphrase,
             contentType: TarChunkContentType,
             metadata: null,
             progress: null,
             cancellationToken: cancellationToken);
-        await using var cryptoStream = await blobStream.GetCryptoStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-        await ms.CopyToAsync(cryptoStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
+        await ms.CopyToAsync(encryptedStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
 
         // Flush all buffers
-        await cryptoStream.FlushAsync(cancellationToken);
-        await blobStream.FlushAsync(cancellationToken);
+        await encryptedStream.FlushAsync(cancellationToken);
 
         // Update tier
-        var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(tarHash, blobStream.Position, handlerContext.Request.Tier);
+        var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
         var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
@@ -457,7 +453,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         {
             Hash         = tarHash,
             OriginalSize = originalSize,
-            ArchivedSize = blobStream.Position,
+            ArchivedSize = encryptedStream.Position,
             StorageTier  = actualTier
         });
 

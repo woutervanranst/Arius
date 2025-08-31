@@ -4,6 +4,7 @@ using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using System.IO.Compression;
 using System.Net;
 
 namespace Arius.Core.Services;
@@ -91,7 +92,7 @@ internal class BlobStorage : IBlobStorage
         return await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
     }
 
-    public async Task<Stream> OpenWriteChunkAsync(Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    public async Task<Stream> OpenWriteChunkAsync(Hash h, string passphrase, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
         var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
 
@@ -106,7 +107,19 @@ internal class BlobStorage : IBlobStorage
         bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
         bbowo.ProgressHandler = progress;
 
-        return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+        var blobStream = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+        var cryptoStream = await blobStream.GetCryptoStreamAsync(passphrase, cancellationToken);
+        
+        // Apply additional compression only if content is not already compressed (e.g., TAR files)
+        if (contentType.Contains("tar", StringComparison.OrdinalIgnoreCase) || 
+            contentType.Contains("gzip", StringComparison.OrdinalIgnoreCase))
+        {
+            // Content is already compressed, return crypto stream only
+            return cryptoStream;
+        }
+        
+        // Content is not compressed, apply GZip compression
+        return new GZipStream(cryptoStream, CompressionLevel.Optimal);
     }
 
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
