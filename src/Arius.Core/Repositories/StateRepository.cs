@@ -7,7 +7,20 @@ using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
 
-public class StateRepository
+internal interface IStateRepository
+{
+    FileInfo                         StateDatabaseFile { get; }
+    bool                             HasChanges        { get; }
+    void                             Vacuum();
+    void                             Delete();
+    BinaryPropertiesDto?             GetBinaryProperty(Hash h);
+    void                             AddBinaryProperties(params BinaryPropertiesDto[] bps);
+    void                             UpsertPointerFileEntries(params PointerFileEntryDto[] pfes);
+    IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false);
+    void                             DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted);
+}
+
+internal class StateRepository : IStateRepository
 {
     private readonly ILogger<StateRepository>                     logger;
     public           FileInfo                                     StateDatabaseFile { get; }
@@ -74,14 +87,14 @@ public class StateRepository
                 .AsNoTracking()
                 .SingleOrDefault(x => x.Hash == h));
 
-    internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
+    public BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
         using var context = GetContext();
 
         return findBinaryProperty(context, h);
     }
 
-    internal void AddBinaryProperties(params BinaryPropertiesDto[] bps)
+    public void AddBinaryProperties(params BinaryPropertiesDto[] bps)
     {
         using var context = GetContext();
 
@@ -91,7 +104,7 @@ public class StateRepository
 
     // --- POINTERFILEENTRIES
 
-    internal void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
+    public void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
     {
         using var context = GetContext();
 
@@ -126,7 +139,7 @@ public class StateRepository
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
                 .Include(x => x.BinaryProperties));
 
-    internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
+    public IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
         using var context = GetContext();
 
@@ -143,14 +156,14 @@ public class StateRepository
         }
     }
 
-    //internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
+    //public IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
     //{
     //    using var context = GetContext();
     //    foreach (var pfe in context.PointerFileEntries)
     //        yield return pfe;
     //}
 
-    internal void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
+    public void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
     {
         using var context = GetContext();
 
