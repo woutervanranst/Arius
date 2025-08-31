@@ -49,6 +49,7 @@ internal class BlobStorage : IBlobStorage
         }
     }
 
+
     // --- STATES
 
     private const string statesFolderPrefix = "states/";
@@ -64,13 +65,6 @@ internal class BlobStorage : IBlobStorage
             .Select(b => b.Name[statesFolderPrefix.Length ..]); // remove the "states/" prefix
     }
 
-    public async Task<Stream> OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default)
-    {
-        var bbc = blobContainerClient.GetBlockBlobClient($"{statesFolderPrefix}{stateName}");
-
-        return await bbc.OpenReadAsync(cancellationToken: cancellationToken);
-    }
-
     public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
     {
         var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
@@ -82,6 +76,7 @@ internal class BlobStorage : IBlobStorage
         var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
         await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
     }
+
 
     // --- CHUNKS
 
@@ -120,15 +115,16 @@ internal class BlobStorage : IBlobStorage
         await bbc.SetAccessTierAsync(actualTier.ToAccessTier());
 
         return actualTier;
-    }
 
-    private static StorageTier GetActualStorageTier(StorageTier targetTier, long length)
-    {
-        const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
 
-        if (targetTier == StorageTier.Archive && length <= oneMegaByte)
+        static StorageTier GetActualStorageTier(StorageTier targetTier, long length)
+        {
+            const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
+
+            if (targetTier == StorageTier.Archive && length <= oneMegaByte)
                 targetTier = StorageTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
 
-        return targetTier;
+            return targetTier;
+        }
     }
 }

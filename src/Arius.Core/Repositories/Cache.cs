@@ -58,10 +58,12 @@ internal class StateRepositoryCache
         var x = GetLocalFileInfo(version);
         x.CreateDirectoryIfNotExists();
 
-        // 1. Get the blob from storage
-        await using var blobStream = await blobStorage.OpenReadStateAsync(version);
-        await using var targetFileStream = x.OpenWrite();
-        await blobStream.CopyToAsync(targetFileStream);
+        throw new NotImplementedException();
+
+        //// 1. Get the blob from storage
+        //await using var blobStream = await blobStorage.OpenReadStateAsync(version);
+        //await using var targetFileStream = x.OpenWrite();
+        //await blobStream.CopyToAsync(targetFileStream);
 
         //// 2. Get the decrypted and decompressed stream
         //await using var decryptionStream = await blobStream.GetDecryptionStreamAsync(passphrase);
@@ -69,7 +71,7 @@ internal class StateRepositoryCache
         //// 3. Write to the target file
         //await using var targetFileStream = x.OpenWrite();
         //await decryptionStream.CopyToAsync(targetFileStream);
-        await targetFileStream.FlushAsync(); // Explicitly flush
+        //await targetFileStream.FlushAsync(); // Explicitly flush
 
         return x;
     }

@@ -7,7 +7,7 @@ public interface IBlobStorage
     Task<bool>               CreateContainerIfNotExistsAsync();
     Task<bool>               ContainerExistsAsync();
     IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default);
-    Task<Stream>             OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default);
+    //Task<Stream>             OpenReadStateAsync(string stateName, CancellationToken cancellationToken = default);
     Task                     DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default);
     Task                     UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default);
     Task<Stream>             OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
