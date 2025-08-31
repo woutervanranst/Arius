@@ -272,6 +272,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             await using var encryptedStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
                 h: hash,
                 passphrase: handlerContext.Request.Passphrase,
+                compressionLevel: CompressionLevel.SmallestSize,
                 contentType: ChunkContentType,
                 metadata: null,
                 progress: null,
@@ -338,7 +339,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 if (tarWriter is null)
                 {
                     ms = new MemoryStream();
-                    gzip = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true);
+                    gzip = new GZipStream(ms, CompressionLevel.SmallestSize, leaveOpen: true);
                     tarWriter = new TarWriter(gzip);
                     originalSize = 0;
 
@@ -426,6 +427,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         await using var encryptedStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
             h: tarHash,
             passphrase: handlerContext.Request.Passphrase,
+            compressionLevel: CompressionLevel.NoCompression, // The TAR file is already GZipped
             contentType: TarChunkContentType,
             metadata: null,
             progress: null,

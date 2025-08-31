@@ -52,3 +52,38 @@ The system uses file size to determine the optimal upload strategy:
 **Storage Optimization**: The TAR strategy for small files reduces the number of blob storage operations and improves cost efficiency by grouping related files together.
 
 **Client-Side Security**: All encryption occurs on the client side before data leaves the local system, ensuring data privacy and security.
+
+## Stream Processing Architecture
+
+The upload process uses a sophisticated stream chaining approach to handle compression, encryption, and position tracking:
+
+```
+Original Data → GZip Compression → AES256 Encryption → Azure Blob Storage
+                       ↓                    ↓                 ↓
+                 [GZipStream] → [CryptoStream] → [BlobStream]
+                       ↑                              ↓
+               Writes flow through here    Position read from here
+                       ↓                              ↑
+               [----------PositionTrackingStream----------]
+                                   ↓
+                          Returned to caller
+```
+
+### PositionTrackingStream Implementation
+
+The system uses a custom `PositionTrackingStream` wrapper that:
+- **Delegates write operations** to the compression/encryption pipeline (GZipStream when compression is enabled)
+- **Reads position** from the underlying blob stream to track actual bytes written to Azure
+- **Maintains seekability** for position tracking while preserving the encryption pipeline
+- **Handles disposal** properly without interfering with the blob stream lifecycle
+
+### Compression Control
+
+Compression is explicitly controlled via a boolean parameter rather than content-type detection:
+- **Individual files**: `compress: true` - applies GZip compression before encryption
+- **TAR archives**: `compress: false` - skips additional compression since TAR files are already compressed
+
+This architecture allows the caller to:
+1. Write data through the complete compression + encryption pipeline
+2. Track the actual compressed/encrypted bytes written to blob storage
+3. Use this information for storage tier optimization and database recording

@@ -92,8 +92,11 @@ internal class BlobStorage : IBlobStorage
         return await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
     }
 
-    public async Task<Stream> OpenWriteChunkAsync(Hash h, string passphrase, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    public async Task<Stream> OpenWriteChunkAsync(Hash h, string passphrase, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
+        // Validate compression settings against content type to prevent double compression or missing compression
+        ValidateCompressionSettings(compressionLevel, contentType);
+        
         var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
 
         var bbowo = new BlockBlobOpenWriteOptions();
@@ -110,16 +113,32 @@ internal class BlobStorage : IBlobStorage
         var blobStream = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
         var cryptoStream = await blobStream.GetCryptoStreamAsync(passphrase, cancellationToken);
         
-        // Apply additional compression only if content is not already compressed (e.g., TAR files)
-        if (contentType.Contains("tar", StringComparison.OrdinalIgnoreCase) || 
-            contentType.Contains("gzip", StringComparison.OrdinalIgnoreCase))
+        if (compressionLevel == CompressionLevel.NoCompression)
         {
-            // Content is already compressed, return crypto stream only
-            return cryptoStream;
+            return new PositionTrackingStream(cryptoStream, blobStream);
         }
-        
-        // Content is not compressed, apply GZip compression
-        return new GZipStream(cryptoStream, CompressionLevel.Optimal);
+        else
+        {
+            var gzipStream = new GZipStream(cryptoStream, compressionLevel);
+            return new PositionTrackingStream(gzipStream, blobStream);
+        }
+
+
+        static void ValidateCompressionSettings(CompressionLevel compressionLevel, string contentType)
+        {
+            var isAlreadyCompressed = contentType.Contains("tar+gzip", StringComparison.OrdinalIgnoreCase);
+            var isCompressing       = compressionLevel != CompressionLevel.NoCompression;
+
+            if (isAlreadyCompressed && isCompressing)
+            {
+                throw new ArgumentException($"Content type '{contentType}' indicates pre-compressed data, but compression level is set to '{compressionLevel}'. Use CompressionLevel.NoCompression to avoid double compression.", nameof(compressionLevel));
+            }
+
+            if (!isAlreadyCompressed && !isCompressing)
+            {
+                throw new ArgumentException($"Content type '{contentType}' indicates uncompressed data, but compression level is set to '{compressionLevel}'. Consider using CompressionLevel.Optimal for better storage efficiency.", nameof(compressionLevel));
+            }
+        }
     }
 
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
@@ -140,6 +159,60 @@ internal class BlobStorage : IBlobStorage
                 targetTier = StorageTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
 
             return targetTier;
+        }
+    }
+
+    /// <summary>
+    /// A stream wrapper that delegates write operations to one stream while reading position from another.
+    /// This allows us to write through GZip/Crypto streams while tracking the actual bytes written to blob storage.
+    /// </summary>
+    private sealed class PositionTrackingStream : Stream
+    {
+        private readonly Stream writeStream;
+        private readonly Stream positionStream;
+
+        public PositionTrackingStream(Stream writeStream, Stream positionStream)
+        {
+            this.writeStream = writeStream;
+            this.positionStream = positionStream;
+        }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => writeStream.CanWrite;
+
+        public override long Length => throw new NotSupportedException();
+        public override long Position 
+        { 
+            get => positionStream.Position; 
+            set => throw new NotSupportedException(); 
+        }
+
+        public override void Write(byte[] buffer, int offset, int count) => writeStream.Write(buffer, offset, count);
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => await writeStream.WriteAsync(buffer, offset, count, cancellationToken);
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => await writeStream.WriteAsync(buffer, cancellationToken);
+
+        public override void Flush() => writeStream.Flush();
+        public override async Task FlushAsync(CancellationToken cancellationToken) => await writeStream.FlushAsync(cancellationToken);
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                writeStream?.Dispose();
+                // positionStream is disposed through the writeStream chain (GZip→Crypto→Blob or Crypto→Blob)
+            }
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            if (writeStream != null)
+                await writeStream.DisposeAsync();
+            // positionStream is disposed through the writeStream chain (GZip→Crypto→Blob or Crypto→Blob)
         }
     }
 }
