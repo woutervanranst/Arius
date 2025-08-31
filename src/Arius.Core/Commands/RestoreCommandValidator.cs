@@ -17,6 +17,10 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
             .WithMessage("All targets must start with './'.");
 
         RuleFor(x => x.Targets)
+            .Must(targets => targets.All(IsValidPath))
+            .WithMessage("All targets must be valid paths.");
+
+        RuleFor(x => x.Targets)
             .Must(targets => targets.Length > 0)
             .WithMessage("No target(s) specified.");
 
@@ -27,5 +31,21 @@ public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
         RuleFor(x => x.LocalRoot)
             .Must(localRoot => localRoot.Exists)
             .WithMessage("LocalRoot directory must exist.");
+    }
+
+    private static bool IsValidPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        try
+        {
+            Path.GetFullPath(path);
+            return path.IndexOfAny(Path.GetInvalidPathChars()) == -1;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
