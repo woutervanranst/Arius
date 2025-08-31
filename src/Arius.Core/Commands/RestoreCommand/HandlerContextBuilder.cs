@@ -62,51 +62,52 @@ internal class HandlerContextBuilder
             Targets     = GetTargets(),
             FileSystem  = GetFileSystem()
         };
-    }
 
-    private async Task<IStateRepository> BuildStateRepositoryAsync(IBlobStorage blobStorage)
-    {
-        var stateCacheRoot = new DirectoryInfo("statecache");
 
-        // Instantiate StateCache
-        var stateCache = new StateCache(stateCacheRoot);
-
-        // Get the latest state from blob storage
-        var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
-
-        if (latestStateName == null)
+        async Task<IStateRepository> BuildStateRepositoryAsync(IBlobStorage blobStorage)
         {
-            throw new InvalidOperationException("No state files found in the specified container. Cannot proceed with restore.");
+            var stateCacheRoot = new DirectoryInfo("statecache");
+
+            // Instantiate StateCache
+            var stateCache = new StateCache(stateCacheRoot);
+
+            // Get the latest state from blob storage
+            var latestStateName = await blobStorage.GetStates().LastOrDefaultAsync();
+
+            if (latestStateName == null)
+            {
+                throw new InvalidOperationException("No state files found in the specified container. Cannot proceed with restore.");
+            }
+
+            var latestStateFile = stateCache.GetStateFilePath(latestStateName);
+            if (!latestStateFile.Exists)
+            {
+                logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");
+                await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
+            }
+            else
+            {
+                logger.LogInformation($"Using cached state file '{latestStateName}' from local cache.");
+            }
+
+            return new StateRepository(latestStateFile, false, NullLogger<StateRepository>.Instance);
         }
 
-        var latestStateFile = stateCache.GetStateFilePath(latestStateName);
-        if (!latestStateFile.Exists)
+        FilePairFileSystem GetFileSystem()
         {
-            logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");
-            await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
-        }
-        else
-        {
-            logger.LogInformation($"Using cached state file '{latestStateName}' from local cache.");
-        }
+            if (baseFileSystem == null)
+            {
+                var pfs  = new PhysicalFileSystem();
+                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
+                baseFileSystem = new SubFileSystem(pfs, root, true);
+            }
 
-        return new StateRepository(latestStateFile, false, NullLogger<StateRepository>.Instance);
-    }
-
-    private FilePairFileSystem GetFileSystem()
-    {
-        if (baseFileSystem == null)
-        {
-            var pfs  = new PhysicalFileSystem();
-            var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-            baseFileSystem = new SubFileSystem(pfs, root, true);
+            return new FilePairFileSystem(baseFileSystem, true);
         }
 
-        return new FilePairFileSystem(baseFileSystem, true);
-    }
-
-    private UPath[] GetTargets()
-    {
-        return request.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
+        UPath[] GetTargets()
+        {
+            return request.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
+        }
     }
 }
