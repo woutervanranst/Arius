@@ -4,20 +4,20 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Tests.Builders;
 
-internal class FakeStateDatabaseBuilder
+internal class FakeStateRepositoryBuilder
 {
     private readonly string                    path;
     private readonly string                    stateName;
     private readonly List<BinaryPropertiesDto> binaryProperties = [];
     private          BinaryPropertiesDto?      currentBinaryProperty;
 
-    public FakeStateDatabaseBuilder(string path, string stateName)
+    public FakeStateRepositoryBuilder(string path, string stateName)
     {
         this.path      = path;
         this.stateName = stateName;
     }
 
-    public FakeStateDatabaseBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
+    public FakeStateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
         currentBinaryProperty = new BinaryPropertiesDto
         {
@@ -32,7 +32,7 @@ internal class FakeStateDatabaseBuilder
         return this;
     }
 
-    public FakeStateDatabaseBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
+    public FakeStateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
         currentBinaryProperty = new BinaryPropertiesDto
         {
@@ -47,7 +47,7 @@ internal class FakeStateDatabaseBuilder
         return this;
     }
 
-    public FakeStateDatabaseBuilder WithPointerFileEntry(string relativeName, DateTime? creationTime = null, DateTime? writeTime = null)
+    public FakeStateRepositoryBuilder WithPointerFileEntry(string relativeName, DateTime? creationTime = null, DateTime? writeTime = null)
     {
         if (currentBinaryProperty == null)
             throw new InvalidOperationException("Must add a binary property before adding pointer file entries");
