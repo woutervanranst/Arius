@@ -108,6 +108,8 @@ internal class StateRepository : IStateRepository
     {
         using var context = GetContext();
 
+        // TODO investigate UpdateRange ?
+
         foreach (var pfe in pfes)
         {
             var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
