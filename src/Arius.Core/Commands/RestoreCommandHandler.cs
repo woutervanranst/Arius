@@ -113,6 +113,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 await decryptionStream.CopyToAsync(targetFileStream, innerCancellationToken);
                 await targetFileStream.FlushAsync(innerCancellationToken); // Explicitly flush
 
+
+                // todo hydrate
+
+                // todo parenthash
             });
 
 
@@ -194,7 +198,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
         public required RestoreCommand     Request     { get; init; }
         public required IBlobStorage       BlobStorage { get; init; }
-        public required StateRepository    StateRepo   { get; init; }
+        public required IStateRepository   StateRepo   { get; init; }
         public required Sha256Hasher       Hasher      { get; init; }
         public required UPath[]            Targets     { get; init; }
         public required FilePairFileSystem FileSystem  { get; init; }
