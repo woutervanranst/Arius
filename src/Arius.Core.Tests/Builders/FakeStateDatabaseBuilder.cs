@@ -4,12 +4,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Tests.Builders;
 
-public class FakeStateDatabaseBuilder
+internal class FakeStateDatabaseBuilder
 {
-    private readonly string                   path;
-    private readonly string                   stateName;
-    private readonly List<BinaryPropertyData> binaryProperties = [];
-    private          BinaryPropertyData?      currentBinaryProperty;
+    private readonly string                    path;
+    private readonly string                    stateName;
+    private readonly List<BinaryPropertiesDto> binaryProperties = [];
+    private          BinaryPropertiesDto?      currentBinaryProperty;
 
     public FakeStateDatabaseBuilder(string path, string stateName)
     {
@@ -19,7 +19,7 @@ public class FakeStateDatabaseBuilder
 
     public FakeStateDatabaseBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
-        currentBinaryProperty = new BinaryPropertyData
+        currentBinaryProperty = new BinaryPropertiesDto
         {
             Hash               = hash,
             ParentHash         = null,
@@ -34,7 +34,7 @@ public class FakeStateDatabaseBuilder
 
     public FakeStateDatabaseBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
-        currentBinaryProperty = new BinaryPropertyData
+        currentBinaryProperty = new BinaryPropertiesDto
         {
             Hash               = hash,
             ParentHash         = parentHash,
@@ -52,7 +52,7 @@ public class FakeStateDatabaseBuilder
         if (currentBinaryProperty == null)
             throw new InvalidOperationException("Must add a binary property before adding pointer file entries");
 
-        currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntryData
+        currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntryDto
         {
             RelativeName     = relativeName,
             CreationTimeUtc  = creationTime,
@@ -62,7 +62,7 @@ public class FakeStateDatabaseBuilder
         return this;
     }
 
-    public FileInfo Build()
+    public IStateRepository Build()
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
         var stateRepo = new StateRepository(stateFile, true, NullLogger<StateRepository>.Instance);
@@ -96,23 +96,6 @@ public class FakeStateDatabaseBuilder
 
         stateRepo.UpsertPointerFileEntries(pointerFileEntryDtos);
 
-        return stateFile;
-    }
-
-    private class BinaryPropertyData
-    {
-        public Hash                       Hash               { get; set; }
-        public Hash?                      ParentHash         { get; set; }
-        public long                       OriginalSize       { get; set; }
-        public long?                      ArchivedSize       { get; set; }
-        public StorageTier?               StorageTier        { get; set; }
-        public List<PointerFileEntryData> PointerFileEntries { get; set; } = [];
-    }
-
-    private class PointerFileEntryData
-    {
-        public string    RelativeName     { get; set; } = string.Empty;
-        public DateTime? CreationTimeUtc  { get; set; }
-        public DateTime? LastWriteTimeUtc { get; set; }
+        return stateRepo;
     }
 }
