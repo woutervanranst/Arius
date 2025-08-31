@@ -1,4 +1,5 @@
 using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using FluentValidation;
@@ -6,12 +7,13 @@ using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Threading.Channels;
-using Arius.Core.Models;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.RestoreCommand;
+
+public record ProgressUpdate;
 
 internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 {

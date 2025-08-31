@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.RestoreCommand;
 
 public class RestoreCommandValidator : AbstractValidator<RestoreCommand>
 {

@@ -1,4 +1,4 @@
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.RestoreCommand;
 
 public record RestoreCommand : RepositoryCommand
 {

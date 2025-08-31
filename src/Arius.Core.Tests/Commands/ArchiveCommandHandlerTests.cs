@@ -1,9 +1,8 @@
-using Arius.Core.Commands;
+using Arius.Core.Commands.ArchiveCommand;
 using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using System.Runtime.InteropServices;
-using Shouldly.Configuration;
 
 namespace Arius.Core.Tests.Commands;
 

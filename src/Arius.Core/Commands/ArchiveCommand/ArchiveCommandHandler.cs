@@ -14,7 +14,7 @@ using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.ArchiveCommand;
 
 public record ProgressUpdate;
 public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
@@ -379,7 +379,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 }
 
                 if ((ms.Position > 1024 * 1024 ||
-                     (ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any())
+                     ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
                 {
                     logger.LogInformation($"Uploading TAR");
                     await ProcessTarArchive(handlerContext, ms, gzip, tarWriter, tarredFilePairs, originalSize, cancellationToken);

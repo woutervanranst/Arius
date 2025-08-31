@@ -3,7 +3,6 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using System;
 using System.Text;
 using Zio;
 using Zio.FileSystems;

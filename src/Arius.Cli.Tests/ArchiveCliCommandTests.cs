@@ -1,4 +1,4 @@
-using Arius.Core.Commands;
+using Arius.Core.Commands.ArchiveCommand;
 using Arius.Core.Models;
 using Mediator;
 using NSubstitute;

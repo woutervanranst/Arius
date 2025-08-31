@@ -1,6 +1,6 @@
 ﻿using Arius.Core.Models;
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.ArchiveCommand;
 
 public record ArchiveCommand : RepositoryCommand
 {

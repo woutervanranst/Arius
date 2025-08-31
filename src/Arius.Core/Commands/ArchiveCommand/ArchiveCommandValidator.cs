@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Commands.ArchiveCommand;
 
 public class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 {
