@@ -8,6 +8,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Azure.Storage.Blobs" />
+		<PackageReference Include="EFCore.BulkExtensions.Sqlite" />
 		<PackageReference Include="FluentValidation" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
 		<PackageReference Include="Humanizer.Core" />
