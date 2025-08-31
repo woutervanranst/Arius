@@ -83,7 +83,7 @@ internal class HandlerContextBuilder
             if (!latestStateFile.Exists)
             {
                 logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");
-                await blobStorage.DownloadStateAsync(latestStateName, latestStateFile, request.Passphrase);
+                await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
             }
             else
             {

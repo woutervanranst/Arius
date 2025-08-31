@@ -76,7 +76,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 0));
                 handlerContext.StateRepo.Vacuum();
                 var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepo.StateDatabaseFile.Name);
-                await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, handlerContext.Request.Passphrase, cancellationToken);
+                await handlerContext.BlobStorage.UploadStateAsync(stateFileName, handlerContext.StateRepo.StateDatabaseFile, cancellationToken);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 100));
             }
             else
@@ -571,7 +571,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 var latestStateFile = stateCache.GetStateFilePath(latestStateName);
                 if (!latestStateFile.Exists)
                 {
-                    await blobStorage.DownloadStateAsync(latestStateName, latestStateFile, request.Passphrase);
+                    await blobStorage.DownloadStateAsync(latestStateName, latestStateFile);
                 }
                 else
                 {

@@ -56,7 +56,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         stateFiles[0].Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
 
         // Verify no download was attempted since no remote state exists
-        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         mockBlobStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
         // Mock the download behavior to create a valid state file when download is called
-        mockBlobStorage.DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        mockBlobStorage.DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask)
             .AndDoes(callInfo =>
             {
@@ -91,8 +91,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         // Verify the remote state was downloaded
         await mockBlobStorage.Received(1).DownloadStateAsync(
             existingStateName, 
-            Arg.Is<FileInfo>(fi => fi.Name == $"{existingStateName}.db"),
-            Arg.Any<string>(),
+            Arg.Is<FileInfo>(fi => fi.Name == $"{existingStateName}.db"), 
             Arg.Any<CancellationToken>());
 
         // Verify a new state file was created (with current timestamp format)
@@ -133,7 +132,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         context.BlobStorage.ShouldBe(mockBlobStorage);
 
         // Verify no download was attempted since the file already exists locally
-        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await mockBlobStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileInfo>(), Arg.Any<CancellationToken>());
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = tempStateDirectory.GetFiles("*.db");
