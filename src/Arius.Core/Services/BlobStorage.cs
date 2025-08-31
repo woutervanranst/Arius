@@ -67,16 +67,41 @@ internal class BlobStorage : IBlobStorage
             .Select(b => b.Name[statesFolderPrefix.Length ..]); // remove the "states/" prefix
     }
 
-    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
+    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, string passphrase, CancellationToken cancellationToken = default)
     {
         var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
-        await blobClient.DownloadToAsync(targetFile.FullName, cancellationToken);
+        
+        // Open blob stream directly for reading
+        await using var blobStream = await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
+        
+        // Apply decryption and decompression
+        await using var processedStream = await CreateDecryptedDecompressedReadStream(blobStream, passphrase, cancellationToken);
+        
+        // Write the processed data to the target file
+        await using var targetStream = targetFile.Create();
+        await processedStream.CopyToAsync(targetStream, cancellationToken);
     }
 
-    public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
+    public async Task UploadStateAsync(string stateName, FileInfo sourceFile, string passphrase, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlobClient($"{statesFolderPrefix}{stateName}");
-        await blobClient.UploadAsync(sourceFile.FullName, overwrite: true, cancellationToken);
+        const string stateContentType = "application/aes256cbc+gzip";
+        
+        var (processedStream, _) = await OpenWriteBlobAsync(
+            blobName: $"{statesFolderPrefix}{stateName}",
+            passphrase: passphrase,
+            compressionLevel: CompressionLevel.SmallestSize,
+            contentType: stateContentType,
+            metadata: null,
+            progress: null,
+            returnBlobStream: false,
+            cancellationToken: cancellationToken);
+        
+        await using (processedStream)
+        {
+            // Copy source file through compression and encryption directly to blob
+            await using var sourceStream = sourceFile.OpenRead();
+            await sourceStream.CopyToAsync(processedStream, cancellationToken);
+        }
     }
 
 
@@ -89,8 +114,62 @@ internal class BlobStorage : IBlobStorage
         var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
         var blobStream = await bbc.OpenReadAsync(cancellationToken: cancellationToken);
         
-        var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        return await CreateDecryptedDecompressedReadStream(blobStream, passphrase, cancellationToken);
+    }
+
+    private async Task<(Stream processedStream, Stream? blobStream)> OpenWriteBlobAsync(
+        string blobName, 
+        string passphrase, 
+        CompressionLevel compressionLevel, 
+        string contentType, 
+        IDictionary<string, string>? metadata = null, 
+        IProgress<long>? progress = null, 
+        bool returnBlobStream = false,
+        CancellationToken cancellationToken = default)
+    {
+        var bbc = blobContainerClient.GetBlockBlobClient(blobName);
+
+        var bbowo = new BlockBlobOpenWriteOptions();
         
+        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+        var throwOnExists = false;
+        if (throwOnExists)
+            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+        if (metadata is not null)
+            bbowo.Metadata = metadata;
+        bbowo.HttpHeaders = new BlobHttpHeaders { ContentType = contentType };
+        bbowo.ProgressHandler = progress;
+
+        var blobStream = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+        var processedStream = await CreateCompressedEncryptedWriteStream(blobStream, passphrase, compressionLevel, cancellationToken);
+        
+        return (processedStream, returnBlobStream ? blobStream : null);
+    }
+
+    private async Task<Stream> CreateCompressedEncryptedWriteStream(
+        Stream targetStream, 
+        string passphrase, 
+        CompressionLevel compressionLevel,
+        CancellationToken cancellationToken)
+    {
+        var cryptoStream = await targetStream.GetCryptoStreamAsync(passphrase, cancellationToken);
+        
+        if (compressionLevel == CompressionLevel.NoCompression)
+        {
+            return cryptoStream;
+        }
+        else
+        {
+            return new GZipStream(cryptoStream, compressionLevel);
+        }
+    }
+
+    private async Task<Stream> CreateDecryptedDecompressedReadStream(
+        Stream sourceStream, 
+        string passphrase,
+        CancellationToken cancellationToken)
+    {
+        var decryptedStream = await sourceStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
         return new GZipStream(decryptedStream, CompressionMode.Decompress);
     }
 
@@ -99,31 +178,19 @@ internal class BlobStorage : IBlobStorage
         // Validate compression settings against content type to prevent double compression or missing compression
         ValidateCompressionSettings(compressionLevel, contentType);
         
-        var bbc = blobContainerClient.GetBlockBlobClient($"{chunksFolderPrefix}{h}");
-
-        var bbowo = new BlockBlobOpenWriteOptions();
-
-        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
-        var throwOnExists = false;
-        if (throwOnExists)
-            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-        if (metadata is not null)
-            bbowo.Metadata = metadata;
-        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
-        bbowo.ProgressHandler = progress;
-
-        var blobStream = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
-        var cryptoStream = await blobStream.GetCryptoStreamAsync(passphrase, cancellationToken);
+        // Always use SmallestSize compression level as specified, and get blob stream for position tracking
+        var (processedStream, blobStream) = await OpenWriteBlobAsync(
+            blobName: $"{chunksFolderPrefix}{h}",
+            passphrase: passphrase,
+            compressionLevel: CompressionLevel.SmallestSize,
+            contentType: contentType,
+            metadata: metadata,
+            progress: progress,
+            returnBlobStream: true,
+            cancellationToken: cancellationToken);
         
-        if (compressionLevel == CompressionLevel.NoCompression)
-        {
-            return new PositionTrackingStream(cryptoStream, blobStream);
-        }
-        else
-        {
-            var gzipStream = new GZipStream(cryptoStream, compressionLevel);
-            return new PositionTrackingStream(gzipStream, blobStream);
-        }
+        // For chunks, we need to wrap with PositionTrackingStream to track blob position
+        return new PositionTrackingStream(processedStream, blobStream!);
 
 
         static void ValidateCompressionSettings(CompressionLevel compressionLevel, string contentType)
