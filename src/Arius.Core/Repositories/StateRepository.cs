@@ -25,13 +25,13 @@ internal class StateRepository : IStateRepository
 {
     private readonly ILogger<StateRepository>                     logger;
     public           FileInfo                                     StateDatabaseFile { get; }
-    private readonly DbContextOptions<SqliteStateRepositoryContext> dbContextOptions;
+    private readonly DbContextOptions<StateRepositoryDbContext> dbContextOptions;
 
     public StateRepository(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepository> logger)
     {
         this.logger       = logger;
         StateDatabaseFile = stateDatabaseFile;
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateRepositoryContext>();
+        var optionsBuilder = new DbContextOptionsBuilder<StateRepositoryDbContext>();
         dbContextOptions = optionsBuilder
             .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
@@ -43,7 +43,7 @@ internal class StateRepository : IStateRepository
             context.Database.EnsureCreated();
     }
 
-    private SqliteStateRepositoryContext GetContext() => new(dbContextOptions, OnChanges);
+    private StateRepositoryDbContext GetContext() => new(dbContextOptions, OnChanges);
 
     private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
     public  bool HasChanges             { get; private set; }
@@ -82,9 +82,9 @@ internal class StateRepository : IStateRepository
 
     // --- BINARYPROPERTIES
 
-    private static readonly Func<SqliteStateRepositoryContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
-        EF.CompileQuery((SqliteStateRepositoryContext dbContext, Hash h) =>
-            dbContext.Set<BinaryPropertiesDto>()
+    private static readonly Func<StateRepositoryDbContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
+        EF.CompileQuery((StateRepositoryDbContext db, Hash h) =>
+            db.Set<BinaryPropertiesDto>()
                 .AsNoTracking()
                 .SingleOrDefault(x => x.Hash == h));
 
@@ -131,15 +131,15 @@ internal class StateRepository : IStateRepository
         //context.SaveChanges();
     }
 
-    private static readonly Func<SqliteStateRepositoryContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
-        EF.CompileQuery((SqliteStateRepositoryContext dbContext, string relativeNamePrefix) =>
-            dbContext.PointerFileEntries
+    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
+        EF.CompileQuery((StateRepositoryDbContext db, string relativeNamePrefix) =>
+            db.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix)));
 
-    private static readonly Func<SqliteStateRepositoryContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
-        EF.CompileQuery((SqliteStateRepositoryContext dbContext, string relativeNamePrefix) =>
-            dbContext.PointerFileEntries
+    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
+        EF.CompileQuery((StateRepositoryDbContext db, string relativeNamePrefix) =>
+            db.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
                 .Include(x => x.BinaryProperties));

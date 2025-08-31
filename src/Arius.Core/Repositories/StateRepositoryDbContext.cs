@@ -5,11 +5,11 @@ using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
 
-internal class SqliteStateRepositoryContext : DbContext
+internal class StateRepositoryDbContext : DbContext
 {
     private readonly Action<int> onChanges;
 
-    public SqliteStateRepositoryContext(DbContextOptions<SqliteStateRepositoryContext> options, Action<int> onChanges)
+    public StateRepositoryDbContext(DbContextOptions<StateRepositoryDbContext> options, Action<int> onChanges)
         : base(options)
     {
         this.onChanges = onChanges;
@@ -137,10 +137,10 @@ internal class SqliteStateRepositoryContext : DbContext
 
 internal record PointerFileEntryDto
 {
-    public Hash Hash { get; init; }
-    public string RelativeName { get; init; }
-    public DateTime? CreationTimeUtc { get; set; }
-    public DateTime? LastWriteTimeUtc { get; set; }
+    public         Hash                Hash             { get; init; }
+    public         string              RelativeName     { get; init; }
+    public         DateTime?           CreationTimeUtc  { get; set; }
+    public         DateTime?           LastWriteTimeUtc { get; set; }
     public virtual BinaryPropertiesDto BinaryProperties { get; init; }
 }
 
