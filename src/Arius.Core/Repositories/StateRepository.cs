@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Models;
+using EFCore.BulkExtensions;
 using Humanizer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -108,24 +109,24 @@ internal class StateRepository : IStateRepository
     {
         using var context = GetContext();
 
-        // TODO investigate UpdateRange ?
+        context.BulkInsertOrUpdate(pfes);
 
-        foreach (var pfe in pfes)
-        {
-            var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+        //foreach (var pfe in pfes)
+        //{
+        //    var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
 
-            if (existingPfe is null)
-            {
-                context.PointerFileEntries.Add(pfe);
-            }
-            else
-            {
-                existingPfe.CreationTimeUtc  = pfe.CreationTimeUtc;
-                existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
-            }
-        }
+        //    if (existingPfe is null)
+        //    {
+        //        context.PointerFileEntries.Add(pfe);
+        //    }
+        //    else
+        //    {
+        //        existingPfe.CreationTimeUtc  = pfe.CreationTimeUtc;
+        //        existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
+        //    }
+        //}
 
-        context.SaveChanges();
+        //context.SaveChanges();
     }
 
     private static readonly Func<SqliteStateDatabaseContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
@@ -169,9 +170,7 @@ internal class StateRepository : IStateRepository
     {
         using var context = GetContext();
 
-        foreach (var pfe in context.PointerFileEntries.Where(shouldBeDeleted))
-            context.PointerFileEntries.Remove(pfe);
-
-        context.SaveChanges();
+        var entriesToDelete = context.PointerFileEntries.Where(shouldBeDeleted).ToArray();
+        context.BulkDelete(entriesToDelete);
     }
 }
