@@ -105,7 +105,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
                 fp.BinaryFile.Directory.Create();
 
-                await using var targetFileStream = fp.BinaryFile.OpenWrite();
+                await using var targetFileStream = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
 
                 await decryptionStream.CopyToAsync(targetFileStream, innerCancellationToken);
                 await targetFileStream.FlushAsync(innerCancellationToken); // Explicitly flush

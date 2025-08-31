@@ -119,7 +119,7 @@ public class BinaryFile : FileEntry
         }
     }
 
-    public Stream OpenWrite()
+    public Stream OpenWrite(long expectedLength)
     {
         // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
         if (FileSystem is MemoryFileSystem)
@@ -128,7 +128,7 @@ public class BinaryFile : FileEntry
         }
         else
         {
-            var options = Length switch
+            var options = expectedLength switch
             {
                 < 4 * 1024         => WriteOptions.BufferSize4KB,
                 < 64 * 1024        => WriteOptions.BufferSize8KB,
