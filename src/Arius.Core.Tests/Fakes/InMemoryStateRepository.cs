@@ -1,8 +1,8 @@
-using System.Collections.Concurrent;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using System.Collections.Concurrent;
 
-namespace Arius.Core.Tests.Builders;
+namespace Arius.Core.Tests.Fakes;
 
 internal class InMemoryStateRepository : IStateRepository
 {

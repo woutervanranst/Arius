@@ -1,10 +1,7 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
-using static Arius.Core.Repositories.StateRepositoryDbContext;
 
 namespace Arius.Core.Tests.Builders;
 
@@ -58,7 +55,7 @@ internal class StateRepositoryBuilder
         return this;
     }
 
-    public IStateRepository BuildInMemory()
+    public IStateRepository BuildFake()
     {
         var repository = new InMemoryStateRepository();
 
@@ -94,7 +91,7 @@ internal class StateRepositoryBuilder
         return repository;
     }
 
-    public IStateRepository BuildOnDisk(string path, string stateName)
+    public IStateRepository Build(string path, string stateName)
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
         var stateRepo = new StateRepository(stateFile, true, NullLogger<StateRepository>.Instance);
