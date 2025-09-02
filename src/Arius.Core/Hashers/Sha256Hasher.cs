@@ -4,7 +4,7 @@ using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Arius.Core.Storage;
+namespace Arius.Core.Hashers;
 
 public sealed class Sha256Hasher : IDisposable
 {
