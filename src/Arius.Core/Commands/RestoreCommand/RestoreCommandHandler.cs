@@ -1,6 +1,6 @@
 using Arius.Core.Extensions;
 using Arius.Core.Models;
-using Arius.Core.StateRepository;
+using Arius.Core.StateRepositories;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

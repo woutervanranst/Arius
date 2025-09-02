@@ -1,5 +1,5 @@
 using Arius.Core.Hashers;
-using Arius.Core.StateRepository;
+using Arius.Core.StateRepositories;
 using Arius.Core.Storage;
 using Zio;
 

@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Extensions;
-using Arius.Core.StateRepository;
+using Arius.Core.StateRepositories;
 using System.Text.Json;
 using Zio;
 using Zio.FileSystems;

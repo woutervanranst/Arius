@@ -1,5 +1,5 @@
 using Arius.Core.Hashers;
-using Arius.Core.StateRepository;
+using Arius.Core.StateRepositories;
 using Arius.Core.Storage;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
@@ -97,7 +97,7 @@ internal class HandlerContextBuilder
             }
 
             var factory = new StateRepositoryDbContextFactory(latestStateFile, false, NullLogger<StateRepositoryDbContextFactory>.Instance);
-            return new StateRepository.StateRepository(factory);
+            return new StateRepository(factory);
         }
 
         FilePairFileSystem GetFileSystem()

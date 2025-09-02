@@ -1,5 +1,5 @@
 using Arius.Core.Models;
-using Arius.Core.StateRepository;
+using Arius.Core.StateRepositories;
 using Arius.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -95,7 +95,7 @@ internal class StateRepositoryBuilder
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
         var factory = new StateRepositoryDbContextFactory(stateFile, true, NullLogger<StateRepositoryDbContextFactory>.Instance);
-        var stateRepo = new StateRepository.StateRepository(factory);
+        var stateRepo = new StateRepository(factory);
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties
