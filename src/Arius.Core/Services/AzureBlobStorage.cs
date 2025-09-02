@@ -56,6 +56,10 @@ internal class AzureBlobStorage : IStorage
     {
         var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
         return await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
+
+        // TODO Azure.RequestFailedException: 'Service request failed.
+        // Status: 404 (The specified blob does not exist.)
+        // ErrorCode: BlobNotFound
     }
 
     public async Task<Stream> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)

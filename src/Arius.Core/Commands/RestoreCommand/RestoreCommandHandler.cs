@@ -51,6 +51,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         catch (Exception)
         {
             // TODO
+            throw;
         }
 
         return Unit.Value;
@@ -96,6 +97,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (pfe, innerCancellationToken) =>
             {
+                if (pfe.BinaryProperties.ParentHash is not null)
+                    return;
+
                 // 1. Get the decrypted blob stream from storage
                 await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
 
@@ -108,6 +112,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 await ss.CopyToAsync(ts, innerCancellationToken);
                 await ts.FlushAsync(innerCancellationToken); // Explicitly flush
 
+                // todo should it overwrite the binary?
 
                 // todo hydrate
 

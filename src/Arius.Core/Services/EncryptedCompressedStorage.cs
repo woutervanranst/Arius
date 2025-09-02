@@ -71,11 +71,13 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
-        var             blobName        = $"{chunksFolderPrefix}{h}";
-        await using var blobStream      = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
-        await using var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        // NOTE: do not use `await using` here, as we need to return the stream to the caller; the DisposableStreamWrapper takes care of proper disposal
+        var blobName        = $"{chunksFolderPrefix}{h}";
+        var blobStream      = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+        var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        var gzipStream      = new GZipStream(decryptedStream, CompressionMode.Decompress, leaveOpen: true);
 
-        return new GZipStream(decryptedStream, CompressionMode.Decompress);
+        return new DisposableStreamWrapper(gzipStream, decryptedStream, blobStream);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
