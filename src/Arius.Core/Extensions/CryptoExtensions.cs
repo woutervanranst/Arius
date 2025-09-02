@@ -26,7 +26,7 @@ internal static class CryptoExtensions
         var decryptor    = aes.CreateDecryptor();
         var cryptoStream = new CryptoStream(baseStream, decryptor, CryptoStreamMode.Read, leaveOpen: true);
 
-        return new DisposableStreamWrapper(cryptoStream, aes);
+        return new StreamWrapper(innerStream: cryptoStream, disposables: aes);
     }
 
     public static async Task<Stream> GetCryptoStreamAsync(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
@@ -44,7 +44,7 @@ internal static class CryptoExtensions
         var cryptoStream = new CryptoStream(baseStream, encryptor, CryptoStreamMode.Write, leaveOpen: true);
 
         // Return a stream wrapper that disposes both the crypto stream and AES instance
-        return new DisposableStreamWrapper(cryptoStream, aes);
+        return new StreamWrapper(innerStream: cryptoStream, disposables: aes);
     }
 
     

@@ -75,9 +75,9 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var blobName        = $"{chunksFolderPrefix}{h}";
         var blobStream      = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
         var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
-        var gzipStream      = new GZipStream(decryptedStream, CompressionMode.Decompress, leaveOpen: true);
+        var gzipStream      = new GZipStream(decryptedStream, CompressionMode.Decompress);
 
-        return new DisposableStreamWrapper(gzipStream, decryptedStream, blobStream);
+        return new StreamWrapper(gzipStream, decryptedStream, blobStream);
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
@@ -91,12 +91,12 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
         if (compressionLevel == CompressionLevel.NoCompression)
         {
-            return new PositionTrackingStream(cryptoStream, blobStream);
+            return new StreamWrapper(innerStream: cryptoStream, positionStream: blobStream, disposables: [cryptoStream, blobStream]);
         }
         else
         {
             var gzipStream = new GZipStream(cryptoStream, compressionLevel);
-            return new PositionTrackingStream(gzipStream, blobStream);
+            return new StreamWrapper(innerStream: gzipStream, positionStream: blobStream, disposables: [gzipStream, cryptoStream, blobStream]);
         }
 
         static void ValidateCompressionSettings(CompressionLevel compressionLevel, string contentType)
@@ -135,58 +135,4 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         }
     }
 
-    /// <summary>
-    /// A stream wrapper that delegates write operations to one stream while reading position from another.
-    /// This allows us to write through GZip/Crypto streams while tracking the actual bytes written to blob storage.
-    /// </summary>
-    private sealed class PositionTrackingStream : Stream
-    {
-        private readonly Stream writeStream;
-        private readonly Stream positionStream;
-
-        public PositionTrackingStream(Stream writeStream, Stream positionStream)
-        {
-            this.writeStream    = writeStream;
-            this.positionStream = positionStream;
-        }
-
-        public override bool CanRead  => false;
-        public override bool CanSeek  => false;
-        public override bool CanWrite => writeStream.CanWrite;
-
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => positionStream.Position;
-            set => throw new NotSupportedException();
-        }
-
-        public override       void      Write(byte[] buffer, int offset, int count)                                            => writeStream.Write(buffer, offset, count);
-        public override async Task      WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)  => await writeStream.WriteAsync(buffer, offset, count, cancellationToken);
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => await writeStream.WriteAsync(buffer, cancellationToken);
-
-        public override       void Flush()                                         => writeStream.Flush();
-        public override async Task FlushAsync(CancellationToken cancellationToken) => await writeStream.FlushAsync(cancellationToken);
-
-        public override int  Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-        public override long Seek(long offset, SeekOrigin origin)       => throw new NotSupportedException();
-        public override void SetLength(long value)                      => throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                writeStream?.Dispose();
-                // positionStream is disposed through the writeStream chain (GZip→Crypto→Blob or Crypto→Blob)
-            }
-        }
-
-        public override async ValueTask DisposeAsync()
-        {
-            if (writeStream != null)
-                await writeStream.DisposeAsync();
-            // positionStream is disposed through the writeStream chain (GZip→Crypto→Blob or Crypto→Blob)
-        }
-    }
 }
