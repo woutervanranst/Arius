@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Arius.Core.Services;
+namespace Arius.Core.Storage;
 
 [DebuggerDisplay("CacheDirectory = {cacheDirectory.FullName}")]
 public class StateCache

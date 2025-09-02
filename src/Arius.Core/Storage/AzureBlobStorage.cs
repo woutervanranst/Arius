@@ -1,10 +1,10 @@
+using System.Net;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
-using System.Net;
 
-namespace Arius.Core.Services;
+namespace Arius.Core.Storage;
 
 /// <summary>
 /// Azure Blob Storage implementation of the IStorage interface, providing blob storage operations

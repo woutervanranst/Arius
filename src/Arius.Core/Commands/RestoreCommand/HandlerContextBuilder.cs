@@ -1,5 +1,5 @@
 using Arius.Core.Repositories;
-using Arius.Core.Services;
+using Arius.Core.Storage;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

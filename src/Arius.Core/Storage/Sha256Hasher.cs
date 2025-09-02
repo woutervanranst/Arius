@@ -1,10 +1,10 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
 
-namespace Arius.Core.Services;
+namespace Arius.Core.Storage;
 
 public sealed class Sha256Hasher : IDisposable
 {
