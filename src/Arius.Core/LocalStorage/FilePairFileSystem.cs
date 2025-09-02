@@ -2,7 +2,7 @@
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Storage;
+namespace Arius.Core.LocalStorage;
 
 public class FilePairFileSystem : ComposeFileSystem
 {

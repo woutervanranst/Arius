@@ -1,7 +1,7 @@
 using Arius.Core.Hashers;
 using System.IO.Compression;
 
-namespace Arius.Core.Storage;
+namespace Arius.Core.ArchiveStorage;
 
 /// <summary>
 /// Provides archive-specific storage operations for managing chunks and application state.

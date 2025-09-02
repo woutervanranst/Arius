@@ -1,5 +1,5 @@
-﻿using Arius.Core.Hashers;
-using Arius.Core.Storage;
+﻿using Arius.Core.ArchiveStorage;
+using Arius.Core.Hashers;
 
 namespace Arius.Core.StateRepositories;
 

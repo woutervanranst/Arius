@@ -1,4 +1,4 @@
-using Arius.Core.Models;
+using Arius.Core.LocalStorage;
 using Shouldly;
 using Zio;
 

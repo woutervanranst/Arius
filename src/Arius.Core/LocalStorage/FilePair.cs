@@ -5,7 +5,7 @@ using System.Text.Json;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Models;
+namespace Arius.Core.LocalStorage;
 
 public enum FilePairType
 {

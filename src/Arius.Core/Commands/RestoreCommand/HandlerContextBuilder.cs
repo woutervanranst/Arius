@@ -1,6 +1,7 @@
+using Arius.Core.ArchiveStorage;
 using Arius.Core.Hashers;
+using Arius.Core.LocalStorage;
 using Arius.Core.StateRepositories;
-using Arius.Core.Storage;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

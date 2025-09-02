@@ -1,6 +1,6 @@
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.Storage;
+namespace Arius.Core.ArchiveStorage;
 
 /// <summary>
 /// Provides low-level blob storage operations for managing containers and binary data streams.

@@ -1,5 +1,5 @@
 using Arius.Core.Extensions;
-using Arius.Core.Models;
+using Arius.Core.LocalStorage;
 using Arius.Core.StateRepositories;
 using Mediator;
 using Microsoft.Extensions.Logging;

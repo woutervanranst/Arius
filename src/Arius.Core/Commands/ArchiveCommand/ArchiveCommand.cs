@@ -1,4 +1,4 @@
-﻿using Arius.Core.Storage;
+﻿using Arius.Core.ArchiveStorage;
 
 namespace Arius.Core.Commands.ArchiveCommand;
 

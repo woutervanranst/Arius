@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
+using Arius.Core.LocalStorage;
 using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;

@@ -2,7 +2,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Hashers;
 using System.IO.Compression;
 
-namespace Arius.Core.Storage;
+namespace Arius.Core.ArchiveStorage;
 
 /// <summary>
 /// Implementation of IArchiveStorage that provides client-side AES256 encryption and compression

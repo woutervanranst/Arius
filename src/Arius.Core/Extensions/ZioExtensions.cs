@@ -1,4 +1,4 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.LocalStorage;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 
