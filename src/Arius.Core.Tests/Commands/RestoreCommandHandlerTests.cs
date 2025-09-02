@@ -1,5 +1,5 @@
 using Arius.Core.Commands.RestoreCommand;
-using Arius.Core.Models;
+using Arius.Core.Hashers;
 using Arius.Core.Storage;
 using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;

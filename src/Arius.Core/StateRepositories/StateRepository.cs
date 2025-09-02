@@ -1,4 +1,4 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Hashers;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using WouterVanRanst.Utils.Extensions;

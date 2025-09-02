@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Hashers;
 using Arius.Core.StateRepositories;
 using System.Text.Json;
 using Zio;

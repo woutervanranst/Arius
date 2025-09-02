@@ -1,4 +1,4 @@
-using Arius.Core.Models;
+using Arius.Core.Hashers;
 using System.IO.Compression;
 
 namespace Arius.Core.Storage;

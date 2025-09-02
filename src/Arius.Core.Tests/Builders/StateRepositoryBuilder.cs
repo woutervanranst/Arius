@@ -1,4 +1,4 @@
-using Arius.Core.Models;
+using Arius.Core.Hashers;
 using Arius.Core.StateRepositories;
 using Arius.Core.Storage;
 using Arius.Core.Tests.Fakes;

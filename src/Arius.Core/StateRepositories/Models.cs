@@ -1,4 +1,4 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Hashers;
 using Arius.Core.Storage;
 
 namespace Arius.Core.StateRepositories;

@@ -1,4 +1,4 @@
-using Arius.Core.Models;
+using Arius.Core.Hashers;
 using Shouldly;
 
 namespace Arius.Core.Tests.Models;

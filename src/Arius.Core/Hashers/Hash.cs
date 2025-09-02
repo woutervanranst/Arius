@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
 
-namespace Arius.Core.Models;
+namespace Arius.Core.Hashers;
 
 [DebuggerDisplay("Hash {ToString()}")]
 public record Hash
