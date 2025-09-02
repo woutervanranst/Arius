@@ -1,4 +1,4 @@
-using Arius.Core.Commands.RestoreCommand;
+using Arius.Core.Features.Restore;
 
 namespace Arius.Core.Tests.Builders;
 

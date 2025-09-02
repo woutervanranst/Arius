@@ -1,6 +1,6 @@
-using Arius.Core.ArchiveStorage;
-using Arius.Core.Commands.RestoreCommand;
-using Arius.Core.Hashers;
+using Arius.Core.Features.Restore;
+using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;

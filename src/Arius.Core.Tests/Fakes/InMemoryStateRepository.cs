@@ -1,5 +1,5 @@
-using Arius.Core.Hashers;
-using Arius.Core.StateRepositories;
+using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.StateRepositories;
 using System.Collections.Concurrent;
 
 namespace Arius.Core.Tests.Fakes;

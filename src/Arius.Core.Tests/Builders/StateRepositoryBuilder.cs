@@ -1,6 +1,6 @@
-using Arius.Core.ArchiveStorage;
-using Arius.Core.Hashers;
-using Arius.Core.StateRepositories;
+using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 

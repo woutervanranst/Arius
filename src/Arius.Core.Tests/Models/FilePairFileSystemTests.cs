@@ -1,4 +1,4 @@
-using Arius.Core.LocalStorage;
+using Arius.Core.Shared.FileSystem;
 using Shouldly;
 using Zio;
 

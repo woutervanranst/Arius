@@ -1,4 +1,4 @@
-using Arius.Core.Commands.ArchiveCommand;
+using Arius.Core.Features.Archive;
 using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;

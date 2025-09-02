@@ -1,6 +1,6 @@
-using Arius.Core.Extensions;
-using Arius.Core.Hashers;
-using Arius.Core.LocalStorage;
+using Arius.Core.Shared.Extensions;
+using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text;

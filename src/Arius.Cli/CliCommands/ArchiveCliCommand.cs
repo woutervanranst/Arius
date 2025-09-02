@@ -1,5 +1,5 @@
-﻿using Arius.Core.ArchiveStorage;
-using Arius.Core.Commands.ArchiveCommand;
+﻿using Arius.Core.Features.Archive;
+using Arius.Core.Shared.Storage;
 using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;

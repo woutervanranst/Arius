@@ -1,5 +1,5 @@
-using Arius.Core.Hashers;
-using Arius.Core.LocalStorage;
+using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
 using Shouldly;
 using Zio;
 using Zio.FileSystems;
@@ -41,3 +41,5 @@ public class Sha256HasherTest
         hash1.ShouldBe(arius3HasherHash);
     }
 }
+
+
