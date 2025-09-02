@@ -66,7 +66,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 {
                     var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
                     var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
-                    var pfes           = handlerContext.StateRepo.GetPointerFileEntries(fp.FullName, true);
+                    var pfes           = handlerContext.StateRepository.GetPointerFileEntries(fp.FullName, true);
 
                     foreach (var pfe in pfes)
                     {
