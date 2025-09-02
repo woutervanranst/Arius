@@ -15,7 +15,8 @@
       "mcp__serena__insert_after_symbol",
       "mcp__serena__find_referencing_symbols",
       "mcp__serena__activate_project",
-      "mcp__serena__insert_before_symbol"
+      "mcp__serena__insert_before_symbol",
+      "Read(/mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius5/docs/**)"
     ],
     "deny": [],
     "ask": []
