@@ -22,20 +22,20 @@ internal class StateRepository : IStateRepository
 
     // --- BINARYPROPERTIES
 
-    private static readonly Func<StateRepositoryDbContext, Hash, BinaryPropertiesDto?> findBinaryProperty = 
+    private static readonly Func<StateRepositoryDbContext, Hash, BinaryProperties?> findBinaryProperty = 
         EF.CompileQuery((StateRepositoryDbContext db, Hash h) =>
-            db.Set<BinaryPropertiesDto>()
+            db.Set<BinaryProperties>()
                 .AsNoTracking()
                 .SingleOrDefault(x => x.Hash == h));
 
-    public BinaryPropertiesDto? GetBinaryProperty(Hash h)
+    public BinaryProperties? GetBinaryProperty(Hash h)
     {
         using var context = factory.CreateContext();
 
         return findBinaryProperty(context, h);
     }
 
-    public void AddBinaryProperties(params BinaryPropertiesDto[] bps)
+    public void AddBinaryProperties(params BinaryProperties[] bps)
     {
         using var context = factory.CreateContext();
 
@@ -45,7 +45,7 @@ internal class StateRepository : IStateRepository
 
     // --- POINTERFILEENTRIES
 
-    public void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
+    public void UpsertPointerFileEntries(params PointerFileEntry[] pfes)
     {
         using var context = factory.CreateContext();
 
@@ -72,20 +72,20 @@ internal class StateRepository : IStateRepository
         //context.SaveChanges();
     }
 
-    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntries = 
+    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntry>> findPointerFileEntries = 
         EF.CompileQuery((StateRepositoryDbContext db, string relativeNamePrefix) =>
             db.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix)));
 
-    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntryDto>> findPointerFileEntriesWithBinaryProperties = 
+    private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntry>> findPointerFileEntriesWithBinaryProperties = 
         EF.CompileQuery((StateRepositoryDbContext db, string relativeNamePrefix) =>
             db.PointerFileEntries
                 .AsNoTracking()
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
                 .Include(x => x.BinaryProperties));
 
-    public IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
         using var context = factory.CreateContext();
 
@@ -109,7 +109,7 @@ internal class StateRepository : IStateRepository
     //        yield return pfe;
     //}
 
-    public void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
+    public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
         using var context = factory.CreateContext();
 

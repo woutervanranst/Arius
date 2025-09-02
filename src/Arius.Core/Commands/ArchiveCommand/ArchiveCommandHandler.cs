@@ -287,7 +287,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, targetStream.Position, handlerContext.Request.Tier);
 
             // Add to db
-            handlerContext.StateRepository.AddBinaryProperties(new BinaryPropertiesDto
+            handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
             {
                 Hash         = hash,
                 OriginalSize = sourceStream.Position,
@@ -307,7 +307,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         var pf = filePair.GetOrCreatePointerFile(hash);
 
         // 5. Write the PointerFileEntry
-        handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntryDto
+        handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
         {
             Hash             = hash,
             RelativeName     = pf.Path.FullName,
@@ -439,7 +439,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
-        var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
+        var bps = tarredFilePairs.Select(x => new BinaryProperties
         {
             Hash         = x.Hash,
             ParentHash   = tarHash,
@@ -449,7 +449,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }).ToArray();
         handlerContext.StateRepository.AddBinaryProperties(bps);
 
-        handlerContext.StateRepository.AddBinaryProperties(new BinaryPropertiesDto
+        handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
         {
             Hash         = tarHash,
             OriginalSize = originalSize,
@@ -462,11 +462,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             MarkAsUploaded(binaryHash2);
 
         // 4.Write the Pointers
-        var pfes = new List<PointerFileEntryDto>();
+        var pfes = new List<PointerFileEntry>();
         foreach (var (filePair22, binaryHash22, _) in tarredFilePairs)
         {
             var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
-            pfes.Add(new PointerFileEntryDto
+            pfes.Add(new PointerFileEntry
             {
                 Hash             = binaryHash22,
                 RelativeName     = pf.Path.FullName,

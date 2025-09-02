@@ -15,8 +15,8 @@ internal class StateRepositoryDbContext : DbContext
         this.onChanges = onChanges;
     }
 
-    public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
-    public virtual DbSet<BinaryPropertiesDto> BinaryProperties { get; set; }
+    public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
+    public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -32,7 +32,7 @@ internal class StateRepositoryDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        var bpb = modelBuilder.Entity<BinaryPropertiesDto>();
+        var bpb = modelBuilder.Entity<BinaryProperties>();
         bpb.ToTable("BinaryProperties");
         bpb.HasKey(bp => bp.Hash);
         bpb.HasIndex(bp => bp.Hash).IsUnique();
@@ -45,7 +45,7 @@ internal class StateRepositoryDbContext : DbContext
         //    .HasConversion(new StorageTierConverter());
 
 
-        var pfeb = modelBuilder.Entity<PointerFileEntryDto>();
+        var pfeb = modelBuilder.Entity<PointerFileEntry>();
         pfeb.ToTable("PointerFileEntries");
         pfeb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
 
@@ -133,23 +133,4 @@ internal class StateRepositoryDbContext : DbContext
             };
         }
     }
-}
-
-internal record PointerFileEntryDto
-{
-    public         Hash                Hash             { get; init; }
-    public         string              RelativeName     { get; init; }
-    public         DateTime?           CreationTimeUtc  { get; set; }
-    public         DateTime?           LastWriteTimeUtc { get; set; }
-    public virtual BinaryPropertiesDto BinaryProperties { get; init; }
-}
-
-internal record BinaryPropertiesDto
-{
-    public         Hash                             Hash               { get; init; }
-    public         Hash?                            ParentHash         { get; init; }
-    public         long                             OriginalSize       { get; init; }
-    public         long?                            ArchivedSize       { get; init; } // null in case of tarred archives
-    public         StorageTier?                     StorageTier        { get; set; } // settable in case of tarred archives
-    public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }

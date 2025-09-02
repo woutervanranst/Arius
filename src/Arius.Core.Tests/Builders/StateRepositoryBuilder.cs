@@ -7,12 +7,12 @@ namespace Arius.Core.Tests.Builders;
 
 internal class StateRepositoryBuilder
 {
-    private readonly List<BinaryPropertiesDto> binaryProperties = [];
-    private          BinaryPropertiesDto?      currentBinaryProperty;
+    private readonly List<BinaryProperties> binaryProperties = [];
+    private          BinaryProperties?      currentBinaryProperty;
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
-        currentBinaryProperty = new BinaryPropertiesDto
+        currentBinaryProperty = new BinaryProperties
         {
             Hash               = hash,
             ParentHash         = null,
@@ -27,7 +27,7 @@ internal class StateRepositoryBuilder
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
     {
-        currentBinaryProperty = new BinaryPropertiesDto
+        currentBinaryProperty = new BinaryProperties
         {
             Hash               = hash,
             ParentHash         = parentHash,
@@ -45,7 +45,7 @@ internal class StateRepositoryBuilder
         if (currentBinaryProperty == null)
             throw new InvalidOperationException("Must add a binary property before adding pointer file entries");
 
-        currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntryDto
+        currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntry
         {
             RelativeName     = relativeName,
             CreationTimeUtc  = creationTime,
@@ -61,7 +61,7 @@ internal class StateRepositoryBuilder
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties
-            .Select(bp => new BinaryPropertiesDto
+            .Select(bp => new BinaryProperties
             {
                 Hash               = bp.Hash,
                 ParentHash         = bp.ParentHash,
@@ -76,7 +76,7 @@ internal class StateRepositoryBuilder
 
         // Add all pointer file entries
         var pointerFileEntryDtos = binaryProperties
-            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntryDto
+            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntry
             {
                 Hash             = bp.Hash,
                 RelativeName     = pfe.RelativeName,
@@ -99,7 +99,7 @@ internal class StateRepositoryBuilder
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties
-            .Select(bp => new BinaryPropertiesDto
+            .Select(bp => new BinaryProperties
             {
                 Hash               = bp.Hash,
                 ParentHash         = bp.ParentHash,
@@ -114,7 +114,7 @@ internal class StateRepositoryBuilder
 
         // Add all pointer file entries
         var pointerFileEntryDtos = binaryProperties
-            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntryDto
+            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntry
             {
                 Hash             = bp.Hash,
                 RelativeName     = pfe.RelativeName,

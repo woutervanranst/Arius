@@ -26,7 +26,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         this.config        = config;
     }
 
-    private readonly Channel<PointerFileEntryDto> pointerFileEntriesToRestoreChannel = ChannelExtensions.CreateBounded<PointerFileEntryDto>(capacity: 25, singleWriter: true, singleReader: false);
+    private readonly Channel<PointerFileEntry> pointerFileEntriesToRestoreChannel = ChannelExtensions.CreateBounded<PointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
     public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {

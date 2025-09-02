@@ -19,7 +19,7 @@ public class FilePair : FileEntry
     public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
     public static FilePair FromBinaryFilePath(IFileSystem fileSystem, UPath binaryFilePath) => new(fileSystem, binaryFilePath);
 
-    internal static FilePair FromPointerFileEntry(IFileSystem fileSystem, PointerFileEntryDto pfe)
+    internal static FilePair FromPointerFileEntry(IFileSystem fileSystem, PointerFileEntry pfe)
     {
         var pointerFilePath = (UPath)pfe.RelativeName;
         var binaryFilePath = pointerFilePath.GetBinaryFilePath();

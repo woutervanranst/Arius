@@ -6,8 +6,8 @@ namespace Arius.Core.Tests.Fakes;
 
 internal class InMemoryStateRepository : IStateRepository
 {
-    private readonly ConcurrentDictionary<Hash, BinaryPropertiesDto> binaryProperties = new();
-    private readonly ConcurrentDictionary<(Hash Hash, string RelativeName), PointerFileEntryDto> pointerFileEntries = new();
+    private readonly ConcurrentDictionary<Hash, BinaryProperties> binaryProperties = new();
+    private readonly ConcurrentDictionary<(Hash Hash, string RelativeName), PointerFileEntry> pointerFileEntries = new();
     private int hasChangesFlag;
 
     public FileInfo StateDatabaseFile => throw new NotImplementedException("InMemoryStateRepository does not use a file");
@@ -26,13 +26,13 @@ internal class InMemoryStateRepository : IStateRepository
         SetHasChanges();
     }
 
-    public BinaryPropertiesDto? GetBinaryProperty(Hash h)
+    public BinaryProperties? GetBinaryProperty(Hash h)
     {
         binaryProperties.TryGetValue(h, out var result);
         return result;
     }
 
-    public void AddBinaryProperties(params BinaryPropertiesDto[] bps)
+    public void AddBinaryProperties(params BinaryProperties[] bps)
     {
         foreach (var bp in bps)
         {
@@ -41,7 +41,7 @@ internal class InMemoryStateRepository : IStateRepository
         SetHasChanges();
     }
 
-    public void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
+    public void UpsertPointerFileEntries(params PointerFileEntry[] pfes)
     {
         foreach (var pfe in pfes)
         {
@@ -55,7 +55,7 @@ internal class InMemoryStateRepository : IStateRepository
         SetHasChanges();
     }
 
-    public IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
         //var dbRelativeNamePrefix = relativeNamePrefix.TrimStart('/');
         
@@ -76,7 +76,7 @@ internal class InMemoryStateRepository : IStateRepository
         }
     }
 
-    public void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
+    public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
         var keysToRemove = new List<(Hash Hash, string RelativeName)>();
         
