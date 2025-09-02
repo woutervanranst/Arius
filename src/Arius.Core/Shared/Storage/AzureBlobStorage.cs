@@ -1,4 +1,5 @@
 using Azure;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -16,8 +17,19 @@ internal class AzureBlobStorage : IStorage
 
     public AzureBlobStorage(string accountName, string accountKey, string containerName)
     {
-        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-        var blobServiceClient = new BlobServiceClient(connectionString);
+        var blobServiceClient = new BlobServiceClient(
+            new Uri($"https://{accountName}.blob.core.windows.net"),
+            new StorageSharedKeyCredential(accountName, accountKey),
+            new BlobClientOptions
+            {
+                Retry =
+                {
+                    Mode       = Azure.Core.RetryMode.Exponential,
+                    Delay      = TimeSpan.FromSeconds(2),
+                    MaxDelay   = TimeSpan.FromSeconds(16),
+                    MaxRetries = 5
+                }
+            });
         blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
     }
 
