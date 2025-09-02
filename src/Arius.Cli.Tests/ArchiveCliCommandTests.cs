@@ -1,5 +1,5 @@
 using Arius.Core.Commands.ArchiveCommand;
-using Arius.Core.Models;
+using Arius.Core.Storage;
 using Mediator;
 using NSubstitute;
 using Shouldly;

@@ -1,5 +1,6 @@
 using Arius.Core.Models;
 using Arius.Core.StateRepositories;
+using Arius.Core.Storage;
 using Arius.Core.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 

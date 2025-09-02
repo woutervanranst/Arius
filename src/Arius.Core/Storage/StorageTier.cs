@@ -1,6 +1,6 @@
 ﻿using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.Models;
+namespace Arius.Core.Storage;
 
 public enum StorageTier
 {

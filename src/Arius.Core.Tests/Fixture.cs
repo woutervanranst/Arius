@@ -4,6 +4,7 @@ using Arius.Core.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text;
+using Arius.Core.Hashers;
 using Zio;
 using Zio.FileSystems;
 
