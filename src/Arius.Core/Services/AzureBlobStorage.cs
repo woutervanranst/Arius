@@ -6,7 +6,7 @@ using System.Net;
 
 namespace Arius.Core.Services;
 
-internal class AzureBlobStorage : IBlobStorage
+internal class AzureBlobStorage : IStorage
 {
     private readonly BlobContainerClient blobContainerClient;
 
@@ -42,7 +42,7 @@ internal class AzureBlobStorage : IBlobStorage
         }
     }
 
-    public IAsyncEnumerable<string> GetBlobsAsync(string prefix, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<string> GetNamesAsync(string prefix, CancellationToken cancellationToken = default)
     {
         return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
             .Select(blob => blob.Name);

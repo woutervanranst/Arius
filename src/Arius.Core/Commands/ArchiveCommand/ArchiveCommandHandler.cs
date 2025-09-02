@@ -271,7 +271,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             // Upload
             await using var targetStream = await handlerContext.ChunkStorage.OpenWriteChunkAsync(
                 h: hash,
-                passphrase: handlerContext.Request.Passphrase,
                 compressionLevel: CompressionLevel.SmallestSize,
                 contentType: ChunkContentType,
                 metadata: null,
@@ -426,7 +425,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
         await using var encryptedStream = await handlerContext.ChunkStorage.OpenWriteChunkAsync(
             h: tarHash,
-            passphrase: handlerContext.Request.Passphrase,
             compressionLevel: CompressionLevel.NoCompression, // The TAR file is already GZipped
             contentType: TarChunkContentType,
             metadata: null,
@@ -537,7 +535,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         {
             // Use default implementation with dependency injection
             var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-            var blobStorage = new ChunkStorage(remoteStorage, request.Passphrase);
+            var blobStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
             var stateCacheRoot = new DirectoryInfo("statecache");
             
             return await CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);

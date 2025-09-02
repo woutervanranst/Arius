@@ -49,7 +49,7 @@ internal class HandlerContextBuilder
         if (chunkStorage == null)
         {
             var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-            chunkStorage = new ChunkStorage(remoteStorage, request.Passphrase);
+            chunkStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
         }
 
         var exists = await chunkStorage.ContainerExistsAsync();
