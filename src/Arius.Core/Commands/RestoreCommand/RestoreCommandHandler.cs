@@ -97,7 +97,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             async (pfe, innerCancellationToken) =>
             {
                 // 1. Get the decrypted blob stream from storage
-                await using var ss = await handlerContext.ChunkStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, handlerContext.Request.Passphrase, cancellationToken);
+                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
 
                 // 2. Write to the target file
                 var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);

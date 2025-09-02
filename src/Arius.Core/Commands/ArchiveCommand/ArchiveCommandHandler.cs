@@ -76,7 +76,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 0));
                 handlerContext.StateRepository.Vacuum();
                 var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepository.StateDatabaseFile.Name);
-                await handlerContext.ChunkStorage.UploadStateAsync(stateFileName, handlerContext.StateRepository.StateDatabaseFile, cancellationToken);
+                await handlerContext.ArchiveStorage.UploadStateAsync(stateFileName, handlerContext.StateRepository.StateDatabaseFile, cancellationToken);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading new state...", 100));
             }
             else
@@ -269,7 +269,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             // Upload
-            await using var targetStream = await handlerContext.ChunkStorage.OpenWriteChunkAsync(
+            await using var targetStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
                 h: hash,
                 compressionLevel: CompressionLevel.SmallestSize,
                 contentType: ChunkContentType,
@@ -284,7 +284,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             await targetStream.FlushAsync(cancellationToken);
 
             // Update tier
-            var actualTier = await handlerContext.ChunkStorage.SetChunkStorageTierPerPolicy(hash, targetStream.Position, handlerContext.Request.Tier);
+            var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, targetStream.Position, handlerContext.Request.Tier);
 
             // Add to db
             handlerContext.StateRepository.AddBinaryProperties(new BinaryPropertiesDto
@@ -423,7 +423,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         foreach (var (tarredFilePair, _, _) in tarredFilePairs)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
 
-        await using var encryptedStream = await handlerContext.ChunkStorage.OpenWriteChunkAsync(
+        await using var encryptedStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
             h: tarHash,
             compressionLevel: CompressionLevel.NoCompression, // The TAR file is already GZipped
             contentType: TarChunkContentType,
@@ -436,7 +436,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         await encryptedStream.FlushAsync(cancellationToken);
 
         // Update tier
-        var actualTier = await handlerContext.ChunkStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
+        var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
         var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
@@ -534,14 +534,14 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
         {
             // Use default implementation with dependency injection
-            var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-            var blobStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
+            var blobStorage    = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var archiveStorage = new EncryptedCompressedStorage(blobStorage, request.Passphrase);
             var stateCacheRoot = new DirectoryInfo("statecache");
             
-            return await CreateAsync(request, loggerFactory, blobStorage, stateCacheRoot);
+            return await CreateAsync(request, loggerFactory, archiveStorage, stateCacheRoot);
         }
 
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IChunkStorage chunkStorage, DirectoryInfo stateCacheRoot)
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IArchiveStorage archiveStorage, DirectoryInfo stateCacheRoot)
         {
             await new ArchiveCommandValidator().ValidateAndThrowAsync(request);
 
@@ -549,7 +549,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
             // Create blob container if needed
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-            var created = await chunkStorage.CreateContainerIfNotExistsAsync();
+            var created = await archiveStorage.CreateContainerIfNotExistsAsync();
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 
             // Instantiate StateCache
@@ -560,7 +560,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Determining version name '{versionName}'...", 0));
 
             // Get the latest state from blob storage
-            var latestStateName = await chunkStorage.GetStates().LastOrDefaultAsync();
+            var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
             
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
             FileInfo stateFile;
@@ -570,7 +570,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 var latestStateFile = stateCache.GetStateFilePath(latestStateName);
                 if (!latestStateFile.Exists)
                 {
-                    await chunkStorage.DownloadStateAsync(latestStateName, latestStateFile);
+                    await archiveStorage.DownloadStateAsync(latestStateName, latestStateFile);
                 }
                 else
                 {
@@ -593,7 +593,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             return new HandlerContext
             {
                 Request         = request,
-                ChunkStorage    = chunkStorage,
+                ArchiveStorage    = archiveStorage,
                 StateRepository = stateRepo,
                 Hasher          = new Sha256Hasher(request.Passphrase),
                 FileSystem      = GetFileSystem()
@@ -609,7 +609,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }
 
         public required ArchiveCommand     Request         { get; init; }
-        public required IChunkStorage      ChunkStorage    { get; init; }
+        public required IArchiveStorage      ArchiveStorage    { get; init; }
         public required StateRepository    StateRepository { get; init; }
         public required Sha256Hasher       Hasher          { get; init; }
         public required FilePairFileSystem FileSystem      { get; init; }

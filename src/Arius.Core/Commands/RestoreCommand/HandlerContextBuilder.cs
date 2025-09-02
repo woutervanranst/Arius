@@ -13,7 +13,7 @@ internal class HandlerContextBuilder
     private readonly RestoreCommand                 request;
     private readonly ILogger<HandlerContextBuilder> logger;
 
-    private IChunkStorage?    chunkStorage;
+    private IArchiveStorage?  archiveStorage;
     private IStateRepository? stateRepository;
     private IFileSystem?      baseFileSystem;
 
@@ -23,9 +23,9 @@ internal class HandlerContextBuilder
         this.logger  = logger ?? NullLogger<HandlerContextBuilder>.Instance;
     }
 
-    public HandlerContextBuilder WithBlobStorage(IChunkStorage chunkStorage)
+    public HandlerContextBuilder WithBlobStorage(IArchiveStorage archiveStorage)
     {
-        this.chunkStorage = chunkStorage;
+        this.archiveStorage = archiveStorage;
         return this;
     }
 
@@ -46,13 +46,13 @@ internal class HandlerContextBuilder
         await new RestoreCommandValidator().ValidateAndThrowAsync(request);
 
         // Blob Storage
-        if (chunkStorage == null)
+        if (archiveStorage == null)
         {
             var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
-            chunkStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
+            archiveStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
         }
 
-        var exists = await chunkStorage.ContainerExistsAsync();
+        var exists = await archiveStorage.ContainerExistsAsync();
         if (!exists)
         {
             throw new InvalidOperationException($"The specified container '{request.ContainerName}' does not exist in the storage account.");
@@ -61,15 +61,15 @@ internal class HandlerContextBuilder
         return new HandlerContext
         {
             Request         = request,
-            ChunkStorage    = chunkStorage,
-            StateRepository = stateRepository ?? await BuildStateRepositoryAsync(chunkStorage),
+            ArchiveStorage  = archiveStorage,
+            StateRepository = stateRepository ?? await BuildStateRepositoryAsync(archiveStorage),
             Hasher          = new Sha256Hasher(request.Passphrase),
             Targets         = GetTargets(),
             FileSystem      = GetFileSystem()
         };
 
 
-        async Task<IStateRepository> BuildStateRepositoryAsync(IChunkStorage chunkStorage)
+        async Task<IStateRepository> BuildStateRepositoryAsync(IArchiveStorage archiveStorage)
         {
             var stateCacheRoot = new DirectoryInfo("statecache");
 
@@ -77,7 +77,7 @@ internal class HandlerContextBuilder
             var stateCache = new StateCache(stateCacheRoot);
 
             // Get the latest state from blob storage
-            var latestStateName = await chunkStorage.GetStates().LastOrDefaultAsync();
+            var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
 
             if (latestStateName == null)
             {
@@ -88,7 +88,7 @@ internal class HandlerContextBuilder
             if (!latestStateFile.Exists)
             {
                 logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");
-                await chunkStorage.DownloadStateAsync(latestStateName, latestStateFile);
+                await archiveStorage.DownloadStateAsync(latestStateName, latestStateFile);
             }
             else
             {

@@ -5,10 +5,10 @@ using System.IO.Compression;
 namespace Arius.Core.Services;
 
 /// <summary>
-/// Implementation of IChunkStorage that provides client-side AES256 encryption and compression
+/// Implementation of IArchiveStorage that provides client-side AES256 encryption and compression
 /// for chunk data before storing it in the underlying storage system.
 /// </summary>
-internal class EncryptedCompressedStorage : IChunkStorage
+internal class EncryptedCompressedStorage : IArchiveStorage
 {
     private readonly IStorage storage;
     private readonly string   passphrase;

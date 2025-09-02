@@ -63,7 +63,7 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
             .WithTargets("./file1.jpg", "./Sam/")
             .Build();
 
-        var bs = Substitute.For<IChunkStorage>();
+        var bs = Substitute.For<IArchiveStorage>();
         bs.ContainerExistsAsync().Returns(Task.FromResult(true));
 
         var sr = new StateRepositoryBuilder()
