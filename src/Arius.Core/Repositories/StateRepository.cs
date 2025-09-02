@@ -1,9 +1,6 @@
 ﻿using Arius.Core.Models;
 using EFCore.BulkExtensions;
-using Humanizer;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Repositories;
@@ -23,62 +20,18 @@ internal interface IStateRepository
 
 internal class StateRepository : IStateRepository
 {
-    private readonly ILogger<StateRepository>                     logger;
-    public           FileInfo                                     StateDatabaseFile { get; }
-    private readonly DbContextOptions<StateRepositoryDbContext> dbContextOptions;
+    private readonly StateRepositoryDbContextFactory factory;
 
-    public StateRepository(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepository> logger)
+    public StateRepository(StateRepositoryDbContextFactory factory)
     {
-        this.logger       = logger;
-        StateDatabaseFile = stateDatabaseFile;
-        var optionsBuilder = new DbContextOptionsBuilder<StateRepositoryDbContext>();
-        dbContextOptions = optionsBuilder
-            .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
-            .Options;
-
-        using var context = GetContext();
-        //context.Database.Migrate();
-        
-        if (ensureCreated)
-            context.Database.EnsureCreated();
+        this.factory = factory;
     }
 
-    private StateRepositoryDbContext GetContext() => new(dbContextOptions, OnChanges);
+    public FileInfo StateDatabaseFile => factory.StateDatabaseFile;
+    public bool HasChanges => factory.HasChanges;
 
-    private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
-    public  bool HasChanges             { get; private set; }
-
-    public void Vacuum()
-    {
-        // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
-        SqliteConnection.ClearAllPools();
-        var originalLength = StateDatabaseFile.Length;
-
-        using (var context = GetContext())
-        {
-            const string sql = "VACUUM;";
-            if (context.Database.ExecuteSqlRaw(sql) == 1)
-                throw new InvalidOperationException("Vacuum failed");
-
-            if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
-                throw new InvalidOperationException("Checkpoint failed due to active readers");
-        }
-
-        // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
-        SqliteConnection.ClearAllPools();
-        var vacuumedLength = StateDatabaseFile.Length;
-
-        if (originalLength != vacuumedLength)
-            logger.LogInformation("Vacuumed database from {originalLength} to {vacuumedLength}, saved {savedBytes}", originalLength.Bytes().Humanize(), vacuumedLength.Bytes().Humanize(), (originalLength - vacuumedLength).Bytes().Humanize());
-        else
-            logger.LogInformation("Vacuumed database but no change in size");
-    }
-
-    public void Delete()
-    {
-        SqliteConnection.ClearAllPools();
-        StateDatabaseFile.Delete();
-    }
+    public void Vacuum() => factory.Vacuum();
+    public void Delete() => factory.Delete();
 
     // --- BINARYPROPERTIES
 
@@ -90,14 +43,14 @@ internal class StateRepository : IStateRepository
 
     public BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
-        using var context = GetContext();
+        using var context = factory.CreateContext();
 
         return findBinaryProperty(context, h);
     }
 
     public void AddBinaryProperties(params BinaryPropertiesDto[] bps)
     {
-        using var context = GetContext();
+        using var context = factory.CreateContext();
 
         context.BinaryProperties.AddRange(bps);
         context.SaveChanges();
@@ -107,11 +60,12 @@ internal class StateRepository : IStateRepository
 
     public void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
     {
-        using var context = GetContext();
+        using var context = factory.CreateContext();
 
         context.BulkInsertOrUpdate(pfes);
 
-        HasChanges = true; // TODO : use the OnChanges callback of BulkInsertOrUpdate when available
+        factory.SetHasChanges(); // BulkInsertOrUpdate doesn't trigger SaveChanges callback
+        // TODO : use the OnChanges callback of BulkInsertOrUpdate when available
 
         //foreach (var pfe in pfes)
         //{
@@ -146,7 +100,7 @@ internal class StateRepository : IStateRepository
 
     public IEnumerable<PointerFileEntryDto> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
-        using var context = GetContext();
+        using var context = factory.CreateContext();
 
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
         var dbRelativeNamePrefix = relativeNamePrefix.RemovePrefix('/');
@@ -170,12 +124,12 @@ internal class StateRepository : IStateRepository
 
     public void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
     {
-        using var context = GetContext();
+        using var context = factory.CreateContext();
 
         var entriesToDelete = context.PointerFileEntries.Where(shouldBeDeleted).ToArray();
         context.BulkDelete(entriesToDelete);
 
         if (entriesToDelete.Any())
-            HasChanges = true;
+            factory.SetHasChanges();
     }
 }

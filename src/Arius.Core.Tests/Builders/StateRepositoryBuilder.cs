@@ -94,7 +94,8 @@ internal class StateRepositoryBuilder
     public IStateRepository Build(string path, string stateName)
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
-        var stateRepo = new StateRepository(stateFile, true, NullLogger<StateRepository>.Instance);
+        var factory = new StateRepositoryDbContextFactory(stateFile, true, NullLogger<StateRepositoryDbContextFactory>.Instance);
+        var stateRepo = new StateRepository(factory);
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties
