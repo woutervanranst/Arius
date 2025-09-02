@@ -1,5 +1,5 @@
 using Arius.Core.Models;
-using Arius.Core.Repositories;
+using Arius.Core.StateRepository;
 using System.Collections.Concurrent;
 
 namespace Arius.Core.Tests.Fakes;

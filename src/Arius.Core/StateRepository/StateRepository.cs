@@ -3,7 +3,7 @@ using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using WouterVanRanst.Utils.Extensions;
 
-namespace Arius.Core.Repositories;
+namespace Arius.Core.StateRepository;
 
 internal class StateRepository : IStateRepository
 {

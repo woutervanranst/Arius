@@ -1,6 +1,6 @@
 ﻿using Arius.Core.Models;
 
-namespace Arius.Core.Repositories;
+namespace Arius.Core.StateRepository;
 
 internal record BinaryProperties
 {

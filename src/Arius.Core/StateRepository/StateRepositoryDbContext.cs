@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WouterVanRanst.Utils.Extensions;
 
-namespace Arius.Core.Repositories;
+namespace Arius.Core.StateRepository;
 
 internal class StateRepositoryDbContext : DbContext
 {

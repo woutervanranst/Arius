@@ -3,7 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Repositories;
+namespace Arius.Core.StateRepository;
 
 internal class StateRepositoryDbContextFactory
 {

@@ -1,4 +1,4 @@
-using Arius.Core.Repositories;
+using Arius.Core.StateRepository;
 using Arius.Core.Storage;
 using Zio;
 

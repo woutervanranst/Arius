@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
-using Arius.Core.Repositories;
+using Arius.Core.StateRepository;
+using Arius.Core.Storage;
 using FluentValidation;
 using Humanizer;
 using Mediator;
@@ -9,7 +10,6 @@ using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
-using Arius.Core.Storage;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -589,7 +589,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             }
 
             var factory = new StateRepositoryDbContextFactory(stateFile, true, loggerFactory.CreateLogger<StateRepositoryDbContextFactory>());
-            var stateRepo = new StateRepository(factory);
+            var stateRepo = new StateRepository.StateRepository(factory);
 
             return new HandlerContext
             {
@@ -609,10 +609,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             }
         }
 
-        public required ArchiveCommand     Request         { get; init; }
-        public required IArchiveStorage      ArchiveStorage    { get; init; }
-        public required StateRepository    StateRepository { get; init; }
-        public required Sha256Hasher       Hasher          { get; init; }
-        public required FilePairFileSystem FileSystem      { get; init; }
+        public required ArchiveCommand                  Request         { get; init; }
+        public required IArchiveStorage                 ArchiveStorage  { get; init; }
+        public required StateRepository.StateRepository StateRepository { get; init; }
+        public required Sha256Hasher                    Hasher          { get; init; }
+        public required FilePairFileSystem              FileSystem      { get; init; }
     }
 }
