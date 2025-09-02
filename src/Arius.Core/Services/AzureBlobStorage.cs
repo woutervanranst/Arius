@@ -6,6 +6,10 @@ using System.Net;
 
 namespace Arius.Core.Services;
 
+/// <summary>
+/// Azure Blob Storage implementation of the IStorage interface, providing blob storage operations
+/// for managing containers and binary data in Microsoft Azure Storage accounts.
+/// </summary>
 internal class AzureBlobStorage : IStorage
 {
     private readonly BlobContainerClient blobContainerClient;
