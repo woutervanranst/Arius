@@ -1,5 +1,5 @@
 using Arius.Core.Shared.FileSystem;
-using Arius.Core.Tests.Helpers.Extensions;
+using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Shouldly;
 using Zio;

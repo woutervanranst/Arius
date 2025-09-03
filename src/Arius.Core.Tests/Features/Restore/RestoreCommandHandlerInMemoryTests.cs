@@ -4,7 +4,7 @@ using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers;
 using Arius.Core.Tests.Helpers.Builders;
-using Arius.Core.Tests.Helpers.Extensions;
+using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using NSubstitute;
 using Shouldly;
@@ -38,13 +38,28 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
     {
         // Arrange
         var NOTEXISTINGFILE_PATH = "/file1.jpg";
-        var NOTEXISTINGFILE_HASH = GenerateValidHash("file1-hash");
+        var (NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT) = FakeDataGenerator.GenerateRandomContent(10, 1);
+
 
         var DUPLICATEBINARY1_PATH = "/Sam/file2.jpg";
         var DUPLICATEBINARY2_PATH = "/Sam/file2-duplicate.jpg";
-        var DUPLICATEBINARY_HASH  = GenerateValidHash("file2-hash");
+        var (DUPLICATEBINARY_HASH, DUPLICATEBINARY_CONTENT) = FakeDataGenerator.GenerateRandomContent(10, 2);
+
+        var EXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 3);
+
+        var EXISTINGFILEWITHWRONGHASH = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file4.jpg", FilePairType.BinaryFileOnly, 1, 4);
         
-        var EXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
+
+        var fakeContent = new Dictionary<Hash, byte[]>
+        {
+            {NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT},
+            {DUPLICATEBINARY_HASH, DUPLICATEBINARY_CONTENT},
+            {EXISTINGFILE.Hash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes()},
+            {EXISTINGFILEWITHWRONGHASH.Hash, EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.ReadAllBytes()}
+        };
+
+
+        EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.WriteAllText("This file was overwritten");
 
 
         var command = new RestoreCommandBuilder(fixture)
@@ -56,29 +71,23 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         storageMock.ContainerExistsAsync()
             .Returns(Task.FromResult(true));
         storageMock.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => 
+            .Returns(callInfo =>
             {
-                var hash = callInfo.Arg<Hash>();
-                var content = $"This is test file content for the stream {hash}";
-                return Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+                var hash    = callInfo.Arg<Hash>();
+                return Task.FromResult<Stream>(new MemoryStream(fakeContent[hash]));
             });
 
-        
+
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes =>
-            {
-                pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH);
-            })
+            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes => { pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH); })
             .WithBinaryProperty(DUPLICATEBINARY_HASH, 1, pfes =>
             {
                 pfes.WithPointerFileEntry(DUPLICATEBINARY1_PATH)
                     .WithPointerFileEntry(DUPLICATEBINARY2_PATH);
             })
-            .WithBinaryProperty(EXISTINGFILE.Hash, EXISTINGFILE.FilePair.Length!.Value, pfes =>
-            {
-                pfes.WithPointerFileEntry(EXISTINGFILE.FilePair.FullName);
-            })
+            .WithBinaryProperty(EXISTINGFILE.Hash, EXISTINGFILE.FilePair.Length!.Value, pfes => { pfes.WithPointerFileEntry(EXISTINGFILE.FilePair.FullName); })
+            .WithBinaryProperty(EXISTINGFILEWITHWRONGHASH.Hash, EXISTINGFILEWITHWRONGHASH.FilePair.Length!.Value, pfes => { pfes.WithPointerFileEntry(EXISTINGFILEWITHWRONGHASH.FilePair.FullName); })
             .BuildFake();
 
 
@@ -95,18 +104,22 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
             // The NOTEXISTINGFILE should be downloaded from storage and created on disk
         await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE_HASH, Arg.Any<CancellationToken>());
-        fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldStartWith("This is test file content for the stream");
-        fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldContain(NOTEXISTINGFILE_HASH.ToString());
+        fixture.FileSystem.ReadAllBytes(NOTEXISTINGFILE_PATH).ShouldBe(NOTEXISTINGFILE_CONTENT);
+        (await hc.Hasher.GetHashAsync(FilePair.FromBinaryFilePath(hc.FileSystem, NOTEXISTINGFILE_PATH))).ShouldBe(NOTEXISTINGFILE_HASH);
 
             // The DUPLICATEBINARY is downloaded twice and created on disk
         await storageMock.Received(2).OpenReadChunkAsync(DUPLICATEBINARY_HASH, Arg.Any<CancellationToken>());
-        fixture.FileSystem.ReadAllText(DUPLICATEBINARY1_PATH).ShouldContain(DUPLICATEBINARY_HASH.ToString());
-        fixture.FileSystem.ReadAllText(DUPLICATEBINARY2_PATH).ShouldContain(DUPLICATEBINARY_HASH.ToString());
+        fixture.FileSystem.ReadAllBytes(DUPLICATEBINARY1_PATH).ShouldBe(DUPLICATEBINARY_CONTENT);
+        fixture.FileSystem.ReadAllBytes(DUPLICATEBINARY2_PATH).ShouldBe(DUPLICATEBINARY_CONTENT);
+        (await hc.Hasher.GetHashAsync(FilePair.FromBinaryFilePath(hc.FileSystem, DUPLICATEBINARY2_PATH))).ShouldBe(DUPLICATEBINARY_HASH);
 
-            // The EXISTINGFILE is not downloaded
+        // The EXISTINGFILE is not downloaded
         await storageMock.DidNotReceive().OpenReadChunkAsync(EXISTINGFILE.Hash, Arg.Any<CancellationToken>());
 
+            // The EXISTINGFILEWITHWRONGHASH is downloaded again because the hash does not match
+        await storageMock.Received(1).OpenReadChunkAsync(EXISTINGFILEWITHWRONGHASH.Hash, Arg.Any<CancellationToken>());
+
             // Verify no other calls were made to storageMock
-        storageMock.ReceivedCalls().Count().ShouldBe(4);
+        storageMock.ReceivedCalls().Count().ShouldBe(5);
     }
 }

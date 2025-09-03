@@ -5,11 +5,11 @@ using Arius.Core.Tests.Helpers.Fixtures;
 using System.Text;
 using Zio;
 
-namespace Arius.Core.Tests.Helpers.Extensions;
+namespace Arius.Core.Tests.Helpers.Fakes;
 
 internal record FilePairWithHash(FilePair FilePair, Hash Hash);
 
-internal static class FileSystemExtensions
+internal static class FakeDataGenerator
 {
     public static FilePairWithHash WithSourceFolderHavingFilePair(this IFileSystem fileSystem, UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = default, FileAttributes attributes = FileAttributes.Normal)
     {
@@ -31,14 +31,14 @@ internal static class FileSystemExtensions
         // 1. Create the Binary File if needed
         if (createBinary)
         {
-            var content = GenerateRandomContent(sizeInBytes, seed);
+            var (h, content) = GenerateRandomContent(sizeInBytes, seed);
             using (var binaryStream = fileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write))
             {
                 binaryStream.Write(content);
             }
 
             fileSystem.SetAttributes(binaryFileRelativeName, attributes);
-            binaryFileHash = ComputeSha256String(FixtureBase.PASSPHRASE, content);
+            binaryFileHash = h;
         }
 
         // 2. Create the Pointer File if needed
@@ -60,12 +60,12 @@ internal static class FileSystemExtensions
         return new FilePairWithHash(fp, finalHash);
     }
 
-    private static byte[] GenerateRandomContent(int sizeInBytes, int? localSeed)
+    public static (Hash Hash, byte[] Content) GenerateRandomContent(int sizeInBytes, int? seed)
     {
-        var random = localSeed is null ? new Random() : new Random(localSeed.Value);
+        var random = seed is null ? new Random() : new Random(seed.Value);
         var data = new byte[sizeInBytes];
         random.NextBytes(data);
-        return data;
+        return (ComputeSha256String(FixtureBase.PASSPHRASE, data), data);
     }
 
     private static Hash ComputeSha256String(string passphrase, byte[] data)
@@ -74,8 +74,8 @@ internal static class FileSystemExtensions
         return hasher.GetHashAsync(data).Result;
     }
 
-    private static Hash GenerateRandomSha256(int? localSeed)
+    private static Hash GenerateRandomSha256(int? seed)
     {
-        return GenerateRandomContent(32, localSeed);
+        return GenerateRandomContent(32, seed).Hash;
     }
 }
