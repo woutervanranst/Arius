@@ -1,7 +1,7 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
 
-namespace Arius.Core.Tests.Builders;
+namespace Arius.Core.Tests.Helpers.Builders;
 
 public class ArchiveCommandBuilder
 {

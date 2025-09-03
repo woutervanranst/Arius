@@ -4,7 +4,7 @@ using Shouldly;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Tests.Services;
+namespace Arius.Core.Tests.Shared.Hashing;
 
 public class Sha256HasherTest
 {

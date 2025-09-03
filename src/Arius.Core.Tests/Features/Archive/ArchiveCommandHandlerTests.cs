@@ -1,10 +1,10 @@
 using Arius.Core.Features.Archive;
-using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using System.Runtime.InteropServices;
+using Arius.Core.Tests.Helpers.Builders;
 
-namespace Arius.Core.Tests.Commands;
+namespace Arius.Core.Tests.Features.Archive;
 
 public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
 {

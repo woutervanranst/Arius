@@ -1,12 +1,12 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
-using Arius.Core.Tests.Builders;
+using Arius.Core.Tests.Helpers.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
 using Shouldly;
 
-namespace Arius.Core.Tests.Commands;
+namespace Arius.Core.Tests.Features.Archive;
 
 public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 {

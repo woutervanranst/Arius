@@ -1,6 +1,6 @@
 using Arius.Core.Features.Restore;
 
-namespace Arius.Core.Tests.Builders;
+namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class RestoreCommandBuilder
 {

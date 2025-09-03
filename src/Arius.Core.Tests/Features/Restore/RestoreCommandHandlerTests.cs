@@ -1,15 +1,15 @@
 using Arius.Core.Features.Restore;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
-using Arius.Core.Tests.Builders;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
 using System.Security.Cryptography;
 using System.Text;
+using Arius.Core.Tests.Helpers.Builders;
 using Zio.FileSystems;
 
-namespace Arius.Core.Tests.Commands;
+namespace Arius.Core.Tests.Features.Restore;
 
 public class RestoreCommandHandlerTests : IClassFixture<Fixture>
 {

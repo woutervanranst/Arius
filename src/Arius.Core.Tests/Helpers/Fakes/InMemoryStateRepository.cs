@@ -2,7 +2,7 @@ using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using System.Collections.Concurrent;
 
-namespace Arius.Core.Tests.Fakes;
+namespace Arius.Core.Tests.Helpers.Fakes;
 
 internal class InMemoryStateRepository : IStateRepository
 {

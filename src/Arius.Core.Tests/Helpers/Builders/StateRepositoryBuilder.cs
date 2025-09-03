@@ -1,10 +1,10 @@
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
-using Arius.Core.Tests.Fakes;
+using Arius.Core.Tests.Helpers.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Arius.Core.Tests.Builders;
+namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class StateRepositoryBuilder
 {
@@ -95,7 +95,7 @@ internal class StateRepositoryBuilder
     public IStateRepository Build(string path, string stateName)
     {
         var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
-        var factory = new StateRepositoryDbContextFactory(stateFile, true, NullLogger<StateRepositoryDbContextFactory>.Instance);
+        var factory = new EfContextPool(stateFile, true, NullLogger<EfContextPool>.Instance);
         var stateRepo = new StateRepository(factory);
 
         // Add all binary properties

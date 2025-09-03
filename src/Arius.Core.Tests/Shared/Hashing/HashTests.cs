@@ -1,7 +1,7 @@
 using Arius.Core.Shared.Hashing;
 using Shouldly;
 
-namespace Arius.Core.Tests.Models;
+namespace Arius.Core.Tests.Shared.Hashing;
 
 public class HashTests
 {

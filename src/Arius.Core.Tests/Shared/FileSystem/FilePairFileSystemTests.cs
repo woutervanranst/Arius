@@ -2,7 +2,7 @@ using Arius.Core.Shared.FileSystem;
 using Shouldly;
 using Zio;
 
-namespace Arius.Core.Tests.Models;
+namespace Arius.Core.Tests.Shared.FileSystem;
 
 public class FilePairFileSystemTests : IClassFixture<Fixture>
 {
