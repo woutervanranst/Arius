@@ -51,6 +51,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             .WithTargets($".{NOTEXISTINGFILE_PATH}", "./Sam/")
             .Build();
 
+
         var storageMock = Substitute.For<IArchiveStorage>();
         storageMock.ContainerExistsAsync()
             .Returns(Task.FromResult(true));
@@ -80,6 +81,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             })
             .BuildFake();
 
+
         var hc = await new HandlerContextBuilder(command)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
@@ -103,7 +105,8 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
             // The EXISTINGFILE is not downloaded
         await storageMock.DidNotReceive().OpenReadChunkAsync(EXISTINGFILE.Hash, Arg.Any<CancellationToken>());
-    }
 
-    // Additional unit tests with mocked dependencies can be added here
+            // Verify no other calls were made to storageMock
+        storageMock.ReceivedCalls().Count().ShouldBe(4);
+    }
 }
