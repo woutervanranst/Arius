@@ -99,7 +99,7 @@ internal class StateRepositoryBuilder
         var stateRepo   = new StateRepository(contextPool);
 
         // Add all binary properties
-        var binaryPropertiesDtos = binaryProperties
+        var bps = binaryProperties
             .Select(bp => new BinaryProperties
             {
                 Hash               = bp.Hash,
@@ -111,10 +111,10 @@ internal class StateRepositoryBuilder
             })
             .ToArray();
 
-        stateRepo.AddBinaryProperties(binaryPropertiesDtos);
+        stateRepo.AddBinaryProperties(bps);
 
         // Add all pointer file entries
-        var pointerFileEntryDtos = binaryProperties
+        var pfes = binaryProperties
             .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntry
             {
                 Hash             = bp.Hash,
@@ -125,7 +125,7 @@ internal class StateRepositoryBuilder
             }))
             .ToArray();
 
-        stateRepo.UpsertPointerFileEntries(pointerFileEntryDtos);
+        stateRepo.UpsertPointerFileEntries(pfes);
 
         return stateRepo;
     }
