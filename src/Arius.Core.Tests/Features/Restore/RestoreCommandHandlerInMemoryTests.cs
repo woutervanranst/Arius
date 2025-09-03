@@ -37,7 +37,8 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
     public async Task Restore_Mocked_HappyPath()
     {
         // Arrange
-        var NOTEXISTINGFILE_PATH = "/file1.jpg";
+        var NOTEXISTINGFILE_PATH             = "/file1.jpg";
+        var NOTEXISTINGFILE_CREATIONDATETIMEUTC = new DateTime(2017, 05, 25, 7, 0, 0, DateTimeKind.Utc);
         var (NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT) = FakeDataGenerator.GenerateRandomContent(10, 1);
 
 
@@ -64,6 +65,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets($".{NOTEXISTINGFILE_PATH}", "./Sam/")
+            .WithIncludePointers(true)
             .Build();
 
 
@@ -80,7 +82,10 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes => { pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH); })
+            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes =>
+            {
+                pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH, NOTEXISTINGFILE_CREATIONDATETIMEUTC);
+            })
             .WithBinaryProperty(DUPLICATEBINARY_HASH, 1, pfes =>
             {
                 pfes.WithPointerFileEntry(DUPLICATEBINARY1_PATH)
@@ -106,6 +111,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE_HASH, Arg.Any<CancellationToken>());
         fixture.FileSystem.ReadAllBytes(NOTEXISTINGFILE_PATH).ShouldBe(NOTEXISTINGFILE_CONTENT);
         (await hc.Hasher.GetHashAsync(FilePair.FromBinaryFilePath(hc.FileSystem, NOTEXISTINGFILE_PATH))).ShouldBe(NOTEXISTINGFILE_HASH);
+        fixture.FileSystem.GetCreationTimeUtc(NOTEXISTINGFILE_PATH).ShouldBe(NOTEXISTINGFILE_CREATIONDATETIMEUTC);
 
             // The DUPLICATEBINARY is downloaded twice and created on disk
         await storageMock.Received(2).OpenReadChunkAsync(DUPLICATEBINARY_HASH, Arg.Any<CancellationToken>());
@@ -118,6 +124,8 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
             // The EXISTINGFILEWITHWRONGHASH is downloaded again because the hash does not match
         await storageMock.Received(1).OpenReadChunkAsync(EXISTINGFILEWITHWRONGHASH.Hash, Arg.Any<CancellationToken>());
+
+        // TODO pointers are written
 
             // Verify no other calls were made to storageMock
         storageMock.ReceivedCalls().Count().ShouldBe(5);

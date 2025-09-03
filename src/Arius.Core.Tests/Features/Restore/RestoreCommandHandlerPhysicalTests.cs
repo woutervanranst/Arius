@@ -37,6 +37,7 @@ public class RestoreCommandHandlerPhysicalTests : IClassFixture<PhysicalFileSyst
             .WithLocalRoot(fixture.TestRunSourceFolder)
             .WithContainerName("test")
             .WithTargets("./IMG20250126195020.jpg", "./Sam/")
+            .WithIncludePointers(true)
             .Build();
 
         // TODO directory without trailing /

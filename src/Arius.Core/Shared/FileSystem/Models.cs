@@ -1,5 +1,4 @@
-﻿using Arius.Core.Shared.Extensions;
-using Arius.Core.Shared.Hashing;
+﻿using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using System.Diagnostics;
 using System.Text.Json;
@@ -15,8 +14,27 @@ internal enum FilePairType
     None
 }
 
+internal class FileEntryWithUtc : FileEntry
+{
+    public FileEntryWithUtc(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
+    {
+    }
+
+    public DateTime CreationTimeUtc
+    {
+        get => CreationTime.ToUniversalTime();
+        set => CreationTime = value.ToLocalTime();
+    }
+
+    public DateTime LastWriteTimeUtc
+    {
+        get => LastWriteTime.ToUniversalTime();
+        set => LastWriteTime = value.ToLocalTime();
+    }
+}
+
 [DebuggerDisplay("FilePair ({Type}) - {FullName}")]
-internal class FilePair : FileEntry
+internal class FilePair : FileEntryWithUtc
 {
     public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
     public static FilePair FromBinaryFilePath(IFileSystem fileSystem, UPath binaryFilePath) => new(fileSystem, binaryFilePath);
@@ -61,15 +79,24 @@ internal class FilePair : FileEntry
 
     public long? Length => ExistingBinaryFile?.Length;
 
-    public PointerFile GetOrCreatePointerFile(Hash h)
+    public PointerFile CreatePointerFile(Hash h)
     {
-        if (Type == FilePairType.PointerFileOnly)
-            return PointerFile;
+        if (!BinaryFile.Exists)
+            throw new InvalidOperationException("Cannot call this method if BinaryFile does not exist");
 
         var pf = BinaryFile.GetPointerFile();
 
-        pf.Write(h, BinaryFile.CreationTime, BinaryFile.LastWriteTime);
+        pf.Write(h, BinaryFile.CreationTimeUtc, BinaryFile.LastWriteTimeUtc);
 
+        return pf;
+    }
+
+    public PointerFile CreatePointerFile(Hash h, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+    {
+        var pf = BinaryFile.GetPointerFile();
+
+        pf.Write(h, creationTimeUtc, lastWriteTimeUtc);
+        
         return pf;
     }
 
@@ -84,7 +111,7 @@ internal class FilePair : FileEntry
 }
 
 [DebuggerDisplay("BinaryFile - {FullName}")]
-internal class BinaryFile : FileEntry
+internal class BinaryFile : FileEntryWithUtc
 {
     public static BinaryFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
 
@@ -164,7 +191,7 @@ internal class BinaryFile : FileEntry
 }
 
 [DebuggerDisplay("PointerFile - {FullName}")]
-internal class PointerFile : FileEntry
+internal class PointerFile : FileEntryWithUtc
 {
     public static readonly string Extension = ".pointer.arius";
 
@@ -192,16 +219,16 @@ internal class PointerFile : FileEntry
         return pfc!.BinaryHash;
     }
 
-    public void Write(Hash h, DateTime creationTime, DateTime lastWriteTime)
+    public void Write(Hash h, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
     {
         var pfc = new PointerFileContents(h.ToString());
 
         var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
         WriteAllBytes(json);
 
-        CreationTime = creationTime;
-        LastWriteTime = lastWriteTime;
+        CreationTimeUtc = creationTimeUtc;
+        LastWriteTimeUtc = lastWriteTimeUtc;
     }
-    [DebuggerDisplay("{BinaryHash}")]
+
     private record PointerFileContents(string BinaryHash);
 }

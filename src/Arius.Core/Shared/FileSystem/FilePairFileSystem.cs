@@ -1,5 +1,4 @@
-﻿using Arius.Core.Shared.Extensions;
-using Zio;
+﻿using Zio;
 using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;

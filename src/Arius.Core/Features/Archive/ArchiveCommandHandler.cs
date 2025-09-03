@@ -299,7 +299,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }
 
         // 4.Write the Pointer
-        var pf = filePair.GetOrCreatePointerFile(hash);
+        var pf = filePair.CreatePointerFile(hash);
 
         // 5. Write the PointerFileEntry
         handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
@@ -460,13 +460,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         var pfes = new List<PointerFileEntry>();
         foreach (var (filePair22, binaryHash22, _) in tarredFilePairs)
         {
-            var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
+            var pf = filePair22.CreatePointerFile(binaryHash22);
             pfes.Add(new PointerFileEntry
             {
                 Hash             = binaryHash22,
                 RelativeName     = pf.Path.FullName,
-                CreationTimeUtc  = pf.CreationTime,
-                LastWriteTimeUtc = pf.LastWriteTime
+                CreationTimeUtc  = pf.CreationTimeUtc,
+                LastWriteTimeUtc = pf.LastWriteTimeUtc
             });
         }
 

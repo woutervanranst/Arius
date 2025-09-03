@@ -86,6 +86,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                     {
                         var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
 
+                        if (handlerContext.Request.IncludePointers)
+                        {
+                            // Create PointerFiles
+                            fp.PointerFile.Directory.Create();
+                            fp.PointerFile.Write(pfe.Hash, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
+                        }
+
                         if (fp.BinaryFile.Exists)
                         {
                             // BinaryFile exists -- check the hash before restoring
@@ -155,12 +162,16 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                     await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.Hash, cancellationToken);
 
                     // 2. Write to the target file
-                    var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pointerFileEntry);
-                    fp.BinaryFile.Directory.Create();
+                    //var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pointerFileEntry);
+                    filePair.BinaryFile.Directory.Create();
 
-                    await using var ts = fp.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize);
-                    await ss.CopyToAsync(ts, innerCancellationToken);
-                    await ts.FlushAsync(innerCancellationToken); // Explicitly flush
+                    await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+                    {
+                        await ss.CopyToAsync(ts, innerCancellationToken);
+                        await ts.FlushAsync(innerCancellationToken); // Explicitly flush
+                    }
+
+                    filePair.BinaryFile.CreationTimeUtc = pointerFileEntry.CreationTimeUtc!.Value;
 
                     //    // to rehydrate list
 

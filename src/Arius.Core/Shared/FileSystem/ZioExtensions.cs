@@ -3,7 +3,7 @@ using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Shared.Extensions;
+namespace Arius.Core.Shared.FileSystem;
 
 internal static class FileEntryExtensions
 {
@@ -13,6 +13,7 @@ internal static class FileEntryExtensions
     public static bool IsPointerFile(this FileEntry fe) 
         => fe.Path.IsPointerFilePath();
 }
+
 
 internal static class UPathExtensions
 {
@@ -43,6 +44,9 @@ internal static class FileSystemExtensions
 {
     //public static FilePair FromBinaryFilePath(this IFileSystem fs, UPath binaryFilePath) 
     //    => FilePair.FromBinaryFilePath(fs, binaryFilePath);
+
+    public static DateTime GetCreationTimeUtc(this IFileSystem fileSystem, UPath path)
+        => fileSystem.GetCreationTime(path).ToUniversalTime();
 
     /// <summary>
     /// Recursively unwraps nested filesystems to find if any underlying filesystem is of the specified type T.

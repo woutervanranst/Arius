@@ -92,9 +92,9 @@ internal class RestoreCommandBuilder
         return this;
     }
 
-    public RestoreCommandBuilder WithKeepPointers(bool keepPointers)
+    public RestoreCommandBuilder WithIncludePointers(bool includePointers)
     {
-        this.includePointers = keepPointers;
+        this.includePointers = includePointers;
         return this;
     }
 

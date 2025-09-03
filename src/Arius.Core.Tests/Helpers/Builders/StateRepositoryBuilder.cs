@@ -15,7 +15,7 @@ internal class StateRepositoryBuilder
     {
         internal readonly List<PointerFileEntry> PointerFileEntries = [];
 
-        public PointerFileEntryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTime = null, DateTime? writeTime = null)
+        public PointerFileEntryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTimeUtc = null, DateTime? writeTimeUtc = null)
         {
             if (binaryFileRelativeName.EndsWith(PointerFile.Extension))
                 throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
@@ -23,8 +23,8 @@ internal class StateRepositoryBuilder
             PointerFileEntries.Add(new PointerFileEntry
             {
                 RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
-                CreationTimeUtc  = creationTime,
-                LastWriteTimeUtc = writeTime
+                CreationTimeUtc  = creationTimeUtc ?? DateTime.MinValue,
+                LastWriteTimeUtc = writeTimeUtc ?? DateTime.MinValue
             });
 
             return this;

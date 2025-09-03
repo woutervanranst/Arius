@@ -1,4 +1,3 @@
-using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Tests.Helpers.Fixtures;
