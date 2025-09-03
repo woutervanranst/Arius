@@ -36,11 +36,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         this.config        = config;
     }
 
-    private readonly Dictionary<Shared.Hashing.Hash, TaskCompletionSource> uploadingHashes = new();
+    private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
-    private readonly Channel<FilePair> indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20,        singleWriter: true, singleReader: false);
-    private readonly Channel<FilePairWithHash>           hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
-    // private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = Channel.CreateUnbounded<FilePairWithHash>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = true }); // unbounded since there can be a deadlock 
+    private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
     private record FilePairWithHash(FilePair FilePair, Shared.Hashing.Hash Hash);
@@ -279,8 +278,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
             await using var sourceStream = filePair.BinaryFile.OpenRead();
             await sourceStream.CopyToAsync(targetStream, bufferSize: 81920, cancellationToken);
-
-            // Flush all buffers
             await targetStream.FlushAsync(cancellationToken);
 
             // Update tier
