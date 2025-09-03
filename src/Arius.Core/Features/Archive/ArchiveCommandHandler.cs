@@ -39,7 +39,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
-    private record FilePairWithHash(FilePair FilePair, Shared.Hashing.Hash Hash);
+    private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
     public async ValueTask<Unit> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
@@ -320,7 +320,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         MemoryStream                                                           ms               = null;
         TarWriter                                                              tarWriter        = null;
         GZipStream                                                             gzip             = null;
-        List<(FilePair FilePair, Shared.Hashing.Hash Hash, long ArchivedSize)> tarredFilePairs  = new();
+        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs  = new();
         long                                                                   originalSize     = 0;
         long                                                                   previousPosition = 0;
 
@@ -402,7 +402,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }
     }
 
-    private async Task ProcessTarArchive(HandlerContext handlerContext, MemoryStream ms, GZipStream gzip, TarWriter tarWriter, List<(FilePair FilePair, Shared.Hashing.Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
+    private async Task ProcessTarArchive(HandlerContext handlerContext, MemoryStream ms, GZipStream gzip, TarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
     {
         tarWriter.Dispose();
         gzip.Dispose();
