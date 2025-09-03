@@ -35,15 +35,15 @@ public class ArchiveCommandBuilder
             accountName   = fixture.RepositoryOptions.AccountName ?? "testaccount";
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = fixture.RepositoryOptions.Passphrase ?? "testpass";
             localRoot     = fixture is PhysicalFileSystemFixture physicalFixture ? physicalFixture.TestRunSourceFolder : new DirectoryInfo(Path.GetTempPath());
+            passphrase    = fixture.RepositoryOptions.Passphrase ?? FixtureBase.PASSPHRASE;
         }
         else
         {
             accountName   = "testaccount";
             accountKey    = "testkey";
             containerName = $"testcontainer-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = "testpass";
+            passphrase    = FixtureBase.PASSPHRASE;
             localRoot     = new DirectoryInfo(Path.GetTempPath());
         }
 
@@ -73,11 +73,11 @@ public class ArchiveCommandBuilder
         return this;
     }
 
-    public ArchiveCommandBuilder WithPassphrase(string passphrase)
-    {
-        this.passphrase = passphrase;
-        return this;
-    }
+    //public RestoreCommandBuilder WithPassphrase(string passphrase) // Passphrase is defaulted because of the FileSystemExtensions SHA shortcut
+    //{
+    //    this.passphrase = passphrase;
+    //    return this;
+    //}
 
     public ArchiveCommandBuilder WithRemoveLocal(bool removeLocal)
     {

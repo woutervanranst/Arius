@@ -1,5 +1,4 @@
-﻿using Arius.Core.Shared.Extensions;
-using Arius.Core.Shared.FileSystem;
+﻿using Arius.Core.Shared.FileSystem;
 using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
@@ -61,7 +60,7 @@ internal sealed class Sha256Hasher : IDisposable
         if (!bf.Exists)
             throw new ArgumentException("BinaryFile does not exist", nameof(bf));
 
-        await using var fs = new FileStream(bf.ConvertPathToInternal(), FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var fs = bf.OpenRead();
 
         return await ComputeSaltedHashAsync(fs).ConfigureAwait(false);
     }

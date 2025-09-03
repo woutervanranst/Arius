@@ -44,12 +44,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
-        var indexTask = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var downloadBinariesTask            = CreateDownloadBinariesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var downloadBinariesTask = CreateDownloadBinariesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
         try
         {
-            await Task.WhenAll(indexTask, downloadBinariesTask);
+            await Task.WhenAll(indexTask, hashTask, downloadBinariesTask);
         }
         catch (Exception)
         {

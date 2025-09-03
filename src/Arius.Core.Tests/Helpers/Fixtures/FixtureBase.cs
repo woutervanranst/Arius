@@ -6,9 +6,11 @@ namespace Arius.Core.Tests.Helpers.Fixtures;
 
 public abstract class FixtureBase : IDisposable
 {
-    public TestRemoteRepositoryOptions RepositoryOptions { get; }
-    public IOptions<AriusConfiguration> AriusConfiguration { get; }
-    public abstract IFileSystem FileSystem { get; }
+    public const string PASSPHRASE = "passphrase";
+
+    public          TestRemoteRepositoryOptions  RepositoryOptions  { get; }
+    public          IOptions<AriusConfiguration> AriusConfiguration { get; }
+    public abstract IFileSystem                  FileSystem         { get; }
 
     protected FixtureBase()
     {
@@ -31,8 +33,8 @@ public abstract class FixtureBase : IDisposable
 
 public record TestRemoteRepositoryOptions
 {
-    public string AccountName { get; init; }
-    public string AccountKey { get; init; }
+    public string AccountName   { get; init; }
+    public string AccountKey    { get; init; }
     public string ContainerName { get; set; }
-    public string Passphrase { get; init; }
+    public string Passphrase    { get; init; }
 }

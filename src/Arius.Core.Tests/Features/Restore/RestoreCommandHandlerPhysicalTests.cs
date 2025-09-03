@@ -36,7 +36,6 @@ public class RestoreCommandHandlerPhysicalTests : IClassFixture<PhysicalFileSyst
         var command = new RestoreCommandBuilder(fixture)
             .WithLocalRoot(fixture.TestRunSourceFolder)
             .WithContainerName("test")
-            .WithPassphrase("woutervr")
             .WithTargets("./IMG20250126195020.jpg", "./Sam/")
             .Build();
 

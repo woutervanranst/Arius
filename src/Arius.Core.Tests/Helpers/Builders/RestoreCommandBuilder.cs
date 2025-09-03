@@ -32,15 +32,15 @@ internal class RestoreCommandBuilder
             accountName   = fixture.RepositoryOptions.AccountName ?? "testaccount";
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = fixture.RepositoryOptions.Passphrase ?? "testpass";
-            targets       = fixture is PhysicalFileSystemFixture physicalFixture ? [physicalFixture.TestRunSourceFolder.FullName] : ["dummy"];
+            passphrase    = fixture.RepositoryOptions.Passphrase ?? FixtureBase.PASSPHRASE;
+            targets       = fixture is PhysicalFileSystemFixture physicalFixture ? [physicalFixture.TestRunSourceFolder.FullName] : ["/"];
         }
         else
         {
             accountName   = "testaccount";
             accountKey    = "testkey";
             containerName = $"testcontainer-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = "testpass";
+            passphrase    = FixtureBase.PASSPHRASE;
             targets       = ["dummy"];
         }
 
@@ -68,11 +68,11 @@ internal class RestoreCommandBuilder
         return this;
     }
 
-    public RestoreCommandBuilder WithPassphrase(string passphrase)
-    {
-        this.passphrase = passphrase;
-        return this;
-    }
+    //public RestoreCommandBuilder WithPassphrase(string passphrase) // Passphrase is defaulted because of the FileSystemExtensions SHA shortcut
+    //{
+    //    this.passphrase = passphrase;
+    //    return this;
+    //}
 
     public RestoreCommandBuilder WithLocalRoot(DirectoryInfo localRoot)
     {

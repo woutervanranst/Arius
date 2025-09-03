@@ -1,6 +1,7 @@
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
+using Arius.Core.Tests.Helpers.Fixtures;
 using System.Text;
 using Zio;
 
@@ -31,10 +32,13 @@ internal static class FileSystemExtensions
         if (createBinary)
         {
             var content = GenerateRandomContent(sizeInBytes, seed);
-            using var binaryStream = fileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write);
-            binaryStream.Write(content);
+            using (var binaryStream = fileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write))
+            {
+                binaryStream.Write(content);
+            }
+
             fileSystem.SetAttributes(binaryFileRelativeName, attributes);
-            binaryFileHash = ComputeSha256String("woutervr", content); // Using hardcoded passphrase for simplicity in tests
+            binaryFileHash = ComputeSha256String(FixtureBase.PASSPHRASE, content);
         }
 
         // 2. Create the Pointer File if needed
