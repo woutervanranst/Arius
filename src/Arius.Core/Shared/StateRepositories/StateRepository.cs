@@ -61,13 +61,15 @@ internal class StateRepository : IStateRepository
             // This is still twice as fast as the Find > Compare > InsertOrUpdate without BulkExtensions
             // BulkExtensions does not support BulkConfig.CalculateStats on SQLite
 
-            // Extract unique hash values and names for filtering
-            var hashValues = pfes.Select(p => p.Hash).Distinct().ToList();
-            var nameValues = pfes.Select(p => p.RelativeName).Distinct().ToList();
+            // Create HashSet for O(1) lookups
+            var inputKeys = new HashSet<(Hash, string)>(pfes.Select(p => (p.Hash, p.RelativeName)));
 
-            // Fetch all potentially matching entries (this over-fetches but is translatable)
+            // Use only hash values for initial filter (usually more selective)
+            var hashValues = pfes.Select(p => p.Hash).Distinct().ToList();
+
+            // Fetch entries matching any of our hashes
             var existingEntries = context.Set<PointerFileEntry>()
-                .Where(e => hashValues.Contains(e.Hash) && nameValues.Contains(e.RelativeName))
+                .Where(e => hashValues.Contains(e.Hash))
                 .Select(e => new
                 {
                     e.Hash,
@@ -76,29 +78,26 @@ internal class StateRepository : IStateRepository
                     e.LastWriteTimeUtc
                 })
                 .AsEnumerable()
-                .Where(e => pfes.Any(p => p.Hash.Equals(e.Hash) && p.RelativeName == e.RelativeName)) // Filter in memory
-                .ToDictionary(e => (Hash: e.Hash, RelativeName: e.RelativeName));
+                .Where(e => inputKeys.Contains((e.Hash, e.RelativeName))) // O(1) lookup
+                .ToDictionary(e => (e.Hash, e.RelativeName));
 
-            bool b = false;
+            // Quick check: different counts means we have inserts
+            if (pfes.Length != existingEntries.Count)
+                return true;
 
+            // Check for updates
             foreach (var pfe in pfes)
             {
                 var key = (pfe.Hash, pfe.RelativeName);
-
-                if (!existingEntries.TryGetValue(key, out var existing))
+                if (!existingEntries.TryGetValue(key, out var existing) ||
+                    existing.CreationTimeUtc != pfe.CreationTimeUtc ||
+                    existing.LastWriteTimeUtc != pfe.LastWriteTimeUtc)
                 {
-                    b = true;
-                    break;
-                }
-                else if (existing.CreationTimeUtc != pfe.CreationTimeUtc ||
-                         existing.LastWriteTimeUtc != pfe.LastWriteTimeUtc)
-                {
-                    b = true;
-                    break;
+                    return true;
                 }
             }
 
-            return b;
+            return false;
         }
     }
 

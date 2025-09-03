@@ -121,16 +121,17 @@ public class StateRepositoryBenchmark
     // 3. Context pooling vs manual context creation per operation
     // 
     // Results:
-    // | Method                            | ItemCount | Mean      | Error     | StdDev    | Allocated  |
-    // |---------------------------------- |---------- |----------:|----------:|----------:|-----------:|
-    // | V50_UpsertPointerFileEntries      | 100       | 19.628 ms | 2.6592 ms | 7.7990 ms | 1971.56 KB |
-    // | V51_UpsertPointerFileEntries      | 100       |  5.388 ms | 0.2322 ms | 0.6736 ms |  158.64 KB |
-    // | V50_GetBinaryProperty_Existing    | 100       |  2.056 ms | 0.0631 ms | 0.1842 ms |   55.29 KB |
-    // | V51_GetBinaryProperty_Existing    | 100       |  1.565 ms | 0.0466 ms | 0.1346 ms |   11.02 KB |
-    // | V50_GetBinaryProperty_NonExisting | 100       |  2.050 ms | 0.0552 ms | 0.1584 ms |   53.71 KB |
-    // | V51_GetBinaryProperty_NonExisting | 100       |  1.547 ms | 0.0500 ms | 0.1442 ms |   10.63 KB |
-    // | V50_GetBinaryProperty_Batch       | 100       |  5.256 ms | 0.1728 ms | 0.4818 ms |  483.73 KB |
-    // | V51_GetBinaryProperty_Batch       | 100       |  1.917 ms | 0.0848 ms | 0.2419 ms |   74.16 KB |
+    // | Method                            | ItemCount | Mean      | Error     | StdDev     | Median    | Gen0      | Gen1      | Allocated   |
+    // |---------------------------------- |---------- |----------:|----------:|-----------:|----------:|----------:|----------:|------------:|
+    // | V50_UpsertPointerFileEntries      | 1000      | 70.098 ms | 4.4190 ms | 11.9469 ms | 65.502 ms | 2000.0000 | 1000.0000 | 19321.88 KB |
+    // | V51_UpsertPointerFileEntries      | 1000      | 22.311 ms | 1.7617 ms |  5.1944 ms | 22.447 ms |         - |         - |  2710.61 KB |
+    // | V50_GetBinaryProperty_Existing    | 1000      |  2.120 ms | 0.0628 ms |  0.1803 ms |  2.084 ms |         - |         - |    55.31 KB |
+    // | V51_GetBinaryProperty_Existing    | 1000      |  1.570 ms | 0.0489 ms |  0.1387 ms |  1.554 ms |         - |         - |    11.02 KB |
+    // | V50_GetBinaryProperty_NonExisting | 1000      |  2.227 ms | 0.0655 ms |  0.1825 ms |  2.196 ms |         - |         - |    53.66 KB |
+    // | V51_GetBinaryProperty_NonExisting | 1000      |  1.642 ms | 0.0454 ms |  0.1303 ms |  1.631 ms |         - |         - |    10.63 KB |
+    // | V50_GetBinaryProperty_Batch       | 1000      |  5.700 ms | 0.3527 ms |  1.0399 ms |  5.893 ms |         - |         - |   483.26 KB |
+    // | V51_GetBinaryProperty_Batch       | 1000      |  2.182 ms | 0.1148 ms |  0.3311 ms |  2.180 ms |         - |         - |    74.16 KB |
+
 
     [Benchmark]
     public void V50_UpsertPointerFileEntries()
