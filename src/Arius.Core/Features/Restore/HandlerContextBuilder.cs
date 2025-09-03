@@ -25,7 +25,7 @@ internal class HandlerContextBuilder
         this.logger  = logger ?? NullLogger<HandlerContextBuilder>.Instance;
     }
 
-    public HandlerContextBuilder WithBlobStorage(IArchiveStorage archiveStorage)
+    public HandlerContextBuilder WithArchiveStorage(IArchiveStorage archiveStorage)
     {
         this.archiveStorage = archiveStorage;
         return this;

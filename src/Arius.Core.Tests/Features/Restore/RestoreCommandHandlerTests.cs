@@ -62,8 +62,12 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
             .WithTargets("./file1.jpg", "./Sam/")
             .Build();
 
-        var bs = Substitute.For<IArchiveStorage>();
-        bs.ContainerExistsAsync().Returns(Task.FromResult(true));
+        var storage = Substitute.For<IArchiveStorage>();
+        storage.ContainerExistsAsync().Returns(Task.FromResult(true));
+        
+        // Configure mock to return a new stream each time it's called
+        storage.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
+               .Returns(callInfo => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes("This is test file content for the stream"))));
 
         var sr = new StateRepositoryBuilder()
             .WithBinaryProperty(GenerateValidHash("file1-hash"), 1)
@@ -73,13 +77,10 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
             .WithPointerFileEntry("/Sam/file2-duplicate.jpg")
             .BuildFake();
 
-        //var sr = Substitute.For<IStateRepository>();
-        //sr.GetPointerFileEntries(Arg.Any<string>(), true).Returns()
-
         using var mfs = new MemoryFileSystem();
 
         var hc = await new HandlerContextBuilder(command)
-            .WithBlobStorage(bs)
+            .WithArchiveStorage(storage)
             .WithStateRepository(sr)
             .WithBaseFileSystem(mfs)
             .BuildAsync();
