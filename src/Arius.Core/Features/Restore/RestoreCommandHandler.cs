@@ -26,7 +26,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         this.config        = config;
     }
 
-    private readonly Channel<PointerFileEntry> pointerFileEntriesToRestoreChannel = ChannelExtensions.CreateBounded<PointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
+
+    private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
     public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
@@ -41,12 +44,12 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
-        var pointerFileEntriesToRestoreTask = CreatePointerFileEntriesToRestoreTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var indexTask = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var downloadBinariesTask            = CreateDownloadBinariesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
         try
         {
-            await Task.WhenAll(pointerFileEntriesToRestoreTask, downloadBinariesTask);
+            await Task.WhenAll(indexTask, downloadBinariesTask);
         }
         catch (Exception)
         {
@@ -57,17 +60,16 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         return Unit.Value;
     }
 
-    private Task CreatePointerFileEntriesToRestoreTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
         {
             try
             {
-                // 1. Get all PointerFileEntries to restore
+                // 1. Iterate over all targets, and establish which binaryfiles need to be restored
                 foreach (var targetPath in handlerContext.Targets)
                 {
-                    var binaryFilePath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath;
-                    var fp             = handlerContext.FileSystem.FromBinaryFilePath(binaryFilePath);
-                    var pfes           = handlerContext.StateRepository.GetPointerFileEntries(fp.FullName, true).ToArray();
+                    var binaryFileTargetPath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath; // trim the pointerfile extension if present
+                    var pfes = handlerContext.StateRepository.GetPointerFileEntries(binaryFileTargetPath.FullName, true).ToArray();
 
                     if (!pfes.Any())
                     {
@@ -76,20 +78,36 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
                     foreach (var pfe in pfes)
                     {
-                        await pointerFileEntriesToRestoreChannel.Writer.WriteAsync(pfe, cancellationToken);
+                        var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
+
+                        if (fp.BinaryFile.Exists)
+                        {
+                            // BinaryFile exists -- check the hash before restoring
+                            await filePairsToHashChannel.Writer.WriteAsync(new (fp, pfe), cancellationToken);
+                        }
+                        else
+                        {
+                            // BinaryFile does not exist -- restore it
+                            await filePairsToRestoreChannel.Writer.WriteAsync(new (fp, pfe), cancellationToken);
+
+                        }
+
                     }
                 }
 
-                pointerFileEntriesToRestoreChannel.Writer.Complete();
+                filePairsToHashChannel.Writer.Complete();
+                filePairsToRestoreChannel.Writer.Complete();
             }
             catch (OperationCanceledException)
             {
-                pointerFileEntriesToRestoreChannel.Writer.Complete();
+                filePairsToHashChannel.Writer.Complete();
+                filePairsToRestoreChannel.Writer.Complete();
                 throw;
             }
             catch (Exception)
             {
-                pointerFileEntriesToRestoreChannel.Writer.Complete();
+                filePairsToHashChannel.Writer.Complete();
+                filePairsToRestoreChannel.Writer.Complete();
                 errorCancellationTokenSource.Cancel();
                 throw;
             }
@@ -97,34 +115,54 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
         }, cancellationToken);
 
+    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+        Parallel.ForEachAsync(filePairsToHashChannel.Reader.ReadAllAsync(cancellationToken),
+            new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.HashParallelism, CancellationToken = cancellationToken },
+            async (filePairWithPointerFileEntry, innerCancellationToken) =>
+            {
+                var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+
+                var h = await handlerContext.Hasher.GetHashAsync(filePair);
+
+                if (h == pointerFileEntry.Hash)
+                {
+                    // The hash matches - this binaryfile is already restored
+                }
+                else
+                {
+                    // The hash does not match - we need to restore this binaryfile
+                }
+
+            });
+
     private Task CreateDownloadBinariesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
-        Parallel.ForEachAsync(pointerFileEntriesToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
+        Parallel.ForEachAsync(filePairsToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (pfe, innerCancellationToken) =>
             {
-                if (pfe.BinaryProperties.ParentHash is not null)
-                    return;
+            //    if (pfe.BinaryProperties.ParentHash is not null)
+            //        return;
 
-                // 1 does it need to be redownloaded?
+            //    // 1 does it need to be redownloaded?
 
-                // 1. Get the decrypted blob stream from storage
-                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
+            //    // 1. Get the decrypted blob stream from storage
+            //    await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
 
-                // 2. Write to the target file
-                var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
-                fp.BinaryFile.Directory.Create();
+            //    // 2. Write to the target file
+            //    var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
+            //    fp.BinaryFile.Directory.Create();
 
-                await using var ts = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
+            //    await using var ts = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
 
-                await ss.CopyToAsync(ts, innerCancellationToken);
-                await ts.FlushAsync(innerCancellationToken); // Explicitly flush
+            //    await ss.CopyToAsync(ts, innerCancellationToken);
+            //    await ts.FlushAsync(innerCancellationToken); // Explicitly flush
 
-                // to rehydrate list
+            //    // to rehydrate list
                 
-                // todo should it overwrite the binary?
+            //    // todo should it overwrite the binary?
 
-                // todo hydrate
+            //    // todo hydrate
 
-                // todo parenthash
+            //    // todo parenthash
             });
 }

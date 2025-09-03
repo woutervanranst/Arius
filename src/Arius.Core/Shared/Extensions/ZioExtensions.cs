@@ -41,8 +41,8 @@ internal static class UPathExtensions
 
 internal static class FileSystemExtensions
 {
-    public static FilePair FromBinaryFilePath(this IFileSystem fs, UPath binaryFilePath) 
-        => FilePair.FromBinaryFilePath(fs, binaryFilePath);
+    //public static FilePair FromBinaryFilePath(this IFileSystem fs, UPath binaryFilePath) 
+    //    => FilePair.FromBinaryFilePath(fs, binaryFilePath);
 
     /// <summary>
     /// Recursively unwraps nested filesystems to find if any underlying filesystem is of the specified type T.

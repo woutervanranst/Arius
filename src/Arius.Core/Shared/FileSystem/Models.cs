@@ -3,7 +3,6 @@ using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using System.Text.Json;
 using Zio;
-using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
