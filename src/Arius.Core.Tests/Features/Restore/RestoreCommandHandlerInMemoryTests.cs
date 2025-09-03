@@ -40,8 +40,14 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         var NOTEXISTINGFILE_PATH = "/file1.jpg";
         var NOTEXISTINGFILE_HASH = GenerateValidHash("file1-hash");
 
+        var DUPLICATEBINARY1_PATH = "/Sam/file2.jpg";
+        var DUPLICATEBINARY2_PATH = "/Sam/file2-duplicate.jpg";
+        var DUPLICATEBINARY_HASH  = GenerateValidHash("file2-hash");
+        
+        var EXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
+
+
         var command = new RestoreCommandBuilder(fixture)
-            .WithContainerName("containername")
             .WithTargets($".{NOTEXISTINGFILE_PATH}", "./Sam/")
             .Build();
 
@@ -56,21 +62,21 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
                 return Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)));
             });
 
-        var samFile3 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
+        
 
         var sr = new StateRepositoryBuilder()
             .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes =>
             {
                 pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH);
             })
-            .WithBinaryProperty(GenerateValidHash("file2-hash"), 1, pfes =>
+            .WithBinaryProperty(DUPLICATEBINARY_HASH, 1, pfes =>
             {
-                pfes.WithPointerFileEntry("/Sam/file2.jpg")
-                    .WithPointerFileEntry("/Sam/file2-duplicate.jpg");
+                pfes.WithPointerFileEntry(DUPLICATEBINARY1_PATH)
+                    .WithPointerFileEntry(DUPLICATEBINARY2_PATH);
             })
-            .WithBinaryProperty(samFile3.Hash, samFile3.FilePair.Length!.Value, pfes =>
+            .WithBinaryProperty(EXISTINGFILE.Hash, EXISTINGFILE.FilePair.Length!.Value, pfes =>
             {
-                pfes.WithPointerFileEntry("/Sam/file3.jpg");
+                pfes.WithPointerFileEntry(EXISTINGFILE.FilePair.FullName);
             })
             .BuildFake();
 
@@ -90,10 +96,13 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldStartWith("This is test file content for the stream");
         fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldContain(NOTEXISTINGFILE_HASH.ToString());
 
-        // file2-hash is downloaded twice
-        // fp1 binary is NOT downloaded
+            // The DUPLICATEBINARY is downloaded twice and created on disk
+        await storageMock.Received(2).OpenReadChunkAsync(DUPLICATEBINARY_HASH, Arg.Any<CancellationToken>());
+        fixture.FileSystem.ReadAllText(DUPLICATEBINARY1_PATH).ShouldContain(DUPLICATEBINARY_HASH.ToString());
+        fixture.FileSystem.ReadAllText(DUPLICATEBINARY2_PATH).ShouldContain(DUPLICATEBINARY_HASH.ToString());
 
-        // Add appropriate assertions here when the test logic is implemented
+            // The EXISTINGFILE is not downloaded
+        await storageMock.DidNotReceive().OpenReadChunkAsync(EXISTINGFILE.Hash, Arg.Any<CancellationToken>());
     }
 
     // Additional unit tests with mocked dependencies can be added here
