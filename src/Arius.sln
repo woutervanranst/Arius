@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Cli", "Arius.Cli\Ariu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Cli.Tests", "Arius.Cli.Tests\Arius.Cli.Tests.csproj", "{07A002A0-DED5-4B8C-8879-9EC3DCB257BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Benchmarks", "Arius.Benchmarks\Arius.Benchmarks.csproj", "{346428E0-B77B-4740-AC6A-045BA5F89693}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{07A002A0-DED5-4B8C-8879-9EC3DCB257BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{07A002A0-DED5-4B8C-8879-9EC3DCB257BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{07A002A0-DED5-4B8C-8879-9EC3DCB257BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{346428E0-B77B-4740-AC6A-045BA5F89693}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{346428E0-B77B-4740-AC6A-045BA5F89693}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{346428E0-B77B-4740-AC6A-045BA5F89693}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{346428E0-B77B-4740-AC6A-045BA5F89693}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
