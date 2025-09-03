@@ -48,6 +48,15 @@ internal static class FileSystemExtensions
     public static DateTime GetCreationTimeUtc(this IFileSystem fileSystem, UPath path)
         => fileSystem.GetCreationTime(path).ToUniversalTime();
 
+    public static DateTime GetLastWriteTimeUtc(this IFileSystem fileSystem, UPath path)
+        => fileSystem.GetLastWriteTime(path).ToUniversalTime();
+
+    public static void SetCreationTimeUtc(this IFileSystem fileSystem, UPath path, DateTime creationTimeUtc)
+        => fileSystem.SetCreationTime(path, creationTimeUtc.ToLocalTime());
+
+    public static void SetLastWriteTimeUtc(this IFileSystem fileSystem, UPath path, DateTime lastWriteTimeUtc)
+        => fileSystem.SetLastWriteTime(path, lastWriteTimeUtc.ToLocalTime());
+
     /// <summary>
     /// Recursively unwraps nested filesystems to find if any underlying filesystem is of the specified type T.
     /// </summary>

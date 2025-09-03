@@ -172,6 +172,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                     }
 
                     filePair.BinaryFile.CreationTimeUtc = pointerFileEntry.CreationTimeUtc!.Value;
+                    filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
                     //    // to rehydrate list
 

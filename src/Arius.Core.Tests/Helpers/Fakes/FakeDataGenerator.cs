@@ -10,7 +10,7 @@ internal record FilePairWithHash(FilePair FilePair, Hash Hash);
 
 internal static class FakeDataGenerator
 {
-    public static FilePairWithHash WithSourceFolderHavingFilePair(this IFileSystem fileSystem, UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = default, FileAttributes attributes = FileAttributes.Normal)
+    public static FilePairWithHash WithSourceFolderHavingFilePair(this IFileSystem fileSystem, UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = null, FileAttributes attributes = FileAttributes.Normal, DateTime? creationTimeUtc = null, DateTime? lastWriteTimeUtc = null)
     {
         if (!binaryFileRelativeName.IsAbsolute)
             throw new ArgumentException("Should start with /");
@@ -38,6 +38,11 @@ internal static class FakeDataGenerator
 
             fileSystem.SetAttributes(binaryFileRelativeName, attributes);
             binaryFileHash = h;
+
+            if (creationTimeUtc is not null)
+                fileSystem.SetCreationTimeUtc(binaryFileRelativeName, creationTimeUtc.Value);
+            if (lastWriteTimeUtc is not null)
+                fileSystem.SetLastWriteTimeUtc(binaryFileRelativeName, lastWriteTimeUtc.Value);
         }
 
         // 2. Create the Pointer File if needed
@@ -49,6 +54,11 @@ internal static class FakeDataGenerator
 
             var pointerData = Encoding.UTF8.GetBytes($"{{\"BinaryHash\":\"{pointerFileHash}\"}}");
             pointerStream.Write(pointerData);
+
+            if (creationTimeUtc is not null)
+                fileSystem.SetCreationTimeUtc(pointerPath, creationTimeUtc.Value);
+            if (lastWriteTimeUtc is not null)
+                fileSystem.SetLastWriteTimeUtc(pointerPath, lastWriteTimeUtc.Value);
         }
 
         // 3. Build the FilePair

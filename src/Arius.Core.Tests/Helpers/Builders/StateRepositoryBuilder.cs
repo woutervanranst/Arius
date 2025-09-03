@@ -9,6 +9,8 @@ namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class StateRepositoryBuilder
 {
+    public static DateTime DEFAULTUTCTIME = new DateTime(2001, 05, 23, 21, 49, 51, DateTimeKind.Utc);
+
     private readonly List<BinaryProperties> binaryProperties = [];
 
     public class PointerFileEntryBuilder
@@ -23,8 +25,8 @@ internal class StateRepositoryBuilder
             PointerFileEntries.Add(new PointerFileEntry
             {
                 RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
-                CreationTimeUtc  = creationTimeUtc ?? DateTime.MinValue,
-                LastWriteTimeUtc = writeTimeUtc ?? DateTime.MinValue
+                CreationTimeUtc  = creationTimeUtc ?? DEFAULTUTCTIME,
+                LastWriteTimeUtc = writeTimeUtc ?? DEFAULTUTCTIME
             });
 
             return this;
