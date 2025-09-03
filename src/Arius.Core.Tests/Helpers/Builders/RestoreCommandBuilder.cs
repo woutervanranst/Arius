@@ -32,7 +32,7 @@ internal class RestoreCommandBuilder
             accountName   = fixture.RepositoryOptions.AccountName ?? "testaccount";
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = fixture.RepositoryOptions.Passphrase ?? FixtureBase.PASSPHRASE;
+            passphrase    = fixture.RepositoryOptions.Passphrase;
             targets       = fixture is PhysicalFileSystemFixture physicalFixture ? [physicalFixture.TestRunSourceFolder.FullName] : ["/"];
         }
         else

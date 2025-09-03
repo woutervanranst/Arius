@@ -8,7 +8,7 @@ public abstract class FixtureBase : IDisposable
 {
     public const string PASSPHRASE = "passphrase";
 
-    public          TestRemoteRepositoryOptions  RepositoryOptions  { get; }
+    public          TestRemoteRepositoryOptions? RepositoryOptions  { get; } // can be null when no appsettings etc
     public          IOptions<AriusConfiguration> AriusConfiguration { get; }
     public abstract IFileSystem                  FileSystem         { get; }
 
@@ -33,8 +33,8 @@ public abstract class FixtureBase : IDisposable
 
 public record TestRemoteRepositoryOptions
 {
-    public string AccountName   { get; init; }
-    public string AccountKey    { get; init; }
-    public string ContainerName { get; set; }
-    public string Passphrase    { get; init; }
+    public required string AccountName   { get; init; }
+    public required string AccountKey    { get; init; }
+    public required string ContainerName { get; set; }
+    public          string Passphrase    => FixtureBase.PASSPHRASE;
 }
