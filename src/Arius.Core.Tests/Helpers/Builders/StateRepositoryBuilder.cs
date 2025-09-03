@@ -10,53 +10,82 @@ namespace Arius.Core.Tests.Helpers.Builders;
 internal class StateRepositoryBuilder
 {
     private readonly List<BinaryProperties> binaryProperties = [];
-    private          BinaryProperties?      currentBinaryProperty;
 
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
+    public class PointerFileEntryBuilder
     {
-        currentBinaryProperty = new BinaryProperties
+        internal readonly List<PointerFileEntry> PointerFileEntries = [];
+
+        public PointerFileEntryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTime = null, DateTime? writeTime = null)
+        {
+            if (binaryFileRelativeName.EndsWith(PointerFile.Extension))
+                throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
+
+            PointerFileEntries.Add(new PointerFileEntry
+            {
+                RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
+                CreationTimeUtc  = creationTime,
+                LastWriteTimeUtc = writeTime
+            });
+
+            return this;
+        }
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, originalSize, null, null, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, originalSize, archivedSize, null, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    {
+        var pointerFileBuilder = new PointerFileEntryBuilder();
+        pointerFileEntries?.Invoke(pointerFileBuilder);
+
+        var binaryProperty = new BinaryProperties
         {
             Hash               = hash,
             ParentHash         = null,
             OriginalSize       = originalSize,
             ArchivedSize       = archivedSize,
             StorageTier        = storageTier,
-            PointerFileEntries = []
+            PointerFileEntries = pointerFileBuilder.PointerFileEntries
         };
-        binaryProperties.Add(currentBinaryProperty);
+        
+        binaryProperties.Add(binaryProperty);
         return this;
     }
 
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null)
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        currentBinaryProperty = new BinaryProperties
+        return WithBinaryProperty(hash, parentHash, originalSize, null, null, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, parentHash, originalSize, archivedSize, null, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    {
+        var pointerFileBuilder = new PointerFileEntryBuilder();
+        pointerFileEntries?.Invoke(pointerFileBuilder);
+
+        var binaryProperty = new BinaryProperties
         {
             Hash               = hash,
             ParentHash         = parentHash,
             OriginalSize       = originalSize,
             ArchivedSize       = archivedSize,
             StorageTier        = storageTier,
-            PointerFileEntries = []
+            PointerFileEntries = pointerFileBuilder.PointerFileEntries
         };
-        binaryProperties.Add(currentBinaryProperty);
-        return this;
-    }
-
-    public StateRepositoryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTime = null, DateTime? writeTime = null)
-    {
-        if (currentBinaryProperty == null)
-            throw new InvalidOperationException("Must add a binary property before adding pointer file entries");
-
-        if (binaryFileRelativeName.EndsWith(PointerFile.Extension))
-            throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
-
-        currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntry
-        {
-            RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
-            CreationTimeUtc  = creationTime,
-            LastWriteTimeUtc = writeTime
-        });
-
+        
+        binaryProperties.Add(binaryProperty);
         return this;
     }
 

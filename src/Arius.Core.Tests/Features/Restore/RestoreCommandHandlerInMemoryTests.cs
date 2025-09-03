@@ -50,13 +50,19 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         var samFile3 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(GenerateValidHash("file1-hash"), 1)
-            .WithPointerFileEntry("/file1.jpg")
-            .WithBinaryProperty(GenerateValidHash("file2-hash"), 1)
-            .WithPointerFileEntry("/Sam/file2.jpg")
-            .WithPointerFileEntry("/Sam/file2-duplicate.jpg")
-            .WithBinaryProperty(samFile3.Hash, samFile3.FilePair.Length!.Value)
-            .WithPointerFileEntry("/Sam/file3.jpg")
+            .WithBinaryProperty(GenerateValidHash("file1-hash"), 1, pfes =>
+            {
+                pfes.WithPointerFileEntry("/file1.jpg");
+            })
+            .WithBinaryProperty(GenerateValidHash("file2-hash"), 1, pfes =>
+            {
+                pfes.WithPointerFileEntry("/Sam/file2.jpg")
+                    .WithPointerFileEntry("/Sam/file2-duplicate.jpg");
+            })
+            .WithBinaryProperty(samFile3.Hash, samFile3.FilePair.Length!.Value, pfes =>
+            {
+                pfes.WithPointerFileEntry("/Sam/file3.jpg");
+            })
             .BuildFake();
 
         var hc = await new HandlerContextBuilder(command)
