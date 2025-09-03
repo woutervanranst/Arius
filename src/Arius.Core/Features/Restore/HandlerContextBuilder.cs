@@ -97,8 +97,8 @@ internal class HandlerContextBuilder
                 logger.LogInformation($"Using cached state file '{latestStateName}' from local cache.");
             }
 
-            var factory = new StateRepositoryDbContextFactory(latestStateFile, false, NullLogger<StateRepositoryDbContextFactory>.Instance);
-            return new StateRepository(factory);
+            var contextPool = new StateRepositoryDbContextPool(latestStateFile, false, NullLogger<StateRepositoryDbContextPool>.Instance);
+            return new StateRepository(contextPool);
         }
 
         FilePairFileSystem GetFileSystem()

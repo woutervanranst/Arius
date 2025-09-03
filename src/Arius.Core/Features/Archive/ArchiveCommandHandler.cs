@@ -588,13 +588,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 
-            var factory = new StateRepositoryDbContextFactory(stateFile, true, loggerFactory.CreateLogger<StateRepositoryDbContextFactory>());
-            var stateRepo = new StateRepository(factory);
+            var contextPool = new StateRepositoryDbContextPool(stateFile, true, loggerFactory.CreateLogger<StateRepositoryDbContextPool>());
+            var stateRepo   = new StateRepository(contextPool);
 
             return new HandlerContext
             {
                 Request         = request,
-                ArchiveStorage    = archiveStorage,
+                ArchiveStorage  = archiveStorage,
                 StateRepository = stateRepo,
                 Hasher          = new Sha256Hasher(request.Passphrase),
                 FileSystem      = GetFileSystem()

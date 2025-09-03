@@ -7,18 +7,18 @@ namespace Arius.Core.Shared.StateRepositories;
 
 internal class StateRepository : IStateRepository
 {
-    private readonly StateRepositoryDbContextFactory factory;
+    private readonly StateRepositoryDbContextPool contextPool;
 
-    public StateRepository(StateRepositoryDbContextFactory factory)
+    public StateRepository(StateRepositoryDbContextPool contextPool)
     {
-        this.factory = factory;
+        this.contextPool = contextPool;
     }
 
-    public FileInfo StateDatabaseFile => factory.StateDatabaseFile;
-    public bool HasChanges => factory.HasChanges;
+    public FileInfo StateDatabaseFile => contextPool.StateDatabaseFile;
+    public bool HasChanges => contextPool.HasChanges;
 
-    public void Vacuum() => factory.Vacuum();
-    public void Delete() => factory.Delete();
+    public void Vacuum() => contextPool.Vacuum();
+    public void Delete() => contextPool.Delete();
 
     // --- BINARYPROPERTIES
 
@@ -30,14 +30,14 @@ internal class StateRepository : IStateRepository
 
     public BinaryProperties? GetBinaryProperty(Hash h)
     {
-        using var context = factory.CreateContext();
+        using var context = contextPool.CreateContext();
 
         return findBinaryProperty(context, h);
     }
 
     public void AddBinaryProperties(params BinaryProperties[] bps)
     {
-        using var context = factory.CreateContext();
+        using var context = contextPool.CreateContext();
 
         context.BinaryProperties.AddRange(bps);
         context.SaveChanges();
@@ -47,11 +47,11 @@ internal class StateRepository : IStateRepository
 
     public void UpsertPointerFileEntries(params PointerFileEntry[] pfes)
     {
-        using var context = factory.CreateContext();
+        using var context = contextPool.CreateContext();
 
         context.BulkInsertOrUpdate(pfes);
 
-        factory.SetHasChanges(); // BulkInsertOrUpdate doesn't trigger SaveChanges callback
+        contextPool.SetHasChanges(); // BulkInsertOrUpdate doesn't trigger SaveChanges callback
         // TODO : use the OnChanges callback of BulkInsertOrUpdate when available
 
         //foreach (var pfe in pfes)
@@ -87,7 +87,7 @@ internal class StateRepository : IStateRepository
 
     public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
-        using var context = factory.CreateContext();
+        using var context = contextPool.CreateContext();
 
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
         var dbRelativeNamePrefix = relativeNamePrefix.RemovePrefix('/');
@@ -111,12 +111,12 @@ internal class StateRepository : IStateRepository
 
     public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
-        using var context = factory.CreateContext();
+        using var context = contextPool.CreateContext();
 
         var entriesToDelete = context.PointerFileEntries.Where(shouldBeDeleted).ToArray();
         context.BulkDelete(entriesToDelete);
 
         if (entriesToDelete.Any())
-            factory.SetHasChanges();
+            contextPool.SetHasChanges();
     }
 }

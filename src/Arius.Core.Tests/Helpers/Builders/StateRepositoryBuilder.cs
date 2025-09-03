@@ -94,9 +94,9 @@ internal class StateRepositoryBuilder
 
     public IStateRepository Build(string path, string stateName)
     {
-        var stateFile = new FileInfo(Path.Combine(path, $"{stateName}.db"));
-        var factory = new EfContextPool(stateFile, true, NullLogger<EfContextPool>.Instance);
-        var stateRepo = new StateRepository(factory);
+        var stateFile   = new FileInfo(Path.Combine(path, $"{stateName}.db"));
+        var contextPool = new StateRepositoryDbContextPool(stateFile, true, NullLogger<StateRepositoryDbContextPool>.Instance);
+        var stateRepo   = new StateRepository(contextPool);
 
         // Add all binary properties
         var binaryPropertiesDtos = binaryProperties

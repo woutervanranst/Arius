@@ -1,27 +1,35 @@
 ﻿using Humanizer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Shared.StateRepositories;
 
-internal class StateRepositoryDbContextFactory
+internal class StateRepositoryDbContextPool
 {
-    private readonly DbContextOptions<StateRepositoryDbContext> dbContextOptions;
-    private readonly ILogger<StateRepositoryDbContextFactory>   logger;
-    
-    public FileInfo StateDatabaseFile { get; }
-    public bool     HasChanges        { get; private set; }
+    private readonly PooledDbContextFactory<StateRepositoryDbContext> factory;
+    private readonly ILogger<StateRepositoryDbContextPool> logger;
 
-    public StateRepositoryDbContextFactory(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepositoryDbContextFactory> logger)
+    private bool hasChanges;
+
+    public FileInfo StateDatabaseFile { get; }
+    public bool HasChanges => Volatile.Read(ref hasChanges);
+
+    public StateRepositoryDbContextPool(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepositoryDbContextPool> logger)
     {
-        this.logger       = logger;
+        this.logger = logger;
         StateDatabaseFile = stateDatabaseFile;
-        
-        var optionsBuilder = new DbContextOptionsBuilder<StateRepositoryDbContext>();
-        dbContextOptions = optionsBuilder
+
+        var  interceptor = new AnyChangesInterceptor(SetHasChanges);
+
+        var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
             .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .AddInterceptors(interceptor)
             .Options;
+
+        factory = new PooledDbContextFactory<StateRepositoryDbContext>(options, poolSize: 32);
 
         //context.Database.Migrate();
 
@@ -32,11 +40,9 @@ internal class StateRepositoryDbContextFactory
         }
     }
 
-    public StateRepositoryDbContext CreateContext() => new(dbContextOptions, OnChanges);
+    public StateRepositoryDbContext CreateContext() => factory.CreateDbContext();
 
-    private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
-
-    public void SetHasChanges() => HasChanges = true;
+    public void SetHasChanges() => Interlocked.Exchange(ref hasChanges, true);
 
     public void Vacuum()
     {
@@ -69,5 +75,25 @@ internal class StateRepositoryDbContextFactory
     {
         SqliteConnection.ClearAllPools();
         StateDatabaseFile.Delete();
+    }
+
+
+    private class AnyChangesInterceptor : SaveChangesInterceptor
+    {
+        private readonly Action onWrites;
+        public AnyChangesInterceptor(Action onWrites) => this.onWrites = onWrites;
+
+        public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+        {
+            if (result > 0) onWrites();
+            return result;
+        }
+
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (result > 0) onWrites();
+            return ValueTask.FromResult(result);
+        }
     }
 }

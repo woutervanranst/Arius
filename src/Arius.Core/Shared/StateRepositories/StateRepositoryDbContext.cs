@@ -9,12 +9,9 @@ namespace Arius.Core.Shared.StateRepositories;
 
 internal class StateRepositoryDbContext : DbContext
 {
-    private readonly Action<int> onChanges;
-
-    public StateRepositoryDbContext(DbContextOptions<StateRepositoryDbContext> options, Action<int> onChanges)
+    public StateRepositoryDbContext(DbContextOptions<StateRepositoryDbContext> options)
         : base(options)
     {
-        this.onChanges = onChanges;
     }
 
     public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
@@ -72,19 +69,6 @@ internal class StateRepositoryDbContext : DbContext
         //        obj => obj));
     }
 
-    public override int SaveChanges()
-    {
-        var numChanges = base.SaveChanges();
-        onChanges(numChanges);
-        return numChanges;
-    }
-
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        var numChanges = await base.SaveChangesAsync(cancellationToken);
-        onChanges(numChanges);
-        return numChanges;
-    }
 
     private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
     {
