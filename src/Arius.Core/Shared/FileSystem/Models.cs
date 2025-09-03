@@ -101,7 +101,7 @@ internal class BinaryFile : FileEntry
     public Stream OpenRead()
     {
         // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
-        if (FileSystem is MemoryFileSystem)
+        if (FileSystem is FilePairFileSystem { IsInMemory: true })
         {
             return FileSystem.OpenFile(Path, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
@@ -123,7 +123,7 @@ internal class BinaryFile : FileEntry
     public Stream OpenWrite(long expectedLength)
     {
         // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
-        if (FileSystem is MemoryFileSystem)
+        if (FileSystem is FilePairFileSystem { IsInMemory: true })
         {
             return FileSystem.OpenFile(Path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None);
         }

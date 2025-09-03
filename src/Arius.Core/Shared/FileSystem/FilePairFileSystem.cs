@@ -6,9 +6,12 @@ namespace Arius.Core.Shared.FileSystem;
 
 internal class FilePairFileSystem : ComposeFileSystem
 {
-    public FilePairFileSystem(IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
+    public FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, owned)
     {
+        IsInMemory = fileSystem.HasUnderlyingFileSystemOfType<MemoryFileSystem>();
     }
+
+    public bool IsInMemory { get; init; }
 
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)
     {
