@@ -1,3 +1,4 @@
+using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
@@ -41,14 +42,17 @@ internal class StateRepositoryBuilder
         return this;
     }
 
-    public StateRepositoryBuilder WithPointerFileEntry(string relativeName, DateTime? creationTime = null, DateTime? writeTime = null)
+    public StateRepositoryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTime = null, DateTime? writeTime = null)
     {
         if (currentBinaryProperty == null)
             throw new InvalidOperationException("Must add a binary property before adding pointer file entries");
 
+        if (binaryFileRelativeName.EndsWith(PointerFile.Extension))
+            throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
+
         currentBinaryProperty.PointerFileEntries.Add(new PointerFileEntry
         {
-            RelativeName     = relativeName,
+            RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
             CreationTimeUtc  = creationTime,
             LastWriteTimeUtc = writeTime
         });
