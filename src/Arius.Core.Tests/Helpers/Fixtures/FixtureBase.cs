@@ -6,7 +6,7 @@ namespace Arius.Core.Tests.Helpers.Fixtures;
 
 public abstract class FixtureBase : IDisposable
 {
-    public const string PASSPHRASE = "passphrase";
+    public const string PASSPHRASE = "wouterpassphrase";
 
     public          TestRemoteRepositoryOptions? RepositoryOptions  { get; } // can be null when no appsettings etc
     public          IOptions<AriusConfiguration> AriusConfiguration { get; }
