@@ -37,23 +37,31 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
     public async Task Restore_Mocked_HappyPath()
     {
         // Arrange
+        var NOTEXISTINGFILE_PATH = "/file1.jpg";
+        var NOTEXISTINGFILE_HASH = GenerateValidHash("file1-hash");
+
         var command = new RestoreCommandBuilder(fixture)
-            .WithTargets("./file1.jpg", "./Sam/")
+            .WithContainerName("containername")
+            .WithTargets($".{NOTEXISTINGFILE_PATH}", "./Sam/")
             .Build();
 
         var storageMock = Substitute.For<IArchiveStorage>();
         storageMock.ContainerExistsAsync()
             .Returns(Task.FromResult(true));
         storageMock.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo => Task.FromResult<Stream>(new MemoryStream("This is test file content for the stream"u8.ToArray())));
+            .Returns(callInfo => 
+            {
+                var hash = callInfo.Arg<Hash>();
+                var content = $"This is test file content for the stream {hash}";
+                return Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+            });
 
-        var file1Hash       = GenerateValidHash("file1-hash");
         var samFile3 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(file1Hash, 1, pfes =>
+            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes =>
             {
-                pfes.WithPointerFileEntry("/file1.jpg");
+                pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH);
             })
             .WithBinaryProperty(GenerateValidHash("file2-hash"), 1, pfes =>
             {
@@ -76,11 +84,12 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         var result = await handler.Handle(hc, CancellationToken.None);
 
         // Assert
-        await storageMock.Received(1).OpenReadChunkAsync(file1Hash, Arg.Any<CancellationToken>());
 
-        fixture.FileSystem.ReadAllText("/file1.jpg").ShouldBe("This is test file content for the stream");
+            // The NOTEXISTINGFILE should be downloaded from storage and created on disk
+        await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE_HASH, Arg.Any<CancellationToken>());
+        fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldStartWith("This is test file content for the stream");
+        fixture.FileSystem.ReadAllText(NOTEXISTINGFILE_PATH).ShouldContain(NOTEXISTINGFILE_HASH.ToString());
 
-        // file1-hash is downloaded once
         // file2-hash is downloaded twice
         // fp1 binary is NOT downloaded
 
