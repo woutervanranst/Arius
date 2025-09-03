@@ -15,22 +15,42 @@ internal class AzureBlobStorage : IStorage
 {
     private readonly BlobContainerClient blobContainerClient;
 
-    public AzureBlobStorage(string accountName, string accountKey, string containerName)
+    public AzureBlobStorage(string accountName, string accountKey, string containerName, bool useRetryPolicy = true)
     {
-        var blobServiceClient = new BlobServiceClient(
-            new Uri($"https://{accountName}.blob.core.windows.net"),
-            new StorageSharedKeyCredential(accountName, accountKey),
-            new BlobClientOptions
-            {
-                Retry =
+        try
+        {
+            var blobServiceClient = new BlobServiceClient(
+                new Uri($"https://{accountName}.blob.core.windows.net"),
+                new StorageSharedKeyCredential(accountName, accountKey),
+                GetBlobClientOptions());
+            blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+        }
+        catch (FormatException e)
+        {
+            throw new FormatException("Invalid account credentials format", e);
+        }
+
+        BlobClientOptions GetBlobClientOptions()
+        {
+            return useRetryPolicy
+                ? new BlobClientOptions
                 {
-                    Mode       = Azure.Core.RetryMode.Exponential,
-                    Delay      = TimeSpan.FromSeconds(2),
-                    MaxDelay   = TimeSpan.FromSeconds(16),
-                    MaxRetries = 5
+                    Retry =
+                    {
+                        Mode       = Azure.Core.RetryMode.Exponential,
+                        Delay      = TimeSpan.FromSeconds(2),
+                        MaxDelay   = TimeSpan.FromSeconds(16),
+                        MaxRetries = 5
+                    }
                 }
-            });
-        blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                : new BlobClientOptions
+                {
+                    Retry =
+                    {
+                        MaxRetries = 0
+                    }
+                };
+        }
     }
 
     public async Task<bool> CreateContainerIfNotExistsAsync()
@@ -42,6 +62,7 @@ internal class AzureBlobStorage : IStorage
         }
         catch (RequestFailedException e)
         {
+            // Either invalid credentials ("No such host is known.") or invalid permissions ("Server failed to authenticate the request")
             throw new InvalidOperationException($"Failed to create or access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", e);
         }
     }

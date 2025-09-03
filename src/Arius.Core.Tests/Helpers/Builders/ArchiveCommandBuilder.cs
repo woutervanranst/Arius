@@ -15,6 +15,7 @@ public class ArchiveCommandBuilder
     private int                        parallelism;
     private int                        smallFileBoundary;
     private IProgress<ProgressUpdate>? progressReporter;
+    private bool                       useRetryPolicy;
 
     public ArchiveCommandBuilder()
     {
@@ -50,6 +51,7 @@ public class ArchiveCommandBuilder
         parallelism       = 1;
         smallFileBoundary = 2 * 1024 * 1024;
         progressReporter  = null;
+        useRetryPolicy    = true;
     }
 
     public ArchiveCommandBuilder WithAccountName(string accountName)
@@ -112,6 +114,12 @@ public class ArchiveCommandBuilder
         return this;
     }
 
+    public ArchiveCommandBuilder WithUseRetryPolicy(bool useRetryPolicy)
+    {
+        this.useRetryPolicy = useRetryPolicy;
+        return this;
+    }
+
     public ArchiveCommand Build()
     {
         return new ArchiveCommand
@@ -125,7 +133,8 @@ public class ArchiveCommandBuilder
             LocalRoot         = localRoot,
             Parallelism       = parallelism,
             SmallFileBoundary = smallFileBoundary,
-            ProgressReporter  = progressReporter
+            ProgressReporter  = progressReporter,
+            UseRetryPolicy    = useRetryPolicy
         };
     }
 }

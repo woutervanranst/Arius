@@ -50,7 +50,7 @@ internal class HandlerContextBuilder
         // Blob Storage
         if (archiveStorage == null)
         {
-            var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy);
             archiveStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
         }
 

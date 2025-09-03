@@ -531,7 +531,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
         {
             // Use default implementation with dependency injection
-            var blobStorage    = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName);
+            var blobStorage    = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy);
             var archiveStorage = new EncryptedCompressedStorage(blobStorage, request.Passphrase);
             var stateCacheRoot = new DirectoryInfo("statecache");
             
