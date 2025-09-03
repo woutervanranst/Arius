@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
+using System.Diagnostics;
 using System.Text.Json;
 using Zio;
 
@@ -14,6 +15,7 @@ internal enum FilePairType
     None
 }
 
+[DebuggerDisplay("FilePair ({Type}) - {FullName}")]
 internal class FilePair : FileEntry
 {
     public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
@@ -81,6 +83,7 @@ internal class FilePair : FileEntry
         };
 }
 
+[DebuggerDisplay("BinaryFile - {FullName}")]
 internal class BinaryFile : FileEntry
 {
     public static BinaryFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
@@ -160,6 +163,7 @@ internal class BinaryFile : FileEntry
     }
 }
 
+[DebuggerDisplay("PointerFile - {FullName}")]
 internal class PointerFile : FileEntry
 {
     public static readonly string Extension = ".pointer.arius";
@@ -198,5 +202,6 @@ internal class PointerFile : FileEntry
         CreationTime = creationTime;
         LastWriteTime = lastWriteTime;
     }
+    [DebuggerDisplay("{BinaryHash}")]
     private record PointerFileContents(string BinaryHash);
 }
