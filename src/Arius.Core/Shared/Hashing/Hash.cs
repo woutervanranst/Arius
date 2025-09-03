@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace Arius.Core.Shared.Hashing;
 
 [DebuggerDisplay("Hash {ToString()}")]
-public record Hash
+internal record Hash
 {
     private readonly ImmutableArray<byte> bytes;
 

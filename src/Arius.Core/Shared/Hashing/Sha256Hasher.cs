@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Arius.Core.Shared.Hashing;
 
-public sealed class Sha256Hasher : IDisposable
+internal sealed class Sha256Hasher : IDisposable
 {
     private const int BufferSize = 81920; // 80 KB buffer
 

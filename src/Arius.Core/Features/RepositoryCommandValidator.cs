@@ -2,7 +2,7 @@ using FluentValidation;
 
 namespace Arius.Core.Features;
 
-public class RepositoryCommandValidator : AbstractValidator<RepositoryCommand>
+internal class RepositoryCommandValidator : AbstractValidator<RepositoryCommand>
 {
     public RepositoryCommandValidator()
     {

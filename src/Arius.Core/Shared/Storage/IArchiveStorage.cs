@@ -7,7 +7,7 @@ namespace Arius.Core.Shared.Storage;
 /// Provides archive-specific storage operations for managing chunks and application state.
 /// Handles both chunked file data and state information for the archival system.
 /// </summary>
-public interface IArchiveStorage
+internal interface IArchiveStorage
 {
     Task<bool>               CreateContainerIfNotExistsAsync();
     Task<bool>               ContainerExistsAsync();

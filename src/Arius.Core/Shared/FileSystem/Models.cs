@@ -7,7 +7,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
-public enum FilePairType
+internal enum FilePairType
 {
     PointerFileOnly,
     BinaryFileOnly,
@@ -15,7 +15,7 @@ public enum FilePairType
     None
 }
 
-public class FilePair : FileEntry
+internal class FilePair : FileEntry
 {
     public static FilePair FromBinaryFileFileEntry(FileEntry fe)                            => new(fe.FileSystem, fe.Path);
     public static FilePair FromBinaryFilePath(IFileSystem fileSystem, UPath binaryFilePath) => new(fileSystem, binaryFilePath);
@@ -82,7 +82,7 @@ public class FilePair : FileEntry
         };
 }
 
-public class BinaryFile : FileEntry
+internal class BinaryFile : FileEntry
 {
     public static BinaryFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
 
@@ -161,7 +161,7 @@ public class BinaryFile : FileEntry
     }
 }
 
-public class PointerFile : FileEntry
+internal class PointerFile : FileEntry
 {
     public static readonly string Extension = ".pointer.arius";
 

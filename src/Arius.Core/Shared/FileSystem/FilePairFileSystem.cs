@@ -4,7 +4,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
-public class FilePairFileSystem : ComposeFileSystem
+internal class FilePairFileSystem : ComposeFileSystem
 {
     public FilePairFileSystem(IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
     {

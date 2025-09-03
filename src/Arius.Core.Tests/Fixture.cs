@@ -9,7 +9,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Tests;
 
-public record FilePairWithHash(FilePair FilePair, Hash Hash);
+internal record FilePairWithHash(FilePair FilePair, Hash Hash);
 
 public abstract class FixtureBase : IDisposable
 {
@@ -62,7 +62,7 @@ public class Fixture : FixtureBase
         FileSystem = new FilePairFileSystem(sfs);
     }
 
-    public FilePairWithHash GivenSourceFolderHavingFilePair(UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = default, FileAttributes attributes = FileAttributes.Normal)
+    internal FilePairWithHash GivenSourceFolderHavingFilePair(UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = default, FileAttributes attributes = FileAttributes.Normal)
     {
         if (!binaryFileRelativeName.IsAbsolute)
             throw new ArgumentException("Should start with /");

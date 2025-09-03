@@ -2,7 +2,7 @@ using Arius.Core.Features.Restore;
 
 namespace Arius.Core.Tests.Builders;
 
-public class RestoreCommandBuilder
+internal class RestoreCommandBuilder
 {
     private string                     accountName;
     private string                     accountKey;

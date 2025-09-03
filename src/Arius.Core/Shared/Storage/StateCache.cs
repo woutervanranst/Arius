@@ -3,7 +3,7 @@ using System.Diagnostics;
 namespace Arius.Core.Shared.Storage;
 
 [DebuggerDisplay("CacheDirectory = {cacheDirectory.FullName}")]
-public class StateCache
+internal class StateCache
 {
     private readonly DirectoryInfo cacheDirectory;
 
