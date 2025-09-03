@@ -48,7 +48,7 @@ jobs:
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
         run: >-
           dotnet test Arius.sln --configuration Release --no-build
-          --filter "FullyQualifiedName!=Arius.Core.Tests.Commands.ArchiveCommandHandlerTests.RunArchiveCommand"
+          --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Archive.RunArchiveCommand"
           --logger "trx;LogFileName=test-results.trx"
           --collect:"XPlat Code Coverage"
 

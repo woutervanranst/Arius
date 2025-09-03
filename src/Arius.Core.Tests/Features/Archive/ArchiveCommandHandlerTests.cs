@@ -21,7 +21,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
 
 
     [Fact]
-    public async Task RunArchiveCommand()
+    public async Task RunArchiveCommand() // NOTE this one is skipped in CI
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
 
