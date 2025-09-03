@@ -139,31 +139,30 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     private Task CreateDownloadBinariesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Parallel.ForEachAsync(filePairsToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
-            async (pfe, innerCancellationToken) =>
+            async (filePairWithPointerFileEntry, innerCancellationToken) =>
             {
-            //    if (pfe.BinaryProperties.ParentHash is not null)
-            //        return;
+                var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
-            //    // 1 does it need to be redownloaded?
+                if (pointerFileEntry.BinaryProperties.ParentHash is not null)
+                    return;
 
-            //    // 1. Get the decrypted blob stream from storage
-            //    await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
+                // 1. Get the decrypted blob stream from storage
+                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.Hash, cancellationToken);
 
-            //    // 2. Write to the target file
-            //    var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pfe);
-            //    fp.BinaryFile.Directory.Create();
+                // 2. Write to the target file
+                var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pointerFileEntry);
+                fp.BinaryFile.Directory.Create();
 
-            //    await using var ts = fp.BinaryFile.OpenWrite(pfe.BinaryProperties.OriginalSize);
+                await using var ts = fp.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize);
+                await ss.CopyToAsync(ts, innerCancellationToken);
+                await ts.FlushAsync(innerCancellationToken); // Explicitly flush
 
-            //    await ss.CopyToAsync(ts, innerCancellationToken);
-            //    await ts.FlushAsync(innerCancellationToken); // Explicitly flush
+                //    // to rehydrate list
 
-            //    // to rehydrate list
-                
-            //    // todo should it overwrite the binary?
+                //    // todo should it overwrite the binary?
 
-            //    // todo hydrate
+                //    // todo hydrate
 
-            //    // todo parenthash
+                //    // todo parenthash
             });
 }

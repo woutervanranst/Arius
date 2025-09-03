@@ -1,15 +1,16 @@
 using Arius.Core.Features.Restore;
+using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Extensions;
 using Arius.Core.Tests.Helpers.Fixtures;
 using NSubstitute;
+using Shouldly;
 using System.Security.Cryptography;
 using System.Text;
-using Arius.Core.Shared.FileSystem;
-using Arius.Core.Tests.Helpers.Extensions;
-using Zio.FileSystems;
+using Zio;
 
 namespace Arius.Core.Tests.Features.Restore;
 
@@ -37,20 +38,20 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
     {
         // Arrange
         var command = new RestoreCommandBuilder(fixture)
-            .WithContainerName("containername")
             .WithTargets("./file1.jpg", "./Sam/")
             .Build();
 
-        var storage = Substitute.For<IArchiveStorage>();
-        storage.ContainerExistsAsync()
+        var storageMock = Substitute.For<IArchiveStorage>();
+        storageMock.ContainerExistsAsync()
             .Returns(Task.FromResult(true));
-        storage.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
+        storageMock.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => Task.FromResult<Stream>(new MemoryStream("This is test file content for the stream"u8.ToArray())));
 
+        var file1Hash       = GenerateValidHash("file1-hash");
         var samFile3 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 1);
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(GenerateValidHash("file1-hash"), 1, pfes =>
+            .WithBinaryProperty(file1Hash, 1, pfes =>
             {
                 pfes.WithPointerFileEntry("/file1.jpg");
             })
@@ -66,7 +67,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             .BuildFake();
 
         var hc = await new HandlerContextBuilder(command)
-            .WithArchiveStorage(storage)
+            .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
             .BuildAsync();
@@ -75,6 +76,9 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         var result = await handler.Handle(hc, CancellationToken.None);
 
         // Assert
+        await storageMock.Received(1).OpenReadChunkAsync(file1Hash, Arg.Any<CancellationToken>());
+
+        fixture.FileSystem.ReadAllText("/file1.jpg").ShouldBe("This is test file content for the stream");
 
         // file1-hash is downloaded once
         // file2-hash is downloaded twice
