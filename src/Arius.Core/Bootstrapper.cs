@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Arius.Core;
 
-public record AriusConfiguration
+public sealed record AriusConfiguration
 {
     [Range(0, 10, ErrorMessage = "Value for {0} must be between {1} and {2}.")]
     public int MaxTokens { get; set; } = 10; // Default value

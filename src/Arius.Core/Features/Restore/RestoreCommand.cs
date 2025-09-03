@@ -1,6 +1,6 @@
 namespace Arius.Core.Features.Restore;
 
-public record RestoreCommand : RepositoryCommand
+public sealed record RestoreCommand : RepositoryCommand
 {
     public required DirectoryInfo LocalRoot       { get; init; }
     public required string[]      Targets         { get; init; }

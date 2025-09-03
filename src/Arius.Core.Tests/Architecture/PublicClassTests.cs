@@ -42,4 +42,23 @@ public class PublicClassTests
             typeof(Arius.Core.Features.Restore.ProgressUpdate).FullName,
         ], ignoreOrder: true);
     }
+
+    [Fact]
+    public void AllPublicClassesShouldBeSealed()
+    {
+        var publicClasses = Architecture.Classes
+            .Where(c => c.Namespace.FullName.StartsWith("Arius.Core"))
+            .Where(c => !c.IsNested)
+            .Where(c => !c.Name.Contains("<")) // Exclude compiler-generated classes
+            .Where(c => c.Visibility == Visibility.Public)
+            .Where(c => c.IsAbstract != true) // Exclude abstract classes which cannot be sealed
+            .ToList();
+
+        var unsealedClasses = publicClasses
+            .Where(c => c.IsSealed != true)
+            .Select(c => c.FullName)
+            .ToList();
+
+        unsealedClasses.ShouldBeEmpty($"The following public classes should be sealed: {string.Join(", ", unsealedClasses)}");
+    }
 }

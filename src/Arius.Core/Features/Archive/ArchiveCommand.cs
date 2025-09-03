@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Features.Archive;
 
-public record ArchiveCommand : RepositoryCommand
+public sealed record ArchiveCommand : RepositoryCommand
 {
     public required bool          RemoveLocal   { get; init; }
     public required StorageTier   Tier          { get; init; }

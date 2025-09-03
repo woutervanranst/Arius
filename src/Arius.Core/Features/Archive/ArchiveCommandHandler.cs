@@ -16,9 +16,9 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Features.Archive;
 
-public record ProgressUpdate;
-public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
-public record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public abstract record ProgressUpdate;
+public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public sealed record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
 internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 {

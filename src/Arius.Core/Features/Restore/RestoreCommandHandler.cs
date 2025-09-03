@@ -8,7 +8,7 @@ using System.Threading.Channels;
 
 namespace Arius.Core.Features.Restore;
 
-public record ProgressUpdate;
+public sealed record ProgressUpdate;
 
 internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 {
