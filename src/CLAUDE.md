@@ -5,16 +5,17 @@
 Arius is a lightweight tiered archival solution for Azure Blob Storage. 
 
 ## Build and Test Commands
+! You are running in WSL, but need to build/test in Windows. Therefore, use the ./build-wsl.sh script.
 
 ```bash
 # Build the entire solution
-dotnet build Arius.sln
+./build-wsl.sh build Arius.sln
 
 # Run all tests
-dotnet test Arius.sln
+./build-wsl.sh test Arius.sln
 
 # Run a single test
-dotnet test Arius.sln --filter "FullyQualifiedName~<TestClassName>.<TestMethodName>"
+./build-wsl.sh test Arius.sln --filter "FullyQualifiedName~<TestClassName>.<TestMethodName>"
 ```
 
 ## Running the Application
