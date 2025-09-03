@@ -1,3 +1,4 @@
+using System.Formats.Tar;
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.StateRepositories;
@@ -156,23 +157,14 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 try
                 {
                     if (pointerFileEntry.BinaryProperties.ParentHash is not null)
-                        return;
-
-                    // 1. Get the decrypted blob stream from storage
-                    await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.Hash, cancellationToken);
-
-                    // 2. Write to the target file
-                    //var fp = FilePair.FromPointerFileEntry(handlerContext.FileSystem, pointerFileEntry);
-                    filePair.BinaryFile.Directory.Create();
-
-                    await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
                     {
-                        await ss.CopyToAsync(ts, innerCancellationToken);
-                        await ts.FlushAsync(innerCancellationToken); // Explicitly flush
+                        await DownloadSmallFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
+                    }
+                    else
+                    {
+                        await DownloadLargeFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
 
-                    filePair.BinaryFile.CreationTimeUtc = pointerFileEntry.CreationTimeUtc!.Value;
-                    filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
                     //    // to rehydrate list
 
@@ -193,4 +185,56 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                     throw;
                 }
             });
+
+    private async Task DownloadLargeFileAsync(HandlerContext handlerContext, FilePairWithPointerFileEntry filePairWithPointerFileEntry, CancellationToken cancellationToken = default)
+    {
+        var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+
+        // 1. Get the decrypted blob stream from storage
+        await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.Hash, cancellationToken);
+
+        // 2. Write to the target file
+        filePair.BinaryFile.Directory.Create();
+
+        await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+        {
+            await ss.CopyToAsync(ts, cancellationToken);
+            await ts.FlushAsync(cancellationToken); // Explicitly flush
+        }
+
+        filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
+        filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
+    }
+
+    private async Task DownloadSmallFileAsync(HandlerContext handlerContext, FilePairWithPointerFileEntry filePairWithPointerFileEntry, CancellationToken cancellationToken = default)
+    {
+        var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+
+        // 1. Get the decrypted blob stream from storage
+        await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.ParentHash!, cancellationToken);
+
+        await using var tarReader = new TarReader(ss);
+
+        TarEntry? entry;
+        while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)
+        {
+            if (entry.Name == pointerFileEntry.Hash)
+                break;
+        }
+
+
+        // 2. Write to the target file
+        filePair.BinaryFile.Directory.Create();
+
+        await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+        {
+            
+            await entry.DataStream.CopyToAsync(ts, cancellationToken);
+            await ts.FlushAsync(cancellationToken); // Explicitly flush
+        }
+
+        filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
+        filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
+
+    }
 }

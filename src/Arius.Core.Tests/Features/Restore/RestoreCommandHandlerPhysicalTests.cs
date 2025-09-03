@@ -36,7 +36,8 @@ public class RestoreCommandHandlerPhysicalTests : IClassFixture<PhysicalFileSyst
         var command = new RestoreCommandBuilder(fixture)
             .WithLocalRoot(fixture.TestRunSourceFolder)
             .WithContainerName("test")
-            .WithTargets("./IMG20250126195020.jpg", "./Sam/")
+            //.WithTargets("./IMG20250126195020.jpg", "./Sam/")
+            .WithTargets("./invoice.pdf")
             .WithIncludePointers(true)
             .Build();
 
