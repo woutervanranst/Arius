@@ -1,18 +1,19 @@
 using Arius.Core.Features.Archive;
+using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using System.Runtime.InteropServices;
-using Arius.Core.Tests.Helpers.Builders;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
+public class ArchiveCommandHandlerTests : IClassFixture<PhysicalFileSystemFixture>, IDisposable
 {
-    private readonly Fixture                           fixture;
+    private readonly PhysicalFileSystemFixture        fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
 
-    public ArchiveCommandHandlerTests(Fixture fixture)
+    public ArchiveCommandHandlerTests(PhysicalFileSystemFixture fixture)
     {
         this.fixture = fixture;
         logger       = new();

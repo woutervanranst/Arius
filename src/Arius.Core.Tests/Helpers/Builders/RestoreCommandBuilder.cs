@@ -1,4 +1,5 @@
 using Arius.Core.Features.Restore;
+using Arius.Core.Tests.Helpers.Fixtures;
 
 namespace Arius.Core.Tests.Helpers.Builders;
 
@@ -19,12 +20,12 @@ internal class RestoreCommandBuilder
         SetDefaults(null);
     }
 
-    public RestoreCommandBuilder(Fixture? fixture)
+    public RestoreCommandBuilder(FixtureBase? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(Fixture? fixture)
+    private void SetDefaults(FixtureBase? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {
@@ -32,7 +33,7 @@ internal class RestoreCommandBuilder
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
             passphrase    = fixture.RepositoryOptions.Passphrase ?? "testpass";
-            targets       = fixture.TestRunSourceFolder != null ? [fixture.TestRunSourceFolder.FullName] : ["dummy"];
+            targets       = fixture is PhysicalFileSystemFixture physicalFixture ? [physicalFixture.TestRunSourceFolder.FullName] : ["dummy"];
         }
         else
         {

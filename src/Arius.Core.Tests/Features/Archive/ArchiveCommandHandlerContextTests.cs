@@ -2,6 +2,7 @@ using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Fixtures;
 using NSubstitute;
 using Shouldly;
 
@@ -13,11 +14,11 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     private readonly IArchiveStorage                                  mockArchiveStorage;
     private readonly DirectoryInfo                                    tempStateDirectory;
     private readonly ArchiveCommand                                   testCommand;
-    private readonly Fixture                                          fixture;
+    private readonly PhysicalFileSystemFixture                       fixture;
 
     public ArchiveCommandHandlerContextCreateAsyncTests()
     {
-        fixture = new Fixture();
+        fixture = new PhysicalFileSystemFixture();
         loggerFactory = new FakeLoggerFactory();
         mockArchiveStorage = Substitute.For<IArchiveStorage>();
         

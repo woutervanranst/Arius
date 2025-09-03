@@ -1,5 +1,6 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
@@ -10,12 +11,12 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
 {
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
-    private readonly Fixture                           fixture;
+    private readonly PhysicalFileSystemFixture        fixture;
 
     public ArchiveCommandHandlerErrorTests()
     {
         logger  = new();
-        fixture = new ();
+        fixture = new PhysicalFileSystemFixture();
         handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 

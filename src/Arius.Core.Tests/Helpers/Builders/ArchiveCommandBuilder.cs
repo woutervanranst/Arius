@@ -1,5 +1,6 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
+using Arius.Core.Tests.Helpers.Fixtures;
 
 namespace Arius.Core.Tests.Helpers.Builders;
 
@@ -22,12 +23,12 @@ public class ArchiveCommandBuilder
         SetDefaults(null);
     }
 
-    public ArchiveCommandBuilder(Fixture? fixture)
+    public ArchiveCommandBuilder(FixtureBase? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(Fixture? fixture)
+    private void SetDefaults(FixtureBase? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {
@@ -35,7 +36,7 @@ public class ArchiveCommandBuilder
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
             passphrase    = fixture.RepositoryOptions.Passphrase ?? "testpass";
-            localRoot     = fixture.TestRunSourceFolder ?? new DirectoryInfo(Path.GetTempPath());
+            localRoot     = fixture is PhysicalFileSystemFixture physicalFixture ? physicalFixture.TestRunSourceFolder : new DirectoryInfo(Path.GetTempPath());
         }
         else
         {
