@@ -36,6 +36,13 @@ public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
 
     }
 
+    [Fact(Skip = "TODO")]
+
+    public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
+    {
+
+    }
+
     public void Dispose()
     {
         fixture?.Dispose();
