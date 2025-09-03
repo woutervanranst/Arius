@@ -2,8 +2,6 @@
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
-using Arius.Core.Shared.Storage;
-using FluentValidation;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -12,7 +10,6 @@ using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
-using Zio.FileSystems;
 
 namespace Arius.Core.Features.Archive;
 
@@ -46,7 +43,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
     public async ValueTask<Unit> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await HandlerContext.CreateAsync(request, loggerFactory);
+        var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
+            .BuildAsync();
 
         return await Handle(handlerContext, cancellationToken);
     }
@@ -518,98 +516,5 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             uploadingHashes.Remove(h, out var tcs);
             tcs.SetResult();
         }
-    }
-
-
-
-
-    //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
-    //    => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
-
-    internal class HandlerContext
-    {
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory)
-        {
-            // Use default implementation with dependency injection
-            var blobStorage    = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy);
-            var archiveStorage = new EncryptedCompressedStorage(blobStorage, request.Passphrase);
-            var stateCacheRoot = new DirectoryInfo("statecache");
-            
-            return await CreateAsync(request, loggerFactory, archiveStorage, stateCacheRoot);
-        }
-
-        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request, ILoggerFactory loggerFactory, IArchiveStorage archiveStorage, DirectoryInfo stateCacheRoot)
-        {
-            await new ArchiveCommandValidator().ValidateAndThrowAsync(request);
-
-            var logger = loggerFactory.CreateLogger<HandlerContext>();
-
-            // Create blob container if needed
-            request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
-            var created = await archiveStorage.CreateContainerIfNotExistsAsync();
-            request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
-
-            // Instantiate StateCache
-            var stateCache = new StateCache(stateCacheRoot);
-
-            // Determine the version name for this run
-            var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
-            request.ProgressReporter?.Report(new TaskProgressUpdate($"Determining version name '{versionName}'...", 0));
-
-            // Get the latest state from blob storage
-            var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
-            
-            request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
-            FileInfo stateFile;
-            if (latestStateName is not null)
-            {
-                // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
-                var latestStateFile = stateCache.GetStateFilePath(latestStateName);
-                if (!latestStateFile.Exists)
-                {
-                    await archiveStorage.DownloadStateAsync(latestStateName, latestStateFile);
-                }
-                else
-                {
-                    request.ProgressReporter?.Report(new TaskProgressUpdate($"State file '{latestStateName}' already exists in cache", 100));
-                }
-
-                stateFile = stateCache.GetStateFilePath(versionName);
-                stateCache.CopyStateFile(latestStateFile, stateFile);
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Copied latest state to new version", 100));
-            }
-            else
-            {
-                // If there is none, just create an empty staterepository with the new version
-                stateFile = stateCache.GetStateFilePath(versionName);
-                request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
-            }
-
-            var contextPool = new StateRepositoryDbContextPool(stateFile, true, loggerFactory.CreateLogger<StateRepositoryDbContextPool>());
-            var stateRepo   = new StateRepository(contextPool);
-
-            return new HandlerContext
-            {
-                Request         = request,
-                ArchiveStorage  = archiveStorage,
-                StateRepository = stateRepo,
-                Hasher          = new Sha256Hasher(request.Passphrase),
-                FileSystem      = GetFileSystem()
-            };
-
-            FilePairFileSystem GetFileSystem()
-            {
-                var pfs  = new PhysicalFileSystem();
-                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-                var sfs  = new SubFileSystem(pfs, root, true);
-                return new FilePairFileSystem(sfs, true);
-            }
-        }
-
-        public required ArchiveCommand                  Request         { get; init; }
-        public required IArchiveStorage                 ArchiveStorage  { get; init; }
-        public required StateRepository StateRepository { get; init; }
-        public required Sha256Hasher                    Hasher          { get; init; }
-        public required FilePairFileSystem              FileSystem      { get; init; }
     }
 }

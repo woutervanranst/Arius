@@ -1,8 +1,7 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
+using Arius.Core.Tests.Helpers;
 using Arius.Core.Tests.Helpers.Builders;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Logging.Testing;
 using NSubstitute;
 using Shouldly;
 
@@ -10,7 +9,7 @@ namespace Arius.Core.Tests.Features.Archive;
 
 public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 {
-    private readonly FakeLogger<ArchiveCommandHandler.HandlerContext> logger;
+    private readonly FakeLoggerFactory loggerFactory;
     private readonly IArchiveStorage                                  mockArchiveStorage;
     private readonly DirectoryInfo                                    tempStateDirectory;
     private readonly ArchiveCommand                                   testCommand;
@@ -19,7 +18,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     public ArchiveCommandHandlerContextCreateAsyncTests()
     {
         fixture = new Fixture();
-        logger = new FakeLogger<ArchiveCommandHandler.HandlerContext>();
+        loggerFactory = new FakeLoggerFactory();
         mockArchiveStorage = Substitute.For<IArchiveStorage>();
         
         tempStateDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), $"arius-test-{Guid.NewGuid()}"));
@@ -36,11 +35,10 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         mockArchiveStorage.GetStates(Arg.Any<CancellationToken>()).Returns(AsyncEnumerable.Empty<string>());
 
         // Act
-        var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
-            testCommand, 
-            NullLoggerFactory.Instance, 
-            mockArchiveStorage, 
-            tempStateDirectory);
+        var context = await new HandlerContextBuilder(testCommand, loggerFactory)
+            .WithArchiveStorage(mockArchiveStorage)
+            .WithStateCacheRoot(tempStateDirectory)
+            .BuildAsync();
 
         // Assert
         context.ShouldNotBeNull();
@@ -77,11 +75,10 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
             });
 
         // Act
-        var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
-            testCommand, 
-            NullLoggerFactory.Instance, 
-            mockArchiveStorage, 
-            tempStateDirectory);
+        var context = await new HandlerContextBuilder(testCommand, loggerFactory)
+            .WithArchiveStorage(mockArchiveStorage)
+            .WithStateCacheRoot(tempStateDirectory)
+            .BuildAsync();
 
         // Assert
         context.ShouldNotBeNull();
@@ -120,11 +117,10 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         new StateRepositoryBuilder().Build(tempStateDirectory.FullName, existingStateName);
 
         // Act
-        var context = await ArchiveCommandHandler.HandlerContext.CreateAsync(
-            testCommand, 
-            NullLoggerFactory.Instance, 
-            mockArchiveStorage, 
-            tempStateDirectory);
+        var context = await new HandlerContextBuilder(testCommand, loggerFactory)
+            .WithArchiveStorage(mockArchiveStorage)
+            .WithStateCacheRoot(tempStateDirectory)
+            .BuildAsync();
 
         // Assert
         context.ShouldNotBeNull();
@@ -150,6 +146,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
     public void Dispose()
     {
         fixture?.Dispose();
+        loggerFactory?.Dispose();
         //if (tempStateDirectory.Exists)
         //{
         //    tempStateDirectory.Delete(recursive: true);
