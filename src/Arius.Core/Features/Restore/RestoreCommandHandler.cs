@@ -105,6 +105,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 if (pfe.BinaryProperties.ParentHash is not null)
                     return;
 
+                // 1 does it need to be redownloaded?
+
                 // 1. Get the decrypted blob stream from storage
                 await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pfe.BinaryProperties.Hash, cancellationToken);
 
@@ -117,6 +119,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 await ss.CopyToAsync(ts, innerCancellationToken);
                 await ts.FlushAsync(innerCancellationToken); // Explicitly flush
 
+                // to rehydrate list
+                
                 // todo should it overwrite the binary?
 
                 // todo hydrate
