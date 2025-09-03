@@ -55,6 +55,7 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
     [Fact]
     public async Task Bla()
     {
+        // Arrange
         var command = new RestoreCommandBuilder(fixture)
             .WithLocalRoot(fixture.TestRunSourceFolder)
             .WithContainerName("test")
@@ -63,11 +64,10 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
             .Build();
 
         var storage = Substitute.For<IArchiveStorage>();
-        storage.ContainerExistsAsync().Returns(Task.FromResult(true));
-        
-        // Configure mock to return a new stream each time it's called
+        storage.ContainerExistsAsync()
+            .Returns(Task.FromResult(true));
         storage.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
-               .Returns(callInfo => Task.FromResult<Stream>(new MemoryStream(Encoding.UTF8.GetBytes("This is test file content for the stream"))));
+            .Returns(callInfo => Task.FromResult<Stream>(new MemoryStream("This is test file content for the stream"u8.ToArray())));
 
         var sr = new StateRepositoryBuilder()
             .WithBinaryProperty(GenerateValidHash("file1-hash"), 1)
@@ -79,14 +79,17 @@ public class RestoreCommandHandlerTests : IClassFixture<Fixture>
 
         using var mfs = new MemoryFileSystem();
 
+
         var hc = await new HandlerContextBuilder(command)
             .WithArchiveStorage(storage)
             .WithStateRepository(sr)
             .WithBaseFileSystem(mfs)
             .BuildAsync();
 
+        // Act
         var result = await handler.Handle(hc, CancellationToken.None);
 
+        // Assert
     }
 
     //[Fact]
