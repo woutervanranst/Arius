@@ -49,27 +49,57 @@ internal class StateRepository : IStateRepository
     {
         using var context = contextPool.CreateContext();
 
-        context.BulkInsertOrUpdate(pfes);
+        if (HasChanges())
+        {
+            context.BulkInsertOrUpdate(pfes);
+            contextPool.SetHasChanges();
+        }
 
-        contextPool.SetHasChanges(); // BulkInsertOrUpdate doesn't trigger SaveChanges callback
-        // TODO : use the OnChanges callback of BulkInsertOrUpdate when available
+        bool HasChanges()
+        {
+            // NOTE: BulkInsertOrUpdate does not provide a way to know if any changes were made - we need to do a bit more complex upfront evaulation.
+            // This is still twice as fast as the Find > Compare > InsertOrUpdate without BulkExtensions
+            // BulkExtensions does not support BulkConfig.CalculateStats on SQLite
 
-        //foreach (var pfe in pfes)
-        //{
-        //    var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+            // Extract unique hash values and names for filtering
+            var hashValues = pfes.Select(p => p.Hash).Distinct().ToList();
+            var nameValues = pfes.Select(p => p.RelativeName).Distinct().ToList();
 
-        //    if (existingPfe is null)
-        //    {
-        //        context.PointerFileEntries.Add(pfe);
-        //    }
-        //    else
-        //    {
-        //        existingPfe.CreationTimeUtc  = pfe.CreationTimeUtc;
-        //        existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
-        //    }
-        //}
+            // Fetch all potentially matching entries (this over-fetches but is translatable)
+            var existingEntries = context.Set<PointerFileEntry>()
+                .Where(e => hashValues.Contains(e.Hash) && nameValues.Contains(e.RelativeName))
+                .Select(e => new
+                {
+                    e.Hash,
+                    e.RelativeName,
+                    e.CreationTimeUtc,
+                    e.LastWriteTimeUtc
+                })
+                .AsEnumerable()
+                .Where(e => pfes.Any(p => p.Hash.Equals(e.Hash) && p.RelativeName == e.RelativeName)) // Filter in memory
+                .ToDictionary(e => (Hash: e.Hash, RelativeName: e.RelativeName));
 
-        //context.SaveChanges();
+            bool b = false;
+
+            foreach (var pfe in pfes)
+            {
+                var key = (pfe.Hash, pfe.RelativeName);
+
+                if (!existingEntries.TryGetValue(key, out var existing))
+                {
+                    b = true;
+                    break;
+                }
+                else if (existing.CreationTimeUtc != pfe.CreationTimeUtc ||
+                         existing.LastWriteTimeUtc != pfe.LastWriteTimeUtc)
+                {
+                    b = true;
+                    break;
+                }
+            }
+
+            return b;
+        }
     }
 
     private static readonly Func<StateRepositoryDbContext, string, IEnumerable<PointerFileEntry>> findPointerFileEntries = 
