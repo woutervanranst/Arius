@@ -1,12 +1,12 @@
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.Threading.Channels;
-using Arius.Core.Shared.Hashing;
 using Zio;
 
 namespace Arius.Core.Features.Restore;
@@ -209,25 +209,19 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
-        var             tar       = await GetCachedFileEntryAsync(pointerFileEntry.BinaryProperties.ParentHash!);
+        // 1. Get the TarEntry
+        var tar       = await GetCachedFileEntryAsync(pointerFileEntry.BinaryProperties.ParentHash!);
         await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
+        var             tarEntry  = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
 
-        TarEntry? entry;
-        while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)
-        {
-            if (entry.Name == pointerFileEntry.Hash)
-                break;
-        }
-
+        // TODO throw exception if tarEntry is null
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
-
         await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
         {
-            
-            await entry.DataStream.CopyToAsync(ts, cancellationToken);
+            await tarEntry.DataStream.CopyToAsync(ts, cancellationToken);
             await ts.FlushAsync(cancellationToken); // Explicitly flush
         }
 
@@ -235,14 +229,14 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
 
-        async Task<FileEntry> GetCachedFileEntryAsync(Hash h)
+        async Task<FileEntry> GetCachedFileEntryAsync(Hash parentHash)
         {
-            var fe = handlerContext.BinaryCache.GetFileEntry(h.ToString());
+            var fe = handlerContext.BinaryCache.GetFileEntry(parentHash.ToString());
 
             if (!fe.Exists)
             {
                 // The TAR was not yet downloaded from blob storage
-                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(h, cancellationToken);
+                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(parentHash, cancellationToken);
                 await using var ts = fe.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
 
                 await ss.CopyToAsync(ts, cancellationToken);
@@ -250,6 +244,18 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             }
 
             return fe;
+        }
+
+        async Task<TarEntry?> GetTarEntryAsync(Hash hash)
+        {
+            TarEntry? entry;
+            while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)
+            {
+                if (entry.Name == pointerFileEntry.Hash)
+                    break;
+            }
+
+            return entry;
         }
     }
 }
