@@ -37,10 +37,11 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
     public async Task Restore_Mocked_HappyPath()
     {
         // Arrange
-        var NOTEXISTINGFILE_PATH             = "/file1.jpg";
+        //var NOTEXISTINGFILE_PATH             = "/file1.jpg";
         var NOTEXISTINGFILE_CREATIONDATETIMEUTC = new DateTime(2017, 05, 25, 6, 0, 0, DateTimeKind.Utc);
         var NOTEXISTINGFILE_LASTWRITETIMEUTC = new DateTime(2017, 05, 25, 7, 0, 0, DateTimeKind.Utc);
-        var (NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT) = FakeDataGenerator.GenerateRandomContent(10, 1);
+        //var (NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT) = FakeDataGenerator.GenerateRandomContent(10, 1);
+        var NOTEXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/file1.jpg", FilePairType.None, 10, 1, creationTimeUtc: NOTEXISTINGFILE_CREATIONDATETIMEUTC, lastWriteTimeUtc: NOTEXISTINGFILE_LASTWRITETIMEUTC);
 
 
         var DUPLICATEBINARY1_PATH = "/Sam/file2.jpg";
@@ -55,7 +56,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
         var fakeContent = new Dictionary<Hash, byte[]>
         {
-            {NOTEXISTINGFILE_HASH, NOTEXISTINGFILE_CONTENT},
+            {NOTEXISTINGFILE.Hash, NOTEXISTINGFILE.OriginalContent},
             {DUPLICATEBINARY_HASH, DUPLICATEBINARY_CONTENT},
             {EXISTINGFILE.Hash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes()},
             {EXISTINGFILEWITHWRONGHASH.Hash, EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.ReadAllBytes()}
@@ -66,7 +67,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
 
         var command = new RestoreCommandBuilder(fixture)
-            .WithTargets($".{NOTEXISTINGFILE_PATH}", "./Sam/")
+            .WithTargets($".{NOTEXISTINGFILE.FilePair.BinaryFile.FullName}", "./Sam/")
             .WithIncludePointers(true)
             .Build();
 
@@ -84,9 +85,9 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(NOTEXISTINGFILE_HASH, 1, pfes =>
+            .WithBinaryProperty(NOTEXISTINGFILE.Hash, 1, pfes =>
             {
-                pfes.WithPointerFileEntry(NOTEXISTINGFILE_PATH, NOTEXISTINGFILE_CREATIONDATETIMEUTC, NOTEXISTINGFILE_LASTWRITETIMEUTC);
+                pfes.WithPointerFileEntry(NOTEXISTINGFILE.FilePair.FullName, NOTEXISTINGFILE_CREATIONDATETIMEUTC,  NOTEXISTINGFILE_LASTWRITETIMEUTC);
             })
             .WithBinaryProperty(DUPLICATEBINARY_HASH, 1, pfes =>
             {
@@ -110,12 +111,11 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         // Assert
 
             // The NOTEXISTINGFILE should be downloaded from storage and created on disk
-        await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE_HASH, Arg.Any<CancellationToken>());
-        var nef = FilePair.FromBinaryFilePath(hc.FileSystem, NOTEXISTINGFILE_PATH);
-        nef.BinaryFile.ReadAllBytes().ShouldBe(NOTEXISTINGFILE_CONTENT);
-        (await hc.Hasher.GetHashAsync(nef)).ShouldBe(NOTEXISTINGFILE_HASH);
-        nef.CreationTimeUtc.ShouldBe(NOTEXISTINGFILE_CREATIONDATETIMEUTC);
-        nef.LastWriteTimeUtc.ShouldBe(NOTEXISTINGFILE_LASTWRITETIMEUTC);
+        await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE.Hash, Arg.Any<CancellationToken>());
+        NOTEXISTINGFILE.FilePair.BinaryFile.ReadAllBytes().ShouldBe(NOTEXISTINGFILE.OriginalContent);
+        (await hc.Hasher.GetHashAsync(NOTEXISTINGFILE.FilePair)).ShouldBe(NOTEXISTINGFILE.Hash);
+        NOTEXISTINGFILE.FilePair.CreationTimeUtc.ShouldBe(NOTEXISTINGFILE_CREATIONDATETIMEUTC);
+        NOTEXISTINGFILE.FilePair.LastWriteTimeUtc.ShouldBe(NOTEXISTINGFILE_LASTWRITETIMEUTC);
 
             // The DUPLICATEBINARY is downloaded twice and created on disk
         await storageMock.Received(2).OpenReadChunkAsync(DUPLICATEBINARY_HASH, Arg.Any<CancellationToken>());
