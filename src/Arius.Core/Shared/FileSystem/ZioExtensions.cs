@@ -41,7 +41,7 @@ internal static class UPathExtensions
 }
 
 
-public static class DirectoryEntryExtensions
+internal static class DirectoryEntryExtensions
 {
     /// <summary>
     /// Gets a FileEntry with the given name inside this directory.
