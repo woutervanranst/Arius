@@ -12,6 +12,23 @@ internal class FilePairFileSystem : ComposeFileSystem
 
     public bool IsInMemory { get; init; }
 
+    public UPath GetTempPath()
+    {
+        UPath tempDir;
+        
+        if (IsInMemory)
+        {
+            tempDir = $"/temp/{Guid.NewGuid()}";
+            CreateDirectory(tempDir);
+        }
+        else
+        {
+            tempDir = ConvertPathFromInternal(Directory.CreateTempSubdirectory("arius-").FullName);
+        }
+        
+        return tempDir;
+    }
+
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)
     {
         throw new NotImplementedException();

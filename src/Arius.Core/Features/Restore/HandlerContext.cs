@@ -14,4 +14,5 @@ internal record HandlerContext
     public required Sha256Hasher       Hasher          { get; init; }
     public required UPath[]            Targets         { get; init; }
     public required FilePairFileSystem FileSystem      { get; init; }
+    public required UPath              BinaryCache     { get; init; }
 }

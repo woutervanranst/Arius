@@ -1,11 +1,12 @@
-using System.Formats.Tar;
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.StateRepositories;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Formats.Tar;
 using System.Threading.Channels;
+using Zio;
 
 namespace Arius.Core.Features.Restore;
 
@@ -210,10 +211,21 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
-        // 1. Get the decrypted blob stream from storage
-        await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.ParentHash!, cancellationToken);
+        // Check the cache
+        if (!handlerContext.FileSystem.FileExists(handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash!.ToString()))
+        {
+            // 1. Get the decrypted blob stream from storage
+            await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.ParentHash!, cancellationToken);
 
-        await using var tarReader = new TarReader(ss);
+            var fe = new FileEntry(handlerContext.FileSystem, handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash.ToString());
+            await using var ts = fe.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
+            await ss.CopyToAsync(ts, cancellationToken);
+            await ts.FlushAsync(cancellationToken); // Explicitly flush
+        }
+
+        await using var tarStream = handlerContext.FileSystem.OpenFile(handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash.ToString(), FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var tarReader = new TarReader(tarStream);
 
         TarEntry? entry;
         while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)

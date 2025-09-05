@@ -125,7 +125,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         EXISTINGFILEWITHWRONGHASH.FilePair.PointerFile.ReadHash().ShouldBe(EXISTINGFILEWITHWRONGHASH.OriginalHash);
 
             // The TARCONTENT files should be extracted from the same tar chunk
-        await storageMock.Received(3).OpenReadChunkAsync(TARHASH, Arg.Any<CancellationToken>());
+        await storageMock.Received(1).OpenReadChunkAsync(TARHASH, Arg.Any<CancellationToken>()); // !! the TAR binary is only downloaded once
         TARCONTENT1.FilePair.BinaryFile.ReadAllBytes().ShouldBe(TARCONTENT1.OriginalContent);
         (await hc.Hasher.GetHashAsync(TARCONTENT1.FilePair)).ShouldBe(TARCONTENT1.OriginalHash);
         TARCONTENT1.FilePair.CreationTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
@@ -145,6 +145,6 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         TARCONTENT3.FilePair.PointerFile.ReadHash().ShouldBe(TARCONTENT3.OriginalHash);
 
         // Verify no other calls were made to storageMock
-        storageMock.ReceivedCalls().Count().ShouldBe(8);
+        storageMock.ReceivedCalls().Count().ShouldBe(6);
     }
 }

@@ -60,6 +60,8 @@ internal class HandlerContextBuilder
             throw new InvalidOperationException($"The specified container '{request.ContainerName}' does not exist in the storage account.");
         }
 
+        var fileSystem = GetFileSystem();
+        
         return new HandlerContext
         {
             Request         = request,
@@ -67,7 +69,8 @@ internal class HandlerContextBuilder
             StateRepository = stateRepository ?? await BuildStateRepositoryAsync(archiveStorage),
             Hasher          = new Sha256Hasher(request.Passphrase),
             Targets         = GetTargets(),
-            FileSystem      = GetFileSystem()
+            FileSystem      = fileSystem,
+            BinaryCache     = fileSystem.GetTempPath()
         };
 
 
