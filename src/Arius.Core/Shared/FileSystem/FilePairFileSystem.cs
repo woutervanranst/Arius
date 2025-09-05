@@ -1,4 +1,5 @@
-﻿using Zio;
+﻿using System.Reflection.Metadata.Ecma335;
+using Zio;
 using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
@@ -7,26 +8,18 @@ internal class FilePairFileSystem : ComposeFileSystem
 {
     public FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, owned)
     {
-        IsInMemory = fileSystem.HasUnderlyingFileSystemOfType<MemoryFileSystem>();
+        IsInMemory = fileSystem.GetLastFallback() is MemoryFileSystem;
     }
 
     public bool IsInMemory { get; init; }
 
-    public UPath GetTempPath()
+    public DirectoryEntry CreateTempSubdirectory()
     {
-        UPath tempDir;
-        
-        if (IsInMemory)
-        {
-            tempDir = $"/temp/{Guid.NewGuid()}";
-            CreateDirectory(tempDir);
-        }
-        else
-        {
-            tempDir = ConvertPathFromInternal(Directory.CreateTempSubdirectory("arius-").FullName);
-        }
-        
-        return tempDir;
+        // For simplicity sake, always use the temp path from the physical filesystem. If we use the MemoryFileSystem, we would get an additional /temp path in our restore folder
+        var fullName = Directory.CreateTempSubdirectory("arius-").FullName;
+
+        var pfs = new PhysicalFileSystem();
+        return pfs.GetDirectoryEntry(pfs.ConvertPathFromInternal(fullName));
     }
 
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.Threading.Channels;
+using Arius.Core.Shared.Hashing;
 using Zio;
 
 namespace Arius.Core.Features.Restore;
@@ -143,6 +144,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
                 else
                 {
                     // The hash does not match - we need to restore this binaryfile
+                    // TODO log a warning that the binary did not match, or should it stop execution?
                     await filePairsToRestoreChannel.Writer.WriteAsync(filePairWithPointerFileEntry, innerCancellationToken);
                 }
 
@@ -169,11 +171,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
                     //    // to rehydrate list
 
-                    //    // todo should it overwrite the binary?
-
                     //    // todo hydrate
-
-                    //    // todo parenthash
                 }
                 catch (InvalidDataException e) when (e.Message.Contains("The archive entry was compressed using an unsupported compression method."))
                 {
@@ -211,20 +209,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
-        // Check the cache
-        if (!handlerContext.FileSystem.FileExists(handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash!.ToString()))
-        {
-            // 1. Get the decrypted blob stream from storage
-            await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.ParentHash!, cancellationToken);
-
-            var fe = new FileEntry(handlerContext.FileSystem, handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash.ToString());
-            await using var ts = fe.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
-
-            await ss.CopyToAsync(ts, cancellationToken);
-            await ts.FlushAsync(cancellationToken); // Explicitly flush
-        }
-
-        await using var tarStream = handlerContext.FileSystem.OpenFile(handlerContext.BinaryCache + pointerFileEntry.BinaryProperties.ParentHash.ToString(), FileMode.Open, FileAccess.Read, FileShare.Read);
+        var             tar       = await GetCachedFileEntryAsync(pointerFileEntry.BinaryProperties.ParentHash!);
+        await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
 
         TarEntry? entry;
@@ -248,5 +234,22 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
+
+        async Task<FileEntry> GetCachedFileEntryAsync(Hash h)
+        {
+            var fe = handlerContext.BinaryCache.GetFileEntry(h.ToString());
+
+            if (!fe.Exists)
+            {
+                // The TAR was not yet downloaded from blob storage
+                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(h, cancellationToken);
+                await using var ts = fe.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
+
+                await ss.CopyToAsync(ts, cancellationToken);
+                await ts.FlushAsync(cancellationToken); // Explicitly flush
+            }
+
+            return fe;
+        }
     }
 }

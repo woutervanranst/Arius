@@ -40,6 +40,27 @@ internal static class UPathExtensions
         => new(p.FullName.RemoveSuffix(value, StringComparison.OrdinalIgnoreCase));
 }
 
+
+public static class DirectoryEntryExtensions
+{
+    /// <summary>
+    /// Gets a FileEntry with the given name inside this directory.
+    /// NOTE: This file does not necessarily exist.
+    /// </summary>
+    public static FileEntry GetFileEntry(this DirectoryEntry dir, string fileName)
+    {
+        if (dir == null)
+            throw new ArgumentNullException(nameof(dir));
+
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("Filename cannot be empty", nameof(fileName));
+
+        UPath filePath = dir.Path / fileName;
+        return new FileEntry(dir.FileSystem, filePath);
+    }
+}
+
+
 internal static class FileSystemExtensions
 {
     //public static FilePair FromBinaryFilePath(this IFileSystem fs, UPath binaryFilePath) 
@@ -58,13 +79,13 @@ internal static class FileSystemExtensions
         => fileSystem.SetLastWriteTime(path, lastWriteTimeUtc.ToLocalTime());
 
     /// <summary>
-    /// Recursively unwraps nested filesystems to find if any underlying filesystem is of the specified type T.
+    /// Recursively unwraps nested filesystems to return the last Fallback filesystem.
+    /// If there are no fallbacks, returns the input filesystem itself.
     /// </summary>
-    public static bool HasUnderlyingFileSystemOfType<T>(this IFileSystem fileSystem) where T : class, IFileSystem
+    public static IFileSystem GetLastFallback(this IFileSystem fileSystem)
     {
-        // First check the wrapped filesystems before checking the current one
         IFileSystem? nextFs = null;
-        
+
         // Check if it's a ComposeFileSystem (like FilePairFileSystem) which wraps another filesystem
         if (fileSystem is ComposeFileSystem composeFs)
         {
@@ -75,12 +96,14 @@ internal static class FileSystemExtensions
         {
             nextFs = subFs.Fallback;
         }
-        
-        // Recursively check the wrapped filesystem first
-        if (nextFs != null && nextFs.HasUnderlyingFileSystemOfType<T>())
-            return true;
-            
-        // Finally check if the current filesystem is of the specified type
-        return fileSystem is T;
+
+        // If there is another layer, recurse
+        if (nextFs != null)
+        {
+            return nextFs.GetLastFallback();
+        }
+
+        // Otherwise, this is the last filesystem in the chain
+        return fileSystem;
     }
 }

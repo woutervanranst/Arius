@@ -70,7 +70,7 @@ internal class HandlerContextBuilder
             Hasher          = new Sha256Hasher(request.Passphrase),
             Targets         = GetTargets(),
             FileSystem      = fileSystem,
-            BinaryCache     = fileSystem.GetTempPath()
+            BinaryCache     = fileSystem.CreateTempSubdirectory()
         };
 
 
