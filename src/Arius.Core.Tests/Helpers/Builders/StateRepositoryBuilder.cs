@@ -4,6 +4,7 @@ using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using Zio;
 
 namespace Arius.Core.Tests.Helpers.Builders;
 
@@ -17,9 +18,9 @@ internal class StateRepositoryBuilder
     {
         internal readonly List<PointerFileEntry> PointerFileEntries = [];
 
-        public PointerFileEntryBuilder WithPointerFileEntry(string binaryFileRelativeName, DateTime? creationTimeUtc = null, DateTime? writeTimeUtc = null)
+        public PointerFileEntryBuilder WithPointerFileEntry(UPath binaryFileRelativeName, DateTime? creationTimeUtc = null, DateTime? writeTimeUtc = null)
         {
-            if (binaryFileRelativeName.EndsWith(PointerFile.Extension))
+            if (binaryFileRelativeName.FullName.EndsWith(PointerFile.Extension))
                 throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
 
             PointerFileEntries.Add(new PointerFileEntry
