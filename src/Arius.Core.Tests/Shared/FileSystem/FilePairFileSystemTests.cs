@@ -18,19 +18,19 @@ public class FilePairFileSystemTests : IClassFixture<PhysicalFileSystemFixture>
     [Fact]
     public async Task EnumerateFileEntries_ShouldEnumerateFilePairsButSkipHiddenFilesAndDirectories()
     {
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/file1.txt",                      FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Normal file
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/file2.txt",                      FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Another normal file
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir/file3.txt",               FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Normal file in a subdirectory
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir/file4.txt",               FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Another normal file in a subdirectory
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir/file5.txt",               FilePairType.BinaryFileWithPointerFile, 0, attributes: FileAttributes.Normal); // A BinaryFile + PointerFile pair
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/.file5_hidden.txt",              FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Hidden); // Hidden file - Linux convention means leading dot
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/@eaDir/file6.txt",       FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // File in excluded directory
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/eaDir/file7.txt",        FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Another file in excluded directory
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/SynoResource/file8.txt", FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // File in another excluded directory
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/file9.txt",              FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Normal file
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/AuToRuN.ini",            FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Excluded file by name
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/thumbs.db",              FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Excluded file by name
-        fixture.FileSystem.WithSourceFolderHavingFilePair("/subdir2/.ds_store",              FilePairType.BinaryFileOnly,            0, attributes: FileAttributes.Normal); // Excluded file by name
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/file1.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Normal file
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/file2.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Another normal file
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir/file3.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Normal file in a subdirectory
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir/file4.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Another normal file in a subdirectory
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileWithPointerFile, "/subdir/file5.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // A BinaryFile + PointerFile pair
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/.file5_hidden.txt").WithRandomContent(0).WithAttributes(FileAttributes.Hidden).Build(); // Hidden file - Linux convention means leading dot
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/@eaDir/file6.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // File in excluded directory
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/eaDir/file7.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Another file in excluded directory
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/SynoResource/file8.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // File in another excluded directory
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/file9.txt").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Normal file
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/AuToRuN.ini").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Excluded file by name
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/thumbs.db").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Excluded file by name
+        new FakeFileBuilder(fixture).WithActualFile(FilePairType.BinaryFileOnly, "/subdir2/.ds_store").WithRandomContent(0).WithAttributes(FileAttributes.Normal).Build(); // Excluded file by name
 
         var expectedRelativePaths = new[]
         {
