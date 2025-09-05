@@ -42,11 +42,9 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.WriteAllText("This file was overwritten");
 
         var TARCONTENT1 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file5.jpg", FilePairType.None, 10, 5);
+        var TARCONTENT2 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file6.jpg", FilePairType.None, 10, 6);
+        var TARCONTENT3 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file7.jpg", FilePairType.None, 10, 7);
 
-        var command = new RestoreCommandBuilder(fixture)
-            .WithTargets($".{NOTEXISTINGFILE.OriginalPath}", "./Sam/")
-            .WithIncludePointers(true)
-            .Build();
 
         var storageMock = new MockArchiveStorageBuilder(fixture)
             .AddBinaryChunk(NOTEXISTINGFILE.OriginalHash, NOTEXISTINGFILE.OriginalContent)
@@ -56,10 +54,11 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             .AddTarChunk(out var TARHASH, t =>
             {
                 t.AddBinary(TARCONTENT1.OriginalHash, TARCONTENT1.OriginalContent);
+                t.AddBinary(TARCONTENT2.OriginalHash, TARCONTENT2.OriginalContent);
+                t.AddBinary(TARCONTENT3.OriginalHash, TARCONTENT3.OriginalContent);
             })
             .Build();
-
-
+        
 
         var sr = new StateRepositoryBuilder()
             .WithBinaryProperty(NOTEXISTINGFILE.OriginalHash, 1, pfes =>
@@ -74,8 +73,15 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             .WithBinaryProperty(EXISTINGFILE.OriginalHash,              EXISTINGFILE.OriginalContent.Length,              pfes => { pfes.WithPointerFileEntry(EXISTINGFILE.OriginalPath); })
             .WithBinaryProperty(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(EXISTINGFILEWITHWRONGHASH.OriginalPath); })
             .WithBinaryProperty(TARCONTENT1.OriginalHash,                      TARHASH,                                         TARCONTENT1.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT1.OriginalPath);})
+            .WithBinaryProperty(TARCONTENT2.OriginalHash,                      TARHASH,                                         TARCONTENT2.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT2.OriginalPath);})
+            .WithBinaryProperty(TARCONTENT3.OriginalHash,                      TARHASH,                                         TARCONTENT3.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT3.OriginalPath);})
             .BuildFake();
 
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets($".{NOTEXISTINGFILE.OriginalPath}", "./Sam/")
+            .WithIncludePointers(true)
+            .Build();
 
         var hc = await new HandlerContextBuilder(command)
             .WithArchiveStorage(storageMock)
@@ -118,8 +124,27 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.LastWriteTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
         EXISTINGFILEWITHWRONGHASH.FilePair.PointerFile.ReadHash().ShouldBe(EXISTINGFILEWITHWRONGHASH.OriginalHash);
 
+            // The TARCONTENT files should be extracted from the same tar chunk
+        await storageMock.Received(3).OpenReadChunkAsync(TARHASH, Arg.Any<CancellationToken>());
+        TARCONTENT1.FilePair.BinaryFile.ReadAllBytes().ShouldBe(TARCONTENT1.OriginalContent);
+        (await hc.Hasher.GetHashAsync(TARCONTENT1.FilePair)).ShouldBe(TARCONTENT1.OriginalHash);
+        TARCONTENT1.FilePair.CreationTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT1.FilePair.LastWriteTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT1.FilePair.PointerFile.ReadHash().ShouldBe(TARCONTENT1.OriginalHash);
+
+        TARCONTENT2.FilePair.BinaryFile.ReadAllBytes().ShouldBe(TARCONTENT2.OriginalContent);
+        (await hc.Hasher.GetHashAsync(TARCONTENT2.FilePair)).ShouldBe(TARCONTENT2.OriginalHash);
+        TARCONTENT2.FilePair.CreationTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT2.FilePair.LastWriteTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT2.FilePair.PointerFile.ReadHash().ShouldBe(TARCONTENT2.OriginalHash);
+
+        TARCONTENT3.FilePair.BinaryFile.ReadAllBytes().ShouldBe(TARCONTENT3.OriginalContent);
+        (await hc.Hasher.GetHashAsync(TARCONTENT3.FilePair)).ShouldBe(TARCONTENT3.OriginalHash);
+        TARCONTENT3.FilePair.CreationTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT3.FilePair.LastWriteTimeUtc.ShouldBe(StateRepositoryBuilder.DEFAULTUTCTIME);
+        TARCONTENT3.FilePair.PointerFile.ReadHash().ShouldBe(TARCONTENT3.OriginalHash);
 
         // Verify no other calls were made to storageMock
-        storageMock.ReceivedCalls().Count().ShouldBe(6);
+        storageMock.ReceivedCalls().Count().ShouldBe(8);
     }
 }
