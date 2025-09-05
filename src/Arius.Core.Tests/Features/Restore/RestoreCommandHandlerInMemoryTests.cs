@@ -39,37 +39,22 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
         var EXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 3, creationTimeUtc: StateRepositoryBuilder.DEFAULTUTCTIME, lastWriteTimeUtc: StateRepositoryBuilder.DEFAULTUTCTIME);
         
-
         var EXISTINGFILEWITHWRONGHASH = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file4.jpg", FilePairType.BinaryFileOnly, 1, 4);
-        
-
-        var fakeContent = new Dictionary<Hash, byte[]>
-        {
-            {NOTEXISTINGFILE.OriginalHash, NOTEXISTINGFILE.OriginalContent},
-            {DUPLICATEBINARY.OriginalHash, DUPLICATEBINARY.OriginalContent},
-            {EXISTINGFILE.OriginalHash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes()},
-            {EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.ReadAllBytes()}
-        };
-
+        var existingFileWithWrongHashOriginalContent = EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.ReadAllBytes(); // TODO
 
         EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.WriteAllText("This file was overwritten");
-
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets($".{NOTEXISTINGFILE.OriginalPath}", "./Sam/")
             .WithIncludePointers(true)
             .Build();
 
-
-        var storageMock = Substitute.For<IArchiveStorage>();
-        storageMock.ContainerExistsAsync()
-            .Returns(Task.FromResult(true));
-        storageMock.OpenReadChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                var hash    = callInfo.Arg<Hash>();
-                return Task.FromResult<Stream>(new MemoryStream(fakeContent[hash]));
-            });
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            .AddBinaryChunk(NOTEXISTINGFILE.OriginalHash, NOTEXISTINGFILE.OriginalContent)
+            .AddBinaryChunk(DUPLICATEBINARY.OriginalHash, DUPLICATEBINARY.OriginalContent)
+            .AddBinaryChunk(EXISTINGFILE.OriginalHash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes())
+            .AddBinaryChunk(EXISTINGFILEWITHWRONGHASH.OriginalHash, existingFileWithWrongHashOriginalContent)
+            .Build();
 
 
 
