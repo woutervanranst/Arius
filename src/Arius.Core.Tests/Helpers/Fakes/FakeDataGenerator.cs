@@ -6,7 +6,7 @@ using Zio;
 
 namespace Arius.Core.Tests.Helpers.Fakes;
 
-internal record FilePairWithHash(FilePair FilePair, Hash Hash);
+internal record FilePairWithHash(FilePair FilePair, Hash Hash, byte[] OriginalContent);
 
 internal static class FakeDataGenerator
 {
@@ -24,20 +24,18 @@ internal static class FakeDataGenerator
         var createBinary = type is FilePairType.BinaryFileWithPointerFile or FilePairType.BinaryFileOnly;
         var createPointer = type is FilePairType.BinaryFileWithPointerFile or FilePairType.PointerFileOnly;
 
-        Hash? binaryFileHash = null;
-        Hash? pointerFileHash = null;
+        var (binaryFileHash, content) = GenerateRandomContent(sizeInBytes, seed);
+
 
         // 1. Create the Binary File if needed
         if (createBinary)
         {
-            var (h, content) = GenerateRandomContent(sizeInBytes, seed);
             using (var binaryStream = fileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write))
             {
                 binaryStream.Write(content);
             }
 
             fileSystem.SetAttributes(binaryFileRelativeName, attributes);
-            binaryFileHash = h;
 
             if (creationTimeUtc is not null)
                 fileSystem.SetCreationTimeUtc(binaryFileRelativeName, creationTimeUtc.Value);
@@ -50,9 +48,8 @@ internal static class FakeDataGenerator
         {
             var pointerPath = binaryFileRelativeName.GetPointerFilePath();
             using var pointerStream = fileSystem.OpenFile(pointerPath, FileMode.Create, FileAccess.Write);
-            pointerFileHash = binaryFileHash ?? GenerateRandomSha256(seed);
 
-            var pointerData = Encoding.UTF8.GetBytes($"{{\"BinaryHash\":\"{pointerFileHash}\"}}");
+            var pointerData = Encoding.UTF8.GetBytes($"{{\"BinaryHash\":\"{binaryFileHash}\"}}");
             pointerStream.Write(pointerData);
 
             if (creationTimeUtc is not null)
@@ -64,9 +61,7 @@ internal static class FakeDataGenerator
         // 3. Build the FilePair
         var fp = FilePair.FromBinaryFileFileEntry(new FileEntry(fileSystem, binaryFileRelativeName));
         
-        var finalHash = pointerFileHash ?? binaryFileHash ?? throw new InvalidOperationException();
-
-        return new FilePairWithHash(fp, finalHash);
+        return new FilePairWithHash(fp, binaryFileHash, content);
     }
 
     public static (Hash Hash, byte[] Content) GenerateRandomContent(int sizeInBytes, int? seed)
