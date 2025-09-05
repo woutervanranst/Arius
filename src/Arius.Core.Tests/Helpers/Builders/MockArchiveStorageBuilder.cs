@@ -22,12 +22,13 @@ internal class MockArchiveStorageBuilder
         return this;
     }
 
-    public MockArchiveStorageBuilder AddTarChunk(Action<TarChunkBuilder> configureTar)
+    public MockArchiveStorageBuilder AddTarChunk(out Hash tarHash, Action<TarChunkBuilder> configureTar)
     {
         var tarBuilder = new TarChunkBuilder(fixture);
         configureTar(tarBuilder);
-        var (tarHash, tarContent) = tarBuilder.Build();
-        chunks[tarHash] = tarContent;
+        var tar = tarBuilder.Build();
+        chunks[tar.Hash] = tar.Content;
+        tarHash = tar.Hash;
         return this;
     }
 
@@ -65,7 +66,7 @@ internal class MockArchiveStorageBuilder
             return this;
         }
 
-        internal (Hash tarHash, byte[] tarContent) Build()
+        internal (Hash Hash, byte[] Content) Build()
         {
             using var memoryStream = new MemoryStream();
             using var tarWriter = new TarWriter(memoryStream);

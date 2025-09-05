@@ -32,7 +32,6 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             creationTimeUtc: new DateTime(2017,  05, 25, 6, 0, 0, DateTimeKind.Utc), 
             lastWriteTimeUtc: new DateTime(2017, 05, 25, 7, 0, 0, DateTimeKind.Utc));
 
-
         var DUPLICATEBINARY = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file2.jpg", FilePairType.None, 10, 2);
         var DUPLICATEBINARY2 = DUPLICATEBINARY.WithDuplicate("/Sam/file2-duplicate.jpg");
         Assert.Equal(DUPLICATEBINARY.OriginalContent, DUPLICATEBINARY2.OriginalContent);
@@ -40,9 +39,9 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
         var EXISTINGFILE = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file3.jpg", FilePairType.BinaryFileOnly, 1, 3, creationTimeUtc: StateRepositoryBuilder.DEFAULTUTCTIME, lastWriteTimeUtc: StateRepositoryBuilder.DEFAULTUTCTIME);
         
         var EXISTINGFILEWITHWRONGHASH = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file4.jpg", FilePairType.BinaryFileOnly, 1, 4);
-        var existingFileWithWrongHashOriginalContent = EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.ReadAllBytes(); // TODO
-
         EXISTINGFILEWITHWRONGHASH.FilePair.BinaryFile.WriteAllText("This file was overwritten");
+
+        var TARCONTENT1 = fixture.FileSystem.WithSourceFolderHavingFilePair("/Sam/file5.jpg", FilePairType.None, 10, 5);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets($".{NOTEXISTINGFILE.OriginalPath}", "./Sam/")
@@ -53,7 +52,11 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
             .AddBinaryChunk(NOTEXISTINGFILE.OriginalHash, NOTEXISTINGFILE.OriginalContent)
             .AddBinaryChunk(DUPLICATEBINARY.OriginalHash, DUPLICATEBINARY.OriginalContent)
             .AddBinaryChunk(EXISTINGFILE.OriginalHash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes())
-            .AddBinaryChunk(EXISTINGFILEWITHWRONGHASH.OriginalHash, existingFileWithWrongHashOriginalContent)
+            .AddBinaryChunk(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.OriginalContent)
+            .AddTarChunk(out var TARHASH, t =>
+            {
+                t.AddBinary(TARCONTENT1.OriginalHash, TARCONTENT1.OriginalContent);
+            })
             .Build();
 
 
@@ -68,8 +71,9 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
                 pfes.WithPointerFileEntry(DUPLICATEBINARY.OriginalPath)
                     .WithPointerFileEntry(DUPLICATEBINARY2.OriginalPath);
             })
-            .WithBinaryProperty(EXISTINGFILE.OriginalHash, EXISTINGFILE.FilePair.Length!.Value, pfes => { pfes.WithPointerFileEntry(EXISTINGFILE.OriginalPath); })
-            .WithBinaryProperty(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.FilePair.Length!.Value, pfes => { pfes.WithPointerFileEntry(EXISTINGFILEWITHWRONGHASH.OriginalPath); })
+            .WithBinaryProperty(EXISTINGFILE.OriginalHash,              EXISTINGFILE.OriginalContent.Length,              pfes => { pfes.WithPointerFileEntry(EXISTINGFILE.OriginalPath); })
+            .WithBinaryProperty(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(EXISTINGFILEWITHWRONGHASH.OriginalPath); })
+            .WithBinaryProperty(TARCONTENT1.OriginalHash,                      TARHASH,                                         TARCONTENT1.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT1.OriginalPath);})
             .BuildFake();
 
 
@@ -116,6 +120,6 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSyst
 
 
         // Verify no other calls were made to storageMock
-        storageMock.ReceivedCalls().Count().ShouldBe(5);
+        storageMock.ReceivedCalls().Count().ShouldBe(6);
     }
 }
