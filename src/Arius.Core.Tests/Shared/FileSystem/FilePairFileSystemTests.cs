@@ -6,11 +6,11 @@ using Zio;
 
 namespace Arius.Core.Tests.Shared.FileSystem;
 
-public class FilePairFileSystemTests : IClassFixture<PhysicalFileSystemFixture>
+public class FilePairFileSystemTests : IClassFixture<Fixture>
 {
-    private readonly PhysicalFileSystemFixture fixture;
+    private readonly Fixture fixture;
 
-    public FilePairFileSystemTests(PhysicalFileSystemFixture fixture)
+    public FilePairFileSystemTests(Fixture fixture)
     {
         this.fixture = fixture;
     }

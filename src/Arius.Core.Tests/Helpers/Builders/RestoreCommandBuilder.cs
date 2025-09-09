@@ -20,12 +20,12 @@ internal class RestoreCommandBuilder
         SetDefaults(null);
     }
 
-    public RestoreCommandBuilder(FixtureBase? fixture)
+    public RestoreCommandBuilder(Fixture? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(FixtureBase? fixture)
+    private void SetDefaults(Fixture? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {
@@ -33,14 +33,14 @@ internal class RestoreCommandBuilder
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
             passphrase    = fixture.RepositoryOptions.Passphrase;
-            targets       = fixture is PhysicalFileSystemFixture physicalFixture ? [physicalFixture.TestRunSourceFolder.FullName] : ["/"];
+            targets       = [fixture.TestRunSourceFolder.FullName];
         }
         else
         {
             accountName   = "testaccount";
             accountKey    = "testkey";
             containerName = $"testcontainer-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = FixtureBase.PASSPHRASE;
+            passphrase    = Fixture.PASSPHRASE;
             targets       = ["dummy"];
         }
 

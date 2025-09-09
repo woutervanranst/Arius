@@ -74,7 +74,7 @@ internal static class FakeDataGenerator
         var random = seed is null ? new Random() : new Random(seed.Value);
         var data = new byte[sizeInBytes];
         random.NextBytes(data);
-        return (ComputeSha256String(FixtureBase.PASSPHRASE, data), data);
+        return (ComputeSha256String(Fixture.PASSPHRASE, data), data);
     }
 
     private static Hash ComputeSha256String(string passphrase, byte[] data)

@@ -5,15 +5,15 @@ using Xunit.Abstractions;
 
 namespace Arius.Core.Tests;
 
-public class Utils
+public class Utils : IClassFixture<Fixture>
 {
     private readonly ITestOutputHelper output;
-    private readonly InMemoryFileSystemFixture fixture;
+    private readonly Fixture           fixture;
 
-    public Utils(ITestOutputHelper output)
+    public Utils(Fixture fixture, ITestOutputHelper output)
     {
-        this.output = output;
-        fixture = new InMemoryFileSystemFixture();
+        this.fixture = fixture;
+        this.output  = output;
     }
 
     [Fact]
@@ -21,6 +21,22 @@ public class Utils
     {
         var stateDatabaseFile = new FileInfo("state.db");
         stateDatabaseFile.Delete();
+    }
+
+    [Fact]
+    public void CleanupLocalTemp()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-2);
+
+        foreach (var dir in Directory.EnumerateDirectories(Path.GetTempPath(), "Arius.Core.Tests*"))
+        {
+            var info = new DirectoryInfo(dir);
+
+            if (info.CreationTimeUtc < cutoff)
+            {
+                info.Delete(recursive: true);
+            }
+        }
     }
 
     [Fact]
