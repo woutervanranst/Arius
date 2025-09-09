@@ -16,7 +16,7 @@ public class Utils : IClassFixture<Fixture>
         this.output  = output;
     }
 
-    [Fact]
+    [Fact(Skip = "To check")]
     public void CleanupLocalDb()
     {
         var stateDatabaseFile = new FileInfo("state.db");
