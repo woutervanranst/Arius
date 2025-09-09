@@ -117,12 +117,20 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<Fixture>
         await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE.OriginalHash, Arg.Any<CancellationToken>());
         NOTEXISTINGFILE.FilePair.BinaryFile.ReadAllBytes().ShouldBe(NOTEXISTINGFILE.OriginalContent);
         (await hc.Hasher.GetHashAsync(NOTEXISTINGFILE.FilePair)).ShouldBe(NOTEXISTINGFILE.OriginalHash);
-        // Check that the restored timestamps are valid UTC times and reasonably close to expected
-        NOTEXISTINGFILE.FilePair.CreationTimeUtc.Kind.ShouldBe(DateTimeKind.Utc);
-        NOTEXISTINGFILE.FilePair.LastWriteTimeUtc.Kind.ShouldBe(DateTimeKind.Utc);
-        // The restored timestamps should be within a reasonable range of the expected time (allowing for timezone conversion)
-        Math.Abs((NOTEXISTINGFILE.FilePair.CreationTimeUtc - NOTEXISTINGFILE.OriginalCreationDateTimeUtc).TotalHours).ShouldBeLessThan(24);
-        Math.Abs((NOTEXISTINGFILE.FilePair.LastWriteTimeUtc - NOTEXISTINGFILE.OriginalLastWriteTimeUtc).TotalHours).ShouldBeLessThan(24);
+        // On Linux filesystems, creation and modification times may be synchronized due to filesystem limitations
+        if (Environment.OSVersion.Platform == PlatformID.Unix)
+        {
+            // On Linux, the timestamp that is set last will be used for both creation and modification time
+            // Since we set CreationTime first, then LastWriteTime, both will end up being LastWriteTime
+            NOTEXISTINGFILE.FilePair.CreationTimeUtc.ShouldBe(NOTEXISTINGFILE.OriginalLastWriteTimeUtc);
+            NOTEXISTINGFILE.FilePair.LastWriteTimeUtc.ShouldBe(NOTEXISTINGFILE.OriginalLastWriteTimeUtc);
+        }
+        else
+        {
+            // On Windows, timestamps can be set independently
+            NOTEXISTINGFILE.FilePair.CreationTimeUtc.ShouldBe(NOTEXISTINGFILE.OriginalCreationDateTimeUtc);
+            NOTEXISTINGFILE.FilePair.LastWriteTimeUtc.ShouldBe(NOTEXISTINGFILE.OriginalLastWriteTimeUtc);
+        }
 
             // The DUPLICATEBINARIES is downloaded twice and created on disk
         await storageMock.Received(2).OpenReadChunkAsync(DUPLICATEBINARIES[0].OriginalHash, Arg.Any<CancellationToken>());

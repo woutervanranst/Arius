@@ -22,14 +22,14 @@ internal class FileEntryWithUtc : FileEntry
 
     public DateTime CreationTimeUtc
     {
-        get => CreationTime.Kind == DateTimeKind.Utc ? CreationTime : CreationTime.ToUniversalTime();
-        set => CreationTime = value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        get => CreationTime.ToUniversalTime();
+        set => CreationTime = value.ToLocalTime();
     }
 
     public DateTime LastWriteTimeUtc
     {
-        get => LastWriteTime.Kind == DateTimeKind.Utc ? LastWriteTime : LastWriteTime.ToUniversalTime();
-        set => LastWriteTime = value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        get => LastWriteTime.ToUniversalTime();
+        set => LastWriteTime = value.ToLocalTime();
     }
 }
 
