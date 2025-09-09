@@ -61,6 +61,7 @@ public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
         tarredEntry3.Hash.ShouldBe(testData3.OriginalHash);
         tarredEntry3.ArchivedSize.ShouldBeGreaterThan(0L);
         
+
         // -- Verify positions and sizes make sense
         tarredEntry1.ArchivedSize.ShouldBeGreaterThan(0L);
         tarredEntry2.ArchivedSize.ShouldBeGreaterThan(0L);

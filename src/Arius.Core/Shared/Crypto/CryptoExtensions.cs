@@ -30,7 +30,7 @@ internal static class CryptoExtensions
         return new StreamWrapper(innerStream: cryptoStream, disposables: aes);
     }
 
-    public static async Task<Stream> GetCryptoStreamAsync(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
+    public static async Task<Stream> GetEncryptionStreamAsync(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
     {
         // Derive key and IV using the passphrase
         DeriveBytes(passphrase, out var salt, out var key, out var iv);

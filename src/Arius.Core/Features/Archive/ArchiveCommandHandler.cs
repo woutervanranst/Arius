@@ -6,7 +6,6 @@ using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.IO;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
@@ -376,7 +375,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
     {
         await using var archiveStream = tarWriter.GetCompletedArchive();
 
-        var tarHash = await handlerContext.Hasher.GetHashAsync(archiveStream);
+        var parentHash = await handlerContext.Hasher.GetHashAsync(archiveStream);
         archiveStream.Seek(0, SeekOrigin.Begin);
 
 
@@ -388,7 +387,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 70, $"Uploading TAR..."));
 
         await using var encryptedStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
-            h: tarHash,
+            h: parentHash,
             compressionLevel: CompressionLevel.NoCompression, // The TAR file is already GZipped
             contentType: TarChunkContentType,
             metadata: null,
@@ -400,22 +399,22 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         await encryptedStream.FlushAsync(cancellationToken);
 
         // Update tier
-        var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
+        var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(parentHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
-        var bps = tarWriter.TarredEntries.Select(x => new BinaryProperties
+        var bps = tarWriter.TarredEntries.Select(e => new BinaryProperties
         {
-            Hash         = x.Hash,
-            ParentHash   = tarHash,
-            OriginalSize = x.FilePair.BinaryFile.Length,
-            ArchivedSize = x.ArchivedSize,
+            Hash         = e.Hash,
+            ParentHash   = parentHash,
+            OriginalSize = e.FilePair.BinaryFile.Length,
+            ArchivedSize = e.ArchivedSize,
             StorageTier  = actualTier
         }).ToArray();
         handlerContext.StateRepository.AddBinaryProperties(bps);
 
         handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
         {
-            Hash         = tarHash,
+            Hash         = parentHash,
             OriginalSize = tarWriter.TotalOriginalSize,
             ArchivedSize = encryptedStream.Position,
             StorageTier  = actualTier

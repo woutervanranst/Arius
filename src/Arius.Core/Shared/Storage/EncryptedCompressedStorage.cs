@@ -60,7 +60,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     {
         var             blobName         = $"{statesFolderPrefix}{stateName}";
         await using var blobStream       = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip", cancellationToken: cancellationToken);
-        await using var encryptedStream  = await blobStream.GetCryptoStreamAsync(passphrase, cancellationToken);
+        await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
         await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.Optimal);
         await using var fileStream       = sourceFile.OpenRead();
 
@@ -88,7 +88,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
         var blobName     = $"{chunksFolderPrefix}{h}";
         var blobStream   = await storage.OpenWriteAsync(blobName, throwOnExists: false, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
-        var cryptoStream = await blobStream.GetCryptoStreamAsync(passphrase, cancellationToken);
+        var cryptoStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
 
         if (compressionLevel == CompressionLevel.NoCompression)
         {
