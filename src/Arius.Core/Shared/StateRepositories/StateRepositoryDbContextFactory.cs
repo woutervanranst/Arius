@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Logging;
+using Zio;
 
 namespace Arius.Core.Shared.StateRepositories;
 
@@ -14,18 +15,20 @@ internal class StateRepositoryDbContextPool
 
     private bool hasChanges;
 
-    public FileInfo StateDatabaseFile { get; }
+    public FileEntry StateDatabaseFile { get; }
     public bool HasChanges => Volatile.Read(ref hasChanges);
 
-    public StateRepositoryDbContextPool(FileInfo stateDatabaseFile, bool ensureCreated, ILogger<StateRepositoryDbContextPool> logger)
+    public StateRepositoryDbContextPool(FileEntry stateDatabaseFile, bool ensureCreated, ILogger<StateRepositoryDbContextPool> logger)
     {
         this.logger = logger;
         StateDatabaseFile = stateDatabaseFile;
 
         var  interceptor = new AnyChangesInterceptor(SetHasChanges);
 
+        var internalName = stateDatabaseFile.FileSystem.ConvertPathToInternal(stateDatabaseFile.Path);
+
         var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
-            .UseSqlite($"Data Source={stateDatabaseFile.FullName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .UseSqlite($"Data Source={internalName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .AddInterceptors(interceptor)
             .Options;
 

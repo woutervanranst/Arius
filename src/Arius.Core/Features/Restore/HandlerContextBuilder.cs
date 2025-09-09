@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zio;
 using Zio.FileSystems;
+using FileSystemExtensions = Arius.Core.Shared.FileSystem.FileSystemExtensions;
 
 namespace Arius.Core.Features.Restore;
 
@@ -70,26 +71,23 @@ internal class HandlerContextBuilder
             Hasher          = new Sha256Hasher(request.Passphrase),
             Targets         = GetTargets(),
             FileSystem      = fileSystem,
-            BinaryCache     = fileSystem.CreateTempSubdirectory()
+            BinaryCache     = FileSystemExtensions.CreateTempSubdirectory("binarycache", false)
         };
 
 
         async Task<IStateRepository> BuildStateRepositoryAsync(IArchiveStorage archiveStorage)
         {
-            var stateCacheRoot = new DirectoryInfo("statecache");
-
             // Instantiate StateCache
-            var stateCache = new StateCache(stateCacheRoot);
+            var stateCache = new StateCache(request.AccountName, request.ContainerName);
 
             // Get the latest state from blob storage
             var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
-
             if (latestStateName == null)
             {
                 throw new InvalidOperationException("No state files found in the specified container. Cannot proceed with restore.");
             }
 
-            var latestStateFile = stateCache.GetStateFilePath(latestStateName);
+            var latestStateFile = stateCache.GetStateFileEntry(latestStateName);
             if (!latestStateFile.Exists)
             {
                 logger.LogInformation($"Downloading latest state file '{latestStateName}' from blob storage...");

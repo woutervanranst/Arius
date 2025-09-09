@@ -1,10 +1,11 @@
 ﻿using Arius.Core.Shared.Hashing;
+using Zio;
 
 namespace Arius.Core.Shared.StateRepositories;
 
 internal interface IStateRepository
 {
-    FileInfo                      StateDatabaseFile { get; }
+    FileEntry                     StateDatabaseFile { get; }
     bool                          HasChanges        { get; }
     void                          Vacuum();
     void                          Delete();

@@ -1,6 +1,7 @@
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using System.Collections.Concurrent;
+using Zio;
 
 namespace Arius.Core.Tests.Helpers.Fakes;
 
@@ -10,7 +11,7 @@ internal class InMemoryStateRepository : IStateRepository
     private readonly ConcurrentDictionary<(Hash Hash, string RelativeName), PointerFileEntry> pointerFileEntries = new();
     private int hasChangesFlag;
 
-    public FileInfo StateDatabaseFile => throw new NotImplementedException("InMemoryStateRepository does not use a file");
+    public FileEntry StateDatabaseFile => throw new NotImplementedException("InMemoryStateRepository does not use a file");
 
     public bool HasChanges => Interlocked.CompareExchange(ref hasChangesFlag, 0, 0) == 1;
 

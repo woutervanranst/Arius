@@ -9,15 +9,6 @@ internal class FilePairFileSystem : ComposeFileSystem
     {
     }
 
-    public DirectoryEntry CreateTempSubdirectory()
-    {
-        // For simplicity sake, always use the temp path from the physical filesystem. If we use the MemoryFileSystem, we would get an additional /temp path in our restore folder
-        var fullName = Directory.CreateTempSubdirectory("arius-").FullName;
-
-        var pfs = new PhysicalFileSystem();
-        return pfs.GetDirectoryEntry(pfs.ConvertPathFromInternal(fullName));
-    }
-
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)
     {
         throw new NotImplementedException();

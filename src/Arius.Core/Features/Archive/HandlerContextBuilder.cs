@@ -18,7 +18,6 @@ internal class HandlerContextBuilder
     private IArchiveStorage? archiveStorage;
     private StateRepository? stateRepository;
     private IFileSystem?     baseFileSystem;
-    private DirectoryInfo?   stateCacheRoot;
 
     public HandlerContextBuilder(ArchiveCommand request, ILoggerFactory loggerFactory)
     {
@@ -42,12 +41,6 @@ internal class HandlerContextBuilder
     public HandlerContextBuilder WithBaseFileSystem(IFileSystem fileSystem)
     {
         baseFileSystem = fileSystem;
-        return this;
-    }
-
-    public HandlerContextBuilder WithStateCacheRoot(DirectoryInfo stateCacheRoot)
-    {
-        this.stateCacheRoot = stateCacheRoot;
         return this;
     }
 
@@ -79,8 +72,7 @@ internal class HandlerContextBuilder
         async Task<StateRepository> BuildStateRepositoryAsync(IArchiveStorage archiveStorage)
         {
             // Instantiate StateCache
-            var stateCachePath = stateCacheRoot ?? new DirectoryInfo("statecache");
-            var stateCache     = new StateCache(stateCachePath);
+            var stateCache = new StateCache(request.AccountName, request.ContainerName);
 
             // Determine the version name for this run
             var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
@@ -90,11 +82,11 @@ internal class HandlerContextBuilder
             var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
 
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Getting latest state...", 0, latestStateName is null ? "No previous state found" : $"Latest state: {latestStateName}"));
-            FileInfo stateFile;
+            FileEntry stateFile;
             if (latestStateName is not null)
             {
                 // Download the latest version from blob storage into a `statecache` folder, copy it to the new version and create a new staterepository with the new version
-                var latestStateFile = stateCache.GetStateFilePath(latestStateName);
+                var latestStateFile = stateCache.GetStateFileEntry(latestStateName);
                 if (!latestStateFile.Exists)
                 {
                     await archiveStorage.DownloadStateAsync(latestStateName, latestStateFile);
@@ -104,14 +96,14 @@ internal class HandlerContextBuilder
                     request.ProgressReporter?.Report(new TaskProgressUpdate($"State file '{latestStateName}' already exists in cache", 100));
                 }
 
-                stateFile = stateCache.GetStateFilePath(versionName);
+                stateFile = stateCache.GetStateFileEntry(versionName);
                 stateCache.CopyStateFile(latestStateFile, stateFile);
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Copied latest state to new version", 100));
             }
             else
             {
                 // If there is none, just create an empty staterepository with the new version
-                stateFile = stateCache.GetStateFilePath(versionName);
+                stateFile = stateCache.GetStateFileEntry(versionName);
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Created empty state for new version", 100));
             }
 

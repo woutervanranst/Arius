@@ -1,24 +1,32 @@
+using Arius.Core.Shared.FileSystem;
 using System.Diagnostics;
+using Zio;
+using FileSystemExtensions = Arius.Core.Shared.FileSystem.FileSystemExtensions;
 
 namespace Arius.Core.Shared.Storage;
 
 [DebuggerDisplay("CacheDirectory = {cacheDirectory.FullName}")]
 internal class StateCache
 {
-    private readonly DirectoryInfo cacheDirectory;
+    private readonly DirectoryEntry cacheDirectory;
 
-    public StateCache(DirectoryInfo cacheDirectory)
+    public StateCache(string accountName, string containerName)
     {
-        this.cacheDirectory = cacheDirectory;
-        this.cacheDirectory.Create(); // Ensure the directory exists
+        var root = FileSystemExtensions.CreateTempSubdirectory("statecache", true);
+        cacheDirectory = root.CreateSubdirectory((UPath)accountName / containerName);
     }
 
-    public FileInfo GetStateFilePath(string versionName)
+    public FileEntry GetStateFileEntry(string versionName)
     {
-        return new FileInfo(Path.Combine(cacheDirectory.FullName, $"{versionName}.db"));
+        return cacheDirectory.GetFileEntry($"{versionName}.db");
     }
 
-    public void CopyStateFile(FileInfo sourceFile, FileInfo destinationFile)
+    public IEnumerable<FileEntry> GetStateFileEntries()
+    {
+        return cacheDirectory.GetFileEntries("*.db");
+    }
+
+    public void CopyStateFile(FileEntry sourceFile, FileEntry destinationFile)
     {
         sourceFile.CopyTo(destinationFile.FullName, overwrite: true);
     }

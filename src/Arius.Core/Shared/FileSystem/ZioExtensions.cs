@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Shared.FileSystem;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
+using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
@@ -57,6 +58,13 @@ internal static class DirectoryEntryExtensions
         UPath filePath = dir.Path / fileName;
         return new FileEntry(dir.FileSystem, filePath);
     }
+
+    public static IEnumerable<FileEntry> GetFileEntries(this DirectoryEntry dirEntry, string searchPattern = "*", SearchOption searchOption = SearchOption.TopDirectoryOnly)
+    {
+        return dirEntry.FileSystem
+            .EnumerateFiles(dirEntry.FullName, searchPattern, searchOption)
+            .Select(path => new FileEntry(dirEntry.FileSystem, path));
+    }
 }
 
 
@@ -76,4 +84,25 @@ internal static class FileSystemExtensions
 
     public static void SetLastWriteTimeUtc(this IFileSystem fileSystem, UPath path, DateTime lastWriteTimeUtc)
         => fileSystem.SetLastWriteTime(path, lastWriteTimeUtc.ToLocalTime());
+
+    public static DirectoryEntry CreateTempSubdirectory(string? purpose = default, bool persistent = false)
+    {
+        var name = (purpose, persistent) switch
+        {
+            (null, true)      => throw new ArgumentException("If purpose is not specified, ephemeral must be true", nameof(purpose)),
+            (null, false)     => $"arius-{Guid.CreateVersion7()}",
+            (not null, true)  => $"arius-{purpose}",
+            (not null, false) => $"arius-{purpose}-{Guid.CreateVersion7()}",
+        };
+
+        // For simplicity sake, always use the temp path from the physical filesystem. If we use the SubFileSystem/MemoryFileSystem, we would get an additional /temp path in our restore folder
+        var fullName = Path.Combine(Path.GetTempPath(), name);
+        Directory.CreateDirectory(fullName);
+
+        var pfs = new PhysicalFileSystem();
+        var directoryEntry = pfs.GetDirectoryEntry(pfs.ConvertPathFromInternal(fullName));
+        directoryEntry.Create();
+
+        return directoryEntry;
+    }
 }

@@ -1,3 +1,4 @@
+using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
@@ -5,6 +6,8 @@ using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
 using Microsoft.Extensions.Logging.Abstractions;
+using Zio;
+using FileSystemExtensions = Arius.Core.Shared.FileSystem.FileSystemExtensions;
 using V51StateRepository = Arius.Core.Shared.StateRepositories.StateRepository;
 using V5StateRepository = Arius.Benchmarks.StateRepositories.v50.StateRepository;
 
@@ -19,9 +22,9 @@ public class StateRepositoryBenchmark
     private V51StateRepository v51Repository = null!;
     private StateRepositoryDbContextPool contextPool = null!;
     
-    private string tempDir = null!;
-    private FileInfo v50DatabaseFile = null!;
-    private FileInfo v51DatabaseFile = null!;
+    private string    tempDir         = null!;
+    private FileInfo  v50DatabaseFile = null!;
+    private FileEntry v51DatabaseFile = null!;
     
     private Hash[] testHashes = null!;
     private PointerFileEntry[] pointerEntries = null!;
@@ -38,7 +41,7 @@ public class StateRepositoryBenchmark
         Directory.CreateDirectory(tempDir);
         
         v50DatabaseFile = new FileInfo(Path.Combine(tempDir, "v50_state.db"));
-        v51DatabaseFile = new FileInfo(Path.Combine(tempDir, "v51_state.db"));
+        v51DatabaseFile = FileSystemExtensions.CreateTempSubdirectory("benchmark", false).GetFileEntry(Path.Combine(tempDir, "v51_state.db"));
 
         var logger = NullLogger<V5StateRepository>.Instance;
         var v51Logger = NullLogger<StateRepositoryDbContextPool>.Instance;

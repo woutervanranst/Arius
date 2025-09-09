@@ -1,17 +1,23 @@
 using Arius.Core.Shared.FileSystem;
+using Arius.Core.Tests.Helpers.Fixtures;
 using Shouldly;
 using Zio;
-using Zio.FileSystems;
 
 namespace Arius.Core.Tests.Shared.FileSystem;
 
-public class BinaryFileTests
+public class BinaryFileTests : IClassFixture<Fixture>
 {
+    private readonly Fixture fixture;
+
+    public BinaryFileTests(Fixture fixture)
+    {
+        this.fixture = fixture;
+    }
+
     [Fact]
     public void OpenWrite_Should_Truncate()
     {
-        using var ms = new MemoryFileSystem();
-        var       bf = BinaryFile.FromFileEntry(new FileEntry(ms, "/test"));
+        var       bf = BinaryFile.FromFileEntry(new FileEntry(fixture.FileSystem, "/test"));
 
         bf.WriteAllText("long text");
 

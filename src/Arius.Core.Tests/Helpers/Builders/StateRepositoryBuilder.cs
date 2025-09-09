@@ -128,9 +128,9 @@ internal class StateRepositoryBuilder
         return repository;
     }
 
-    public IStateRepository Build(string path, string stateName)
+    public IStateRepository Build(StateCache stateCache, string stateName)
     {
-        var stateFile   = new FileInfo(Path.Combine(path, $"{stateName}.db"));
+        var stateFile   = stateCache.GetStateFileEntry(stateName);
         var contextPool = new StateRepositoryDbContextPool(stateFile, true, NullLogger<StateRepositoryDbContextPool>.Instance);
         var stateRepo   = new StateRepository(contextPool);
 

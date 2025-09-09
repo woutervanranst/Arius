@@ -2,6 +2,7 @@ using Arius.Core.Shared.Crypto;
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using System.IO.Compression;
+using Zio;
 
 namespace Arius.Core.Shared.Storage;
 
@@ -45,7 +46,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
             .Select(blobName => blobName[statesFolderPrefix.Length..]); // remove the "states/" prefix
     }
 
-    public async Task DownloadStateAsync(string stateName, FileInfo targetFile, CancellationToken cancellationToken = default)
+    public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)
     {
         var             blobName           = $"{statesFolderPrefix}{stateName}";
         await using var blobStream         = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
@@ -56,13 +57,13 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         await decompressedStream.CopyToAsync(fileStream, cancellationToken);
     }
 
-    public async Task UploadStateAsync(string stateName, FileInfo sourceFile, CancellationToken cancellationToken = default)
+    public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
         var             blobName         = $"{statesFolderPrefix}{stateName}";
         await using var blobStream       = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip", cancellationToken: cancellationToken);
         await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
         await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.Optimal);
-        await using var fileStream       = sourceFile.OpenRead();
+        await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
         await fileStream.CopyToAsync(compressedStream, cancellationToken);
     }

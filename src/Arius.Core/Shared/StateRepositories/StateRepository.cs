@@ -2,6 +2,7 @@
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using WouterVanRanst.Utils.Extensions;
+using Zio;
 
 namespace Arius.Core.Shared.StateRepositories;
 
@@ -14,7 +15,7 @@ internal class StateRepository : IStateRepository
         this.contextPool = contextPool;
     }
 
-    public FileInfo StateDatabaseFile => contextPool.StateDatabaseFile;
+    public FileEntry StateDatabaseFile => contextPool.StateDatabaseFile;
     public bool HasChanges => contextPool.HasChanges;
 
     public void Vacuum() => contextPool.Vacuum();
