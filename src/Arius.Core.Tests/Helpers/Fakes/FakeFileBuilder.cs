@@ -11,15 +11,15 @@ internal record FakeFile(FilePair FilePair, Hash OriginalHash, byte[] OriginalCo
 
 internal class FakeFileBuilder
 {
-    private readonly IFileSystem fileSystem;
-    private readonly string passphrase;
+    private readonly IFileSystem                           fileSystem;
+    private readonly string                                passphrase;
     private readonly List<(FilePairType type, UPath path)> fileSpecs = new();
-    private byte[]? content;
-    private int? contentSizeInBytes;
-    private int? contentSeed;
-    private FileAttributes attributes = FileAttributes.Normal;
-    private DateTime? creationTimeUtc;
-    private DateTime? lastWriteTimeUtc;
+    private          byte[]?                               content;
+    private          int?                                  contentSizeInBytes;
+    private          int?                                  contentSeed;
+    private          FileAttributes                        attributes = FileAttributes.Normal;
+    private          DateTime?                             creationTimeUtc;
+    private          DateTime?                             lastWriteTimeUtc;
 
     public FakeFileBuilder(Fixture fixture)
     {
@@ -45,6 +45,7 @@ internal class FakeFileBuilder
         {
             fileSpecs.Add((type, path));
         }
+
         return this;
     }
 
@@ -54,24 +55,24 @@ internal class FakeFileBuilder
         {
             fileSpecs.Add((FilePairType.None, path));
         }
+
         return this;
     }
-
 
 
     public FakeFileBuilder WithRandomContent(int sizeInBytes, int? seed = null)
     {
         contentSizeInBytes = sizeInBytes;
-        contentSeed = seed;
-        content = null; // Clear any previously set content
+        contentSeed        = seed;
+        content            = null; // Clear any previously set content
         return this;
     }
 
     public FakeFileBuilder WithContent(byte[] content)
     {
-        this.content = content;
+        this.content       = content;
         contentSizeInBytes = null;
-        contentSeed = null;
+        contentSeed        = null;
         return this;
     }
 
@@ -107,8 +108,8 @@ internal class FakeFileBuilder
 
     public FakeFileBuilder WithDuplicate(FakeFile existingFakeFile, UPath path)
     {
-        content = existingFakeFile.OriginalContent;
-        creationTimeUtc = existingFakeFile.OriginalCreationDateTimeUtc;
+        content          = existingFakeFile.OriginalContent;
+        creationTimeUtc  = existingFakeFile.OriginalCreationDateTimeUtc;
         lastWriteTimeUtc = existingFakeFile.OriginalLastWriteTimeUtc;
         fileSpecs.Add((existingFakeFile.FilePair.Type, path));
         return this;
@@ -125,8 +126,8 @@ internal class FakeFileBuilder
         {
             // Create memory-only FakeFile with FilePairType.None
             var memoryPath = UPath.Root / "memory-file";
-            var hash = ComputeSha256Hash(passphrase, actualContent);
-            var filePair = FilePair.FromBinaryFilePath(fileSystem, memoryPath);
+            var hash       = ComputeSha256Hash(passphrase, actualContent);
+            var filePair   = FilePair.FromBinaryFilePath(fileSystem, memoryPath);
             return new FakeFile(filePair, hash, actualContent, memoryPath, GetCreationTime(), GetLastWriteTime());
         }
 
@@ -140,7 +141,7 @@ internal class FakeFileBuilder
             throw new InvalidOperationException("No files configured. Use WithActualFile() or WithActualFiles() before calling BuildMany().");
 
         var actualContent = GetOrGenerateContent();
-        var fakeFiles = new List<FakeFile>();
+        var fakeFiles     = new List<FakeFile>();
 
         foreach (var (type, path) in fileSpecs)
         {
@@ -170,7 +171,7 @@ internal class FakeFileBuilder
         if ((attributes & FileAttributes.Hidden) != 0 && !binaryFileRelativeName.GetName().StartsWith("."))
             throw new ArgumentException("Hidden files should start with a dot (.) in their name by Linux convention");
 
-        var actualCreationTime = GetCreationTime();
+        var actualCreationTime  = GetCreationTime();
         var actualLastWriteTime = GetLastWriteTime();
 
         var binaryFileHash = ComputeSha256Hash(passphrase, content);
@@ -185,7 +186,7 @@ internal class FakeFileBuilder
         var fe = new FileEntry(fileSystem, binaryFileRelativeName);
         fe.Directory.Create();
 
-        var createBinary = type is FilePairType.BinaryFileWithPointerFile or FilePairType.BinaryFileOnly;
+        var createBinary  = type is FilePairType.BinaryFileWithPointerFile or FilePairType.BinaryFileOnly;
         var createPointer = type is FilePairType.BinaryFileWithPointerFile or FilePairType.PointerFileOnly;
 
         // 1. Create the Binary File if needed
@@ -204,7 +205,7 @@ internal class FakeFileBuilder
         // 2. Create the Pointer File if needed
         if (createPointer)
         {
-            var pointerPath = binaryFileRelativeName.GetPointerFilePath();
+            var       pointerPath   = binaryFileRelativeName.GetPointerFilePath();
             using var pointerStream = fileSystem.OpenFile(pointerPath, FileMode.Create, FileAccess.Write);
 
             var pointerData = Encoding.UTF8.GetBytes($"{{\"BinaryHash\":\"{binaryFileHash}\"}}");
@@ -233,7 +234,7 @@ internal class FakeFileBuilder
     private static byte[] GenerateRandomContent(int sizeInBytes, int? seed)
     {
         var random = seed is null ? new Random() : new Random(seed.Value);
-        var data = new byte[sizeInBytes];
+        var data   = new byte[sizeInBytes];
         random.NextBytes(data);
         return data;
     }
