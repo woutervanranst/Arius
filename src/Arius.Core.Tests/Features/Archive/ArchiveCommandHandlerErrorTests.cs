@@ -11,12 +11,12 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
 {
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
-    private readonly PhysicalFileSystemFixture        fixture;
+    private readonly Fixture        fixture;
 
     public ArchiveCommandHandlerErrorTests()
     {
         logger  = new();
-        fixture = new PhysicalFileSystemFixture();
+        fixture = new Fixture();
         handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 

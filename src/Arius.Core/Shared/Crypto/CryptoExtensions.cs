@@ -1,7 +1,8 @@
-﻿using System.Security.Cryptography;
+﻿using Arius.Core.Shared.Extensions;
+using System.Security.Cryptography;
 using System.Text;
 
-namespace Arius.Core.Shared.Extensions;
+namespace Arius.Core.Shared.Crypto;
 
 internal static class CryptoExtensions
 {

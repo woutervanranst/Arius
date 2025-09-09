@@ -9,13 +9,13 @@ using Shouldly;
 
 namespace Arius.Core.Tests.Features.Restore;
 
-public class RestoreCommandHandlerInMemoryTests : IClassFixture<InMemoryFileSystemFixture>
+public class RestoreCommandHandlerInMemoryTests : IClassFixture<Fixture>
 {
-    private readonly InMemoryFileSystemFixture fixture;
-    private readonly FakeLoggerFactory         loggerFactory = new();
-    private readonly RestoreCommandHandler     handler;
+    private readonly Fixture               fixture;
+    private readonly FakeLoggerFactory     loggerFactory = new();
+    private readonly RestoreCommandHandler handler;
 
-    public RestoreCommandHandlerInMemoryTests(InMemoryFileSystemFixture fixture)
+    public RestoreCommandHandlerInMemoryTests(Fixture fixture)
     {
         this.fixture  = fixture;
         handler       = new RestoreCommandHandler(loggerFactory.CreateLogger<RestoreCommandHandler>(), loggerFactory, fixture.AriusConfiguration);

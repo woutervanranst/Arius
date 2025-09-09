@@ -7,13 +7,13 @@ using System.Runtime.InteropServices;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class ArchiveCommandHandlerTests : IClassFixture<PhysicalFileSystemFixture>, IDisposable
+public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
 {
-    private readonly PhysicalFileSystemFixture        fixture;
+    private readonly Fixture        fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
 
-    public ArchiveCommandHandlerTests(PhysicalFileSystemFixture fixture)
+    public ArchiveCommandHandlerTests(Fixture fixture)
     {
         this.fixture = fixture;
         logger       = new();

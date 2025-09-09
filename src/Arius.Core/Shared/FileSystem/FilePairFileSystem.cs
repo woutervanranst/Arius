@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using Zio;
+﻿using Zio;
 using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;

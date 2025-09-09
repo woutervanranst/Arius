@@ -23,27 +23,27 @@ public class ArchiveCommandBuilder
         SetDefaults(null);
     }
 
-    public ArchiveCommandBuilder(FixtureBase? fixture)
+    public ArchiveCommandBuilder(Fixture? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(FixtureBase? fixture)
+    private void SetDefaults(Fixture? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {
             accountName   = fixture.RepositoryOptions.AccountName ?? "testaccount";
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
             containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            localRoot     = fixture is PhysicalFileSystemFixture physicalFixture ? physicalFixture.TestRunSourceFolder : new DirectoryInfo(Path.GetTempPath());
-            passphrase    = fixture.RepositoryOptions.Passphrase ?? FixtureBase.PASSPHRASE;
+            localRoot     = fixture.TestRunSourceFolder;
+            passphrase    = fixture.RepositoryOptions.Passphrase ?? Fixture.PASSPHRASE;
         }
         else
         {
             accountName   = "testaccount";
             accountKey    = "testkey";
             containerName = $"testcontainer-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
-            passphrase    = FixtureBase.PASSPHRASE;
+            passphrase    = Fixture.PASSPHRASE;
             localRoot     = new DirectoryInfo(Path.GetTempPath());
         }
 

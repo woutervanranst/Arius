@@ -1,3 +1,4 @@
+using Arius.Core.Shared.Crypto;
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using System.IO.Compression;

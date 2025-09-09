@@ -21,10 +21,10 @@ internal class FakeFileBuilder
     private DateTime? creationTimeUtc;
     private DateTime? lastWriteTimeUtc;
 
-    public FakeFileBuilder(FixtureBase fixture)
+    public FakeFileBuilder(Fixture fixture)
     {
         fileSystem = fixture.FileSystem;
-        passphrase = FixtureBase.PASSPHRASE;
+        passphrase = Fixture.PASSPHRASE;
     }
 
     public FakeFileBuilder WithActualFile(FilePairType type, UPath path)

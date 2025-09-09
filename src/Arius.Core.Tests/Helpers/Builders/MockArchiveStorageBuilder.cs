@@ -8,10 +8,10 @@ namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class MockArchiveStorageBuilder
 {
-    private readonly FixtureBase              fixture;
+    private readonly Fixture                  fixture;
     private readonly Dictionary<Hash, byte[]> chunks = new();
 
-    public MockArchiveStorageBuilder(FixtureBase fixture)
+    public MockArchiveStorageBuilder(Fixture fixture)
     {
         this.fixture = fixture;
     }
@@ -52,10 +52,10 @@ internal class MockArchiveStorageBuilder
 
     public class TarChunkBuilder
     {
-        private readonly FixtureBase                       fixture;
+        private readonly Fixture                           fixture;
         private readonly List<(Hash hash, byte[] content)> binaries = new();
 
-        internal TarChunkBuilder(FixtureBase fixture)
+        internal TarChunkBuilder(Fixture fixture)
         {
             this.fixture = fixture;
         }
@@ -82,7 +82,7 @@ internal class MockArchiveStorageBuilder
 
             var tarContent = memoryStream.ToArray();
 
-            var hasher = new Sha256Hasher(FixtureBase.PASSPHRASE);
+            var hasher = new Sha256Hasher(Fixture.PASSPHRASE);
             var tarHash = hasher.GetHashAsync(tarContent).Result;
 
             return (tarHash, tarContent);

@@ -11,15 +11,15 @@ namespace Arius.Core.Tests.Features.Archive;
 public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
 {
     private readonly FakeLoggerFactory loggerFactory;
-    private readonly IArchiveStorage                                  mockArchiveStorage;
-    private readonly DirectoryInfo                                    tempStateDirectory;
-    private readonly ArchiveCommand                                   testCommand;
-    private readonly PhysicalFileSystemFixture                       fixture;
+    private readonly IArchiveStorage   mockArchiveStorage;
+    private readonly DirectoryInfo     tempStateDirectory;
+    private readonly ArchiveCommand    testCommand;
+    private readonly Fixture           fixture;
 
     public ArchiveCommandHandlerContextCreateAsyncTests()
     {
-        fixture = new PhysicalFileSystemFixture();
-        loggerFactory = new FakeLoggerFactory();
+        fixture            = new Fixture();
+        loggerFactory      = new FakeLoggerFactory();
         mockArchiveStorage = Substitute.For<IArchiveStorage>();
         
         tempStateDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), $"arius-test-{Guid.NewGuid()}"));
