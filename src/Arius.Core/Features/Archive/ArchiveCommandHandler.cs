@@ -315,14 +315,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
-        // TODO perhaps look again into InMemoryGzippedTar https://chat.deepseek.com/a/chat/s/9e9b24a3-9d37-4fb7-a1f4-89ace469b508
-
-        MemoryStream                                                           ms               = null;
-        TarWriter                                                              tarWriter        = null;
-        GZipStream                                                             gzip             = null;
-        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs  = new();
-        long                                                                   originalSize     = 0;
-        long                                                                   previousPosition = 0;
+        InMemoryGzippedTarWriter tarWriter = null;
+        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs = new();
+        long originalSize = 0;
 
         try
         {
@@ -332,13 +327,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
                 if (tarWriter is null)
                 {
-                    ms = new MemoryStream();
-                    gzip = new GZipStream(ms, CompressionLevel.SmallestSize, leaveOpen: true);
-                    tarWriter = new TarWriter(gzip);
+                    tarWriter = new InMemoryGzippedTarWriter(handlerContext.Hasher);
                     originalSize = 0;
-
-                    await gzip.FlushAsync(cancellationToken);
-                    previousPosition = ms.Position;
                 }
 
                 var (filePair, binaryHash) = filePairWithHash;
@@ -349,17 +339,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
-                    var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
-                    await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
-
-                    await gzip.FlushAsync(cancellationToken);
-                    await ms.FlushAsync(cancellationToken);
+                    var archivedSize = await tarWriter.AddEntryAsync(filePair.BinaryFile, binaryHash.ToString(), cancellationToken);
 
                     originalSize += filePair.BinaryFile.Length;
-                    var archivedSize = ms.Position - previousPosition;
-
                     tarredFilePairs.Add((filePair, binaryHash, archivedSize));
-                    previousPosition = ms.Position;
 
                     logger.LogInformation($"Added '{filePair.FullName}' ({filePair.BinaryFile.Length.Bytes()} to {archivedSize.Bytes()}) to TAR queue");
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
@@ -370,50 +353,42 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, $"Already uploaded"));
                 }
 
-                if ((ms.Position > 1024 * 1024 ||
-                     ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
+                if ((tarWriter.Position > 1024 * 1024 ||
+                     tarWriter.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
                 {
                     logger.LogInformation($"Uploading TAR");
-                    await ProcessTarArchive(handlerContext, ms, gzip, tarWriter, tarredFilePairs, originalSize, cancellationToken);
+                    await ProcessTarArchive(handlerContext, tarWriter, tarredFilePairs, originalSize, cancellationToken);
 
                     // Reset for next batch
-                    ms?.Dispose();
+                    tarWriter?.Dispose();
                     tarWriter = null;
-                    ms = null;
-                    gzip = null;
                     tarredFilePairs.Clear();
                     originalSize = 0;
-                    previousPosition = 0;
                 }
             }
 
             // Handle any remaining files in the final batch
-            if (tarredFilePairs.Any() && ms != null)
+            if (tarredFilePairs.Any() && tarWriter != null)
             {
-                await ProcessTarArchive(handlerContext, ms, gzip, tarWriter, tarredFilePairs, originalSize, cancellationToken);
+                await ProcessTarArchive(handlerContext, tarWriter, tarredFilePairs, originalSize, cancellationToken);
             }
         }
         finally
         {
             // Ensure cleanup of resources
             tarWriter?.Dispose();
-            gzip?.Dispose();
-            ms?.Dispose();
         }
     }
 
-    private async Task ProcessTarArchive(HandlerContext handlerContext, MemoryStream ms, GZipStream gzip, TarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
+    private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
     {
-        tarWriter.Dispose();
-        gzip.Dispose();
+        var tarHash = await tarWriter.GetArchiveHashAsync();
 
-        ms.Seek(0, SeekOrigin.Begin);
+        await using var archiveStream = tarWriter.GetCompletedArchive();
+        
+        //File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ((MemoryStream)archiveStream).ToArray());
 
-        var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
-
-        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ms.ToArray());
-
-        ms.Seek(0, SeekOrigin.Begin);
+        //archiveStream.Seek(0, SeekOrigin.Begin);
 
         foreach (var (tarredFilePair, _, _) in tarredFilePairs)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
@@ -425,7 +400,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             metadata: null,
             progress: null,
             cancellationToken: cancellationToken);
-        await ms.CopyToAsync(encryptedStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
+        await archiveStream.CopyToAsync(encryptedStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
 
         // Flush all buffers
         await encryptedStream.FlushAsync(cancellationToken);
