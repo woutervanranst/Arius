@@ -20,7 +20,7 @@ internal class FileEntryWithUtc : FileEntry
     {
     }
 
-    public DateTime CreationTimeUtc
+    public DateTime CreationTimeUtc // NOTE CreationTimeUtc doesnt work properly on Linux
     {
         get => CreationTime.ToUniversalTime();
         set => CreationTime = value.ToLocalTime();
