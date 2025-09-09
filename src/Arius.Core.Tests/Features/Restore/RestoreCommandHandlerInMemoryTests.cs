@@ -10,7 +10,6 @@ using NSubstitute;
 using Shouldly;
 using System.Security.Cryptography;
 using System.Text;
-using Zio;
 
 namespace Arius.Core.Tests.Features.Restore;
 
