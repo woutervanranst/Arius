@@ -84,7 +84,7 @@ internal class FakeFileBuilder
 
     public FakeFileBuilder WithCreationTimeUtc(string dateTime)
     {
-        creationTimeUtc = DateTime.ParseExact(dateTime, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+        creationTimeUtc = DateTime.SpecifyKind(DateTime.ParseExact(dateTime, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None), DateTimeKind.Utc);
         return this;
     }
 
@@ -96,7 +96,7 @@ internal class FakeFileBuilder
 
     public FakeFileBuilder WithLastWriteTimeUtc(string dateTime)
     {
-        lastWriteTimeUtc = DateTime.ParseExact(dateTime, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+        lastWriteTimeUtc = DateTime.SpecifyKind(DateTime.ParseExact(dateTime, "dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None), DateTimeKind.Utc);
         return this;
     }
 
