@@ -1,4 +1,5 @@
-﻿using Humanizer;
+﻿using Arius.Core.Shared.FileSystem;
+using Humanizer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -25,7 +26,7 @@ internal class StateRepositoryDbContextPool
 
         var interceptor = new AnyChangesInterceptor(SetHasChanges);
 
-        var internalName = stateDatabaseFile.FileSystem.ConvertPathToInternal(stateDatabaseFile.Path);
+        var internalName = stateDatabaseFile.ConvertPathToInternal();
         var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
             .UseSqlite($"Data Source={internalName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .AddInterceptors(interceptor)
