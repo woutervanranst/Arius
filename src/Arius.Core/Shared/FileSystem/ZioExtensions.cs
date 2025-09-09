@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Shared.FileSystem;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
-using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
@@ -77,33 +76,4 @@ internal static class FileSystemExtensions
 
     public static void SetLastWriteTimeUtc(this IFileSystem fileSystem, UPath path, DateTime lastWriteTimeUtc)
         => fileSystem.SetLastWriteTime(path, lastWriteTimeUtc.ToLocalTime());
-
-    /// <summary>
-    /// Recursively unwraps nested filesystems to return the last Fallback filesystem.
-    /// If there are no fallbacks, returns the input filesystem itself.
-    /// </summary>
-    public static IFileSystem GetLastFallback(this IFileSystem fileSystem)
-    {
-        IFileSystem? nextFs = null;
-
-        // Check if it's a ComposeFileSystem (like FilePairFileSystem) which wraps another filesystem
-        if (fileSystem is ComposeFileSystem composeFs)
-        {
-            nextFs = composeFs.Fallback;
-        }
-        // Check if it's a SubFileSystem which wraps another filesystem
-        else if (fileSystem is SubFileSystem subFs)
-        {
-            nextFs = subFs.Fallback;
-        }
-
-        // If there is another layer, recurse
-        if (nextFs != null)
-        {
-            return nextFs.GetLastFallback();
-        }
-
-        // Otherwise, this is the last filesystem in the chain
-        return fileSystem;
-    }
 }

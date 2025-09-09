@@ -7,10 +7,7 @@ internal class FilePairFileSystem : ComposeFileSystem
 {
     public FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, owned)
     {
-        IsInMemory = fileSystem.GetLastFallback() is MemoryFileSystem;
     }
-
-    public bool IsInMemory { get; init; }
 
     public DirectoryEntry CreateTempSubdirectory()
     {

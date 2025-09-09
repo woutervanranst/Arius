@@ -3,7 +3,6 @@ using Arius.Core.Shared.StateRepositories;
 using System.Diagnostics;
 using System.Text.Json;
 using Zio;
-using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
@@ -130,45 +129,29 @@ internal class BinaryFile : FileEntryWithUtc
 
     public Stream OpenRead()
     {
-        // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
-        if (FileSystem is FilePairFileSystem { IsInMemory: true } || FileSystem is MemoryFileSystem)
+        var options = Length switch
         {
-            return FileSystem.OpenFile(Path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        }
-        else
-        {
-            var options = Length switch
-            {
-                < 4 * 1024         => ReadOptions.BufferSize4KB,
-                < 64 * 1024        => ReadOptions.BufferSize8KB,
-                < 1 * 1024 * 1024  => ReadOptions.BufferSize32KB,
-                < 10 * 1024 * 1024 => ReadOptions.BufferSize64KB,
-                _                  => ReadOptions.BufferSize256KB
-            };
+            < 4 * 1024         => ReadOptions.BufferSize4KB,
+            < 64 * 1024        => ReadOptions.BufferSize8KB,
+            < 1 * 1024 * 1024  => ReadOptions.BufferSize32KB,
+            < 10 * 1024 * 1024 => ReadOptions.BufferSize64KB,
+            _                  => ReadOptions.BufferSize256KB
+        };
 
-            return File.Open(this.ConvertPathToInternal(), options);
-        }
+        return File.Open(this.ConvertPathToInternal(), options);
     }
 
     public Stream OpenWrite(long expectedLength)
     {
-        // MemoryFileSystem is used for testing and does not support FileStreamOptions so we fallback to the classic OpenFile method
-        if (FileSystem is FilePairFileSystem { IsInMemory: true } || FileSystem is MemoryFileSystem)
+        var options = expectedLength switch
         {
-            return FileSystem.OpenFile(Path, FileMode.Create, FileAccess.Write, FileShare.None);
-        }
-        else
-        {
-            var options = expectedLength switch
-            {
-                < 4 * 1024         => WriteOptions.BufferSize4KB,
-                < 64 * 1024        => WriteOptions.BufferSize8KB,
-                < 1 * 1024 * 1024  => WriteOptions.BufferSize32KB,
-                < 10 * 1024 * 1024 => WriteOptions.BufferSize64KB,
-                _                  => WriteOptions.BufferSize256KB
-            };
-            return File.Open(this.ConvertPathToInternal(), options);
-        }
+            < 4 * 1024         => WriteOptions.BufferSize4KB,
+            < 64 * 1024        => WriteOptions.BufferSize8KB,
+            < 1 * 1024 * 1024  => WriteOptions.BufferSize32KB,
+            < 10 * 1024 * 1024 => WriteOptions.BufferSize64KB,
+            _                  => WriteOptions.BufferSize256KB
+        };
+        return File.Open(this.ConvertPathToInternal(), options);
     }
 
     // Pre-allocated FileStreamOptions instances to avoid allocations on every call
