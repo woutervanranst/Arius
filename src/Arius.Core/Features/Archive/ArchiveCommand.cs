@@ -10,7 +10,7 @@ public sealed record ArchiveCommand : RepositoryCommand
 
     public int Parallelism { get; init; } = 1; //Todo split up per purpose, use #DEBUG etc en make it cpu based
 
-    public int SmallFileBoundary { get; init; } = 1024 * 1024;
+    public int SmallFileBoundary { get; init; } = 1024 * 1024; // 1 MB
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }

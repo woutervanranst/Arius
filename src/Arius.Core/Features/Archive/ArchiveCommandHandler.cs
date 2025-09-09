@@ -353,8 +353,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, $"Already uploaded"));
                 }
 
-                if ((tarWriter.Position > 1024 * 1024 ||
-                     tarWriter.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
+                if ((tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
+                     tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
                 {
                     logger.LogInformation($"Uploading TAR");
                     await ProcessTarArchive(handlerContext, tarWriter, tarredFilePairs, originalSize, cancellationToken);
