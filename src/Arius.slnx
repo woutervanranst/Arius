@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/10-Cli/">
+    <Project Path="Arius.Cli.Tests/Arius.Cli.Tests.csproj" />
+    <Project Path="Arius.Cli/Arius.Cli.csproj" />
+  </Folder>
+  <Folder Name="/20-Core/">
+    <Project Path="Arius.Core.Tests/Arius.Core.Tests.csproj" />
+    <Project Path="Arius.Core/Arius.Core.csproj" />
+  </Folder>
+  <Folder Name="/90-Benchmarks/">
+    <Project Path="Arius.Benchmarks/Arius.Benchmarks.csproj" />
+  </Folder>
+</Solution>
