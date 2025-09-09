@@ -316,8 +316,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
         InMemoryGzippedTarWriter tarWriter = null;
-        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs = new();
-        long originalSize = 0;
 
         try
         {
@@ -327,8 +325,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
                 if (tarWriter is null)
                 {
-                    tarWriter    = new InMemoryGzippedTarWriter(CompressionLevel.SmallestSize);
-                    originalSize = 0;
+                    tarWriter = new InMemoryGzippedTarWriter(CompressionLevel.SmallestSize);
                 }
 
                 var (filePair, binaryHash) = filePairWithHash;
@@ -339,12 +336,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
-                    var archivedSize = await tarWriter.AddEntryAsync(filePair.BinaryFile, binaryHash.ToString(), cancellationToken);
+                    var tarredEntry = await tarWriter.AddEntryAsync(filePair, binaryHash, cancellationToken);
 
-                    originalSize += filePair.BinaryFile.Length;
-                    tarredFilePairs.Add((filePair, binaryHash, archivedSize));
-
-                    logger.LogInformation($"Added '{filePair.FullName}' ({filePair.BinaryFile.Length.Bytes()} to {archivedSize.Bytes()}) to TAR queue");
+                    logger.LogInformation($"Added '{filePair.FullName}' ({filePair.BinaryFile.Length.Bytes()} to {tarredEntry.ArchivedSize.Bytes()}) to TAR queue");
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
                 }
                 else
@@ -354,23 +348,21 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 }
 
                 if ((tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
-                     tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarredFilePairs.Any())
+                     tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarWriter.TarredEntries.Any())
                 {
                     logger.LogInformation($"Uploading TAR");
-                    await ProcessTarArchive(handlerContext, tarWriter, tarredFilePairs, originalSize, cancellationToken);
+                    await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
 
                     // Reset for next batch
                     tarWriter?.Dispose();
                     tarWriter = null;
-                    tarredFilePairs.Clear();
-                    originalSize = 0;
                 }
             }
 
             // Handle any remaining files in the final batch
-            if (tarredFilePairs.Any() && tarWriter != null)
+            if (tarWriter?.TarredEntries.Any() == true)
             {
-                await ProcessTarArchive(handlerContext, tarWriter, tarredFilePairs, originalSize, cancellationToken);
+                await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
             }
         }
         finally
@@ -380,7 +372,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         }
     }
 
-    private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
+    private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, CancellationToken cancellationToken)
     {
         await using var archiveStream = tarWriter.GetCompletedArchive();
 
@@ -392,8 +384,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
         //archiveStream.Seek(0, SeekOrigin.Begin);
 
-        foreach (var (tarredFilePair, _, _) in tarredFilePairs)
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
+        foreach (var entry in tarWriter.TarredEntries)
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 70, $"Uploading TAR..."));
 
         await using var encryptedStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
             h: tarHash,
@@ -411,7 +403,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(tarHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
-        var bps = tarredFilePairs.Select(x => new BinaryProperties
+        var bps = tarWriter.TarredEntries.Select(x => new BinaryProperties
         {
             Hash         = x.Hash,
             ParentHash   = tarHash,
@@ -424,23 +416,23 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
         {
             Hash         = tarHash,
-            OriginalSize = originalSize,
+            OriginalSize = tarWriter.TotalOriginalSize,
             ArchivedSize = encryptedStream.Position,
             StorageTier  = actualTier
         });
 
         // Mark as uploaded
-        foreach (var (_, binaryHash2, _) in tarredFilePairs)
-            MarkAsUploaded(binaryHash2);
+        foreach (var entry in tarWriter.TarredEntries)
+            MarkAsUploaded(entry.Hash);
 
         // 4.Write the Pointers
         var pfes = new List<PointerFileEntry>();
-        foreach (var (filePair22, binaryHash22, _) in tarredFilePairs)
+        foreach (var entry in tarWriter.TarredEntries)
         {
-            var pf = filePair22.CreatePointerFile(binaryHash22);
+            var pf = entry.FilePair.CreatePointerFile(entry.Hash);
             pfes.Add(new PointerFileEntry
             {
-                Hash             = binaryHash22,
+                Hash             = entry.Hash,
                 RelativeName     = pf.Path.FullName,
                 CreationTimeUtc  = pf.CreationTimeUtc,
                 LastWriteTimeUtc = pf.LastWriteTimeUtc
@@ -450,8 +442,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         // 5. Write the PointerFileEntry
         handlerContext.StateRepository.UpsertPointerFileEntries(pfes.ToArray());
 
-        foreach (var (tarredFilePair, _, _) in tarredFilePairs)
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 100, $"TAR Complete"));
+        foreach (var entry in tarWriter.TarredEntries)
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 100, $"TAR Complete"));
     }
 
     // -- UPLOAD STATUS HELPERS

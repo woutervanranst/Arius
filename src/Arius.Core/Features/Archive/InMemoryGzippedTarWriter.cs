@@ -1,4 +1,5 @@
 using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
 using System.Formats.Tar;
 using System.IO.Compression;
 
@@ -9,9 +10,15 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
     private readonly MemoryStream memoryStream;
     private readonly GZipStream   gzipStream;
     private readonly TarWriter    tarWriter;
+    private readonly List<TarredEntry> tarredEntries = new();
+    private          long         totalOriginalSize = 0;
     private          bool         disposed = false;
 
     public long Position => memoryStream.Position;
+    public IReadOnlyList<TarredEntry> TarredEntries => tarredEntries;
+    public long TotalOriginalSize => totalOriginalSize;
+
+    public record TarredEntry(FilePair FilePair, Hash Hash, long ArchivedSize);
 
     public InMemoryGzippedTarWriter(CompressionLevel compressionLevel)
     {
@@ -20,15 +27,15 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
         tarWriter    = new TarWriter(gzipStream);
     }
 
-    public async Task<long> AddEntryAsync(BinaryFile binaryFile, string entryName, CancellationToken cancellationToken = default)
+    public async Task<TarredEntry> AddEntryAsync(FilePair filePair, Hash hash, CancellationToken cancellationToken = default)
     {
         if (disposed) throw new ObjectDisposedException(nameof(InMemoryGzippedTarWriter));
 
         var previousPosition = memoryStream.Position;
 
-        await using (var ss = binaryFile.OpenRead())
+        await using (var ss = filePair.BinaryFile.OpenRead())
         {
-            var entry = new PaxTarEntry(TarEntryType.RegularFile, entryName)
+            var entry = new PaxTarEntry(TarEntryType.RegularFile, hash.ToString())
             {
                 DataStream = ss
             };
@@ -39,7 +46,14 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
         await gzipStream.FlushAsync(cancellationToken);
         await memoryStream.FlushAsync(cancellationToken);
 
-        return memoryStream.Position - previousPosition;
+        var archivedSize = memoryStream.Position - previousPosition;
+        
+        // Track the entry
+        var tarredEntry = new TarredEntry(filePair, hash, archivedSize);
+        tarredEntries.Add(tarredEntry);
+        totalOriginalSize += filePair.BinaryFile.Length;
+
+        return tarredEntry;
     }
 
     public Stream GetCompletedArchive()

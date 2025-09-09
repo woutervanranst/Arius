@@ -29,22 +29,42 @@ public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
         var       positionInitial = tarWriter.Position;
 
         // Act
-        var archivedSize1 = await tarWriter.AddEntryAsync(testData1.FilePair.BinaryFile, "entry1", CancellationToken.None);
+        var tarredEntry1 = await tarWriter.AddEntryAsync(testData1.FilePair, testData1.OriginalHash, CancellationToken.None);
         var positionAfter1 = tarWriter.Position;
         
-        var archivedSize2 = await tarWriter.AddEntryAsync(testData2.FilePair.BinaryFile, "entry2", CancellationToken.None);
+        var tarredEntry2 = await tarWriter.AddEntryAsync(testData2.FilePair, testData2.OriginalHash, CancellationToken.None);
         var positionAfter2 = tarWriter.Position;
 
-        var archivedSize3 = await tarWriter.AddEntryAsync(testData3.FilePair.BinaryFile, "entry3", CancellationToken.None);
+        var tarredEntry3 = await tarWriter.AddEntryAsync(testData3.FilePair, testData3.OriginalHash, CancellationToken.None);
         var positionAfter3 = tarWriter.Position;
 
         await using var archiveStream = tarWriter.GetCompletedArchive();
 
         // Assert
+        // -- Verify tracking functionality
+        tarWriter.TarredEntries.Count.ShouldBe(3);
+        tarWriter.TotalOriginalSize.ShouldBe(testData1.FilePair.BinaryFile.Length + testData2.FilePair.BinaryFile.Length + testData3.FilePair.BinaryFile.Length);
+        
+        tarWriter.TarredEntries[0].ShouldBe(tarredEntry1);
+        tarWriter.TarredEntries[1].ShouldBe(tarredEntry2);
+        tarWriter.TarredEntries[2].ShouldBe(tarredEntry3);
+        
+        tarredEntry1.FilePair.ShouldBe(testData1.FilePair);
+        tarredEntry1.Hash.ShouldBe(testData1.OriginalHash);
+        tarredEntry1.ArchivedSize.ShouldBeGreaterThan(0L);
+        
+        tarredEntry2.FilePair.ShouldBe(testData2.FilePair);
+        tarredEntry2.Hash.ShouldBe(testData2.OriginalHash);
+        tarredEntry2.ArchivedSize.ShouldBeGreaterThan(0L);
+        
+        tarredEntry3.FilePair.ShouldBe(testData3.FilePair);
+        tarredEntry3.Hash.ShouldBe(testData3.OriginalHash);
+        tarredEntry3.ArchivedSize.ShouldBeGreaterThan(0L);
+        
         // -- Verify positions and sizes make sense
-        archivedSize1.ShouldBeGreaterThan(0L);
-        archivedSize2.ShouldBeGreaterThan(0L);
-        archivedSize3.ShouldBeGreaterThan(0L);
+        tarredEntry1.ArchivedSize.ShouldBeGreaterThan(0L);
+        tarredEntry2.ArchivedSize.ShouldBeGreaterThan(0L);
+        tarredEntry3.ArchivedSize.ShouldBeGreaterThan(0L);
         positionAfter1.ShouldBeGreaterThan(positionInitial);
         positionAfter2.ShouldBeGreaterThan(positionAfter1);
         positionAfter3.ShouldBeGreaterThan(positionAfter2);
@@ -63,7 +83,7 @@ public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
 
         var entry1 = await tarReader.GetNextEntryAsync(copyData: true, CancellationToken.None);
         entry1.ShouldNotBeNull();
-        entry1.Name.ShouldBe("entry1");
+        entry1.Name.ShouldBe(testData1.OriginalHash.ToString());
         entry1.DataStream.ShouldNotBeNull();
         using var ms1 = new MemoryStream();
         await entry1.DataStream.CopyToAsync(ms1);
@@ -72,7 +92,7 @@ public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
 
         var entry2 = await tarReader.GetNextEntryAsync(copyData: true, CancellationToken.None);
         entry2.ShouldNotBeNull();
-        entry2.Name.ShouldBe("entry2");
+        entry2.Name.ShouldBe(testData2.OriginalHash.ToString());
         entry2.DataStream.ShouldNotBeNull();
         using var ms2 = new MemoryStream();
         await entry2.DataStream.CopyToAsync(ms2);
@@ -81,7 +101,7 @@ public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
 
         var entry3 = await tarReader.GetNextEntryAsync(copyData: true, CancellationToken.None);
         entry3.ShouldNotBeNull();
-        entry3.Name.ShouldBe("entry3");
+        entry3.Name.ShouldBe(testData3.OriginalHash.ToString());
         entry3.DataStream.ShouldNotBeNull();
         using var ms3 = new MemoryStream();
         await entry3.DataStream.CopyToAsync(ms3);
