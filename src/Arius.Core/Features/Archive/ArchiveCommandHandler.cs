@@ -6,6 +6,7 @@ using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.IO;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
@@ -326,7 +327,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
                 if (tarWriter is null)
                 {
-                    tarWriter = new InMemoryGzippedTarWriter(handlerContext.Hasher);
+                    tarWriter    = new InMemoryGzippedTarWriter(CompressionLevel.SmallestSize);
                     originalSize = 0;
                 }
 
@@ -381,10 +382,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
 
     private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
     {
-        var tarHash = await tarWriter.GetArchiveHashAsync();
-
         await using var archiveStream = tarWriter.GetCompletedArchive();
-        
+
+        var tarHash = await handlerContext.Hasher.GetHashAsync(archiveStream);
+        archiveStream.Seek(0, SeekOrigin.Begin);
+
+
         //File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ((MemoryStream)archiveStream).ToArray());
 
         //archiveStream.Seek(0, SeekOrigin.Begin);

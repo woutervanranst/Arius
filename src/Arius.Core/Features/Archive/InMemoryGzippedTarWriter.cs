@@ -1,5 +1,4 @@
 using Arius.Core.Shared.FileSystem;
-using Arius.Core.Shared.Hashing;
 using System.Formats.Tar;
 using System.IO.Compression;
 
@@ -7,7 +6,6 @@ namespace Arius.Core.Features.Archive;
 
 internal sealed class InMemoryGzippedTarWriter : IDisposable
 {
-    private readonly Sha256Hasher hasher;
     private readonly MemoryStream memoryStream;
     private readonly GZipStream   gzipStream;
     private readonly TarWriter    tarWriter;
@@ -15,11 +13,10 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
 
     public long Position => memoryStream.Position;
 
-    public InMemoryGzippedTarWriter(Sha256Hasher hasher)
+    public InMemoryGzippedTarWriter(CompressionLevel compressionLevel)
     {
-        this.hasher  = hasher;
         memoryStream = new MemoryStream();
-        gzipStream   = new GZipStream(memoryStream, CompressionLevel.SmallestSize, leaveOpen: true);
+        gzipStream   = new GZipStream(memoryStream, compressionLevel, leaveOpen: true);
         tarWriter    = new TarWriter(gzipStream);
     }
 
@@ -42,10 +39,7 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
         await gzipStream.FlushAsync(cancellationToken);
         await memoryStream.FlushAsync(cancellationToken);
 
-        var archivedSize = memoryStream.Position - previousPosition;
-        previousPosition = memoryStream.Position;
-
-        return archivedSize;
+        return memoryStream.Position - previousPosition;
     }
 
     public Stream GetCompletedArchive()
@@ -57,14 +51,6 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
         memoryStream.Seek(0, SeekOrigin.Begin);
 
         return memoryStream;
-    }
-
-    public async Task<Hash> GetArchiveHashAsync()
-    {
-        if (disposed) throw new ObjectDisposedException(nameof(InMemoryGzippedTarWriter));
-
-        memoryStream.Seek(0, SeekOrigin.Begin);
-        return await hasher.GetHashAsync(memoryStream);
     }
 
     public void Dispose()
