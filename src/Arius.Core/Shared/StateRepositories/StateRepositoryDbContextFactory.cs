@@ -23,10 +23,9 @@ internal class StateRepositoryDbContextPool
         this.logger = logger;
         StateDatabaseFile = stateDatabaseFile;
 
-        var  interceptor = new AnyChangesInterceptor(SetHasChanges);
+        var interceptor = new AnyChangesInterceptor(SetHasChanges);
 
         var internalName = stateDatabaseFile.FileSystem.ConvertPathToInternal(stateDatabaseFile.Path);
-
         var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
             .UseSqlite($"Data Source={internalName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .AddInterceptors(interceptor)
