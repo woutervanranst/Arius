@@ -10,9 +10,10 @@ namespace Arius.Core.Tests.Helpers.Builders;
 internal class MockArchiveStorageBuilder
 {
     private readonly Fixture                  fixture;
-    private readonly Dictionary<Hash, byte[]> chunks = new();
-    private readonly Dictionary<Hash, byte[]> hydratedChunks = new();
-    private readonly HashSet<Hash>            archivedChunks = new();
+    private readonly Dictionary<Hash, byte[]> chunks              = new();
+    private readonly HashSet<Hash>            chunksInArchiveTier = new();
+    private readonly Dictionary<Hash, byte[]> chunksRehydrated = new();
+    private readonly HashSet<Hash>            chunksRehydratedRehydrating = new();
 
     public MockArchiveStorageBuilder(Fixture fixture)
     {
@@ -24,7 +25,7 @@ internal class MockArchiveStorageBuilder
         chunks[hash] = content;
         if (tier == StorageTier.Archive)
         {
-            archivedChunks.Add(hash);
+            chunksInArchiveTier.Add(hash);
         }
         return this;
     }
@@ -37,7 +38,7 @@ internal class MockArchiveStorageBuilder
         chunks[tar.Hash] = tar.Content;
         if (tier == StorageTier.Archive)
         {
-            archivedChunks.Add(tar.Hash);
+            chunksInArchiveTier.Add(tar.Hash);
         }
         tarHash = tar.Hash;
         return this;
@@ -45,7 +46,14 @@ internal class MockArchiveStorageBuilder
 
     public MockArchiveStorageBuilder AddHydratedBinaryChunk(Hash hash, byte[] content)
     {
-        hydratedChunks[hash] = content;
+        chunksRehydrated[hash] = content;
+        return this;
+    }
+
+    public MockArchiveStorageBuilder AddHydratingBinaryChunk(Hash hash, byte[] content)
+    {
+        chunks[hash] = content;
+        chunksRehydratedRehydrating.Add(hash);
         return this;
     }
 
@@ -54,7 +62,7 @@ internal class MockArchiveStorageBuilder
         var tarBuilder = new TarChunkBuilder(fixture);
         configureTar(tarBuilder);
         var tar = tarBuilder.Build();
-        hydratedChunks[tar.Hash] = tar.Content;
+        chunksRehydrated[tar.Hash] = tar.Content;
         tarHash = tar.Hash;
         return this;
     }
@@ -72,7 +80,7 @@ internal class MockArchiveStorageBuilder
                 var hash = callInfo.Arg<Hash>();
                 
                 // If this chunk is explicitly marked as archived, return archived error
-                if (archivedChunks.Contains(hash))
+                if (chunksInArchiveTier.Contains(hash))
                 {
                     return Task.FromResult(Result.Fail<Stream>(new BlobArchivedError(hash.ToString())));
                 }
@@ -90,9 +98,15 @@ internal class MockArchiveStorageBuilder
             .Returns(callInfo =>
             {
                 var hash = callInfo.Arg<Hash>();
-                
+
+                // If this chunk is currently rehydrating, return rehydrating error
+                if (chunksRehydratedRehydrating.Contains(hash))
+                {
+                    return Task.FromResult(Result.Fail<Stream>(new BlobRehydratingError(hash.ToString())));
+                }
+
                 // Only hydrated chunks can be read via this method
-                if (hydratedChunks.TryGetValue(hash, out var content))
+                if (chunksRehydrated.TryGetValue(hash, out var content))
                 {
                     return Task.FromResult(Result.Ok<Stream>(new MemoryStream(content)));
                 }
