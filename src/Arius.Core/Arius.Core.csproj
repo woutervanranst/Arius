@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
@@ -7,8 +7,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Azure.Storage.Blobs" />
+		<PackageReference PrivateAssets="All" Include="Azure.Storage.Blobs" />
 		<PackageReference Include="EFCore.BulkExtensions.Sqlite" />
+		<PackageReference Include="FluentResults" />
 		<PackageReference Include="FluentValidation" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
 		<PackageReference Include="Humanizer.Core" />
@@ -19,12 +20,12 @@
 		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
 		<PackageReference Include="System.Linq.Async" />
-		<PackageReference Include="Zio" />
+		<PackageReference PrivateAssets="All" Include="Zio" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+		<PackageReference PrivateAssets="All" Include="Microsoft.EntityFrameworkCore.Sqlite" />
 		<PackageReference Include="WouterVanRanst.Utils" />
 	</ItemGroup>
 
