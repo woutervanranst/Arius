@@ -1,51 +1,58 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
-    <AssemblyName>arius</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
+		<AssemblyName>arius</AssemblyName>
+		
+		<RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
+		<Authors>Wouter Van Ranst</Authors>
+		<Company>Blue Software</Company>
+		<Copyright>Blue Software</Copyright>
 
-  <!--
-    Version information
-    When running in GitHub Actions we want the version number to reflect the run
-    that produced the build. The GITHUB_RUN_NUMBER variable is provided by the
-    Actions environment and increases with every run of the workflow. When this
-    variable is not available (e.g. when building locally) we fall back to a
-    descriptive "local" suffix.
+		<TieredCompilation>true</TieredCompilation>
+	</PropertyGroup>
+
+	<!--
+	Version information
+	When running in GitHub Actions we want the version number to reflect the run
+	that produced the build. The GITHUB_RUN_NUMBER variable is provided by the
+	Actions environment and increases with every run of the workflow. When this
+	variable is not available (e.g. when building locally) we fall back to a
+	descriptive "local" suffix.
   -->
-  <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
-    <!-- Use the run number as the patch version so the CLI prints e.g. v5.0.123 -->
-    <Version>5.0.$(GITHUB_RUN_NUMBER)</Version>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
-    <Version>5.0.0-local</Version>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="CliFx" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="Serilog.Enrichers.Thread" />
-    <PackageReference Include="Serilog.Extensions.Hosting" />
-    <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="Spectre.Console" />
-    <PackageReference Include="Mediator.Abstractions" />
-    <PackageReference Include="Mediator.SourceGenerator">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+	<PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
+		<!-- Use the run number as the patch version so the CLI prints e.g. v5.0.123 -->
+		<Version>5.0.$(GITHUB_RUN_NUMBER)</Version>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
+		<Version>5.0.0-local</Version>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="CliFx" />
+		<PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+		<PackageReference Include="Serilog.Enrichers.Thread" />
+		<PackageReference Include="Serilog.Extensions.Hosting" />
+		<PackageReference Include="Serilog.Sinks.File" />
+		<PackageReference Include="Spectre.Console" />
+		<PackageReference Include="Mediator.Abstractions" />
+		<PackageReference Include="Mediator.SourceGenerator">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>
