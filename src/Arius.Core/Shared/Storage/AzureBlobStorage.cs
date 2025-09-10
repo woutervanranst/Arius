@@ -96,15 +96,15 @@ internal class AzureBlobStorage : IStorage
         }
         catch (RequestFailedException e) when (e.BlobNotFound())
         {
-            return Result.Fail(StorageErrors.BlobNotFound(blobName));
+            return Result.Fail(new BlobNotFoundError(blobName));
         }
         catch (RequestFailedException e) when (e.BlobIsArchived())
         {
-            return Result.Fail(StorageErrors.BlobArchived(blobName));
+            return Result.Fail(new BlobArchivedError(blobName));
         }
         catch (RequestFailedException e) when (e.BlobIsRehydrating())
         {
-            return Result.Fail(StorageErrors.BlobRehydrating(blobName));
+            return Result.Fail(new BlobRehydratingError(blobName));
         }
         catch (RequestFailedException e)
         {
