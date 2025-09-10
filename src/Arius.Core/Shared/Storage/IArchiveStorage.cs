@@ -18,6 +18,7 @@ internal interface IArchiveStorage
     Task                     UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default);
     Task<Result<Stream>>     OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
     Task<Result<Stream>>     OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task                     StartRehydrationAsync(Hash h);
     Task<Stream>             OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default);
     Task<StorageTier>        SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
 }
