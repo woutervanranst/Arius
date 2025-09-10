@@ -2,7 +2,7 @@
   "profiles": {
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p wouterpassphrase --tier archive"
+      "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p wouterpassphrase --tier cool"
     },
     "arius restore": {
       "commandName": "Project",

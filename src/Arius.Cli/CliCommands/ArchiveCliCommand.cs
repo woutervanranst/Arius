@@ -86,7 +86,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                    while (!commandTask.IsCompleted)
+                    while (!commandTask.IsCompleted && !progressUpdates.IsEmpty)
                     {
                         while (progressUpdates.TryDequeue(out var u))
                         {
@@ -102,8 +102,8 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                             else if (u is FileProgressUpdate fpu)
                             {
                                 var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
-                                task.Description = $"[blue]{TruncateAndRightJustify(fpu.FileName, 50)}[/] ({TruncateAndLeftJustify(fpu.StatusMessage, 20)})";
-                                task.Value = fpu.Percentage;
+                                task.Description = $"[blue]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                                task.Value       = fpu.Percentage;
                                 if (fpu.Percentage >= 100)
                                     task.StopTask();
                             }
@@ -112,6 +112,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                                 AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {u.GetType().Name}[/]");
                             }
                         }
+
                         await Task.Delay(100); // Prevent a tight loop from consuming 100% CPU
                     }
 
@@ -134,27 +135,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         //    AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
         //}
     }
-
-    // --- Helper methods moved from Program.cs ---
-
-    private static string TruncateAndRightJustify(string input, int width)
-    {
-        if (width <= 0) return string.Empty;
-        const string ellipsis = "...";
-        int contentWidth = width - ellipsis.Length;
-        if (contentWidth <= 0) return ellipsis[..width];
-        string truncated = input.Length > contentWidth ? ellipsis + input[^contentWidth..] : input;
-        return truncated.PadLeft(width);
-    }
-
-    private static string TruncateAndLeftJustify(string input, int width)
-    {
-        if (width <= 0) return string.Empty;
-        string truncated = input.Length > width ? input[..width] : input;
-        return truncated.PadRight(width);
-    }
 }
-
 
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
 public class ArchiveCliCommand: ArchiveCliCommandBase

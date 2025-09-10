@@ -45,7 +45,6 @@ public class PublicClassTests
             typeof(Arius.Core.Features.Restore.ProgressUpdate).FullName,
             typeof(Arius.Core.Features.Restore.TaskProgressUpdate).FullName,
             typeof(Arius.Core.Features.Restore.FileProgressUpdate).FullName,
-            typeof(Arius.Core.Features.Restore.RehydrationProgressUpdate).FullName,
         ], ignoreOrder: true);
     }
 

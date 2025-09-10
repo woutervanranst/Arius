@@ -8,7 +8,6 @@ using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Cli.CliCommands;
@@ -82,86 +81,46 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                         ProgressReporter = new Progress<ProgressUpdate>(u => progressUpdates.Enqueue(u))
                     };
 
-                    var mainTask = ctx.AddTask("[cyan1]Initializing restore...[/]");
-                    var fileTask = ctx.AddTask("[cyan3]Files[/]", false);
-
                     // Start the restore command in the background
                     var cancellationToken = console.RegisterCancellationHandler();
                     var commandTask       = mediator.Send(command, cancellationToken);
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                    // Process progress updates
-                    var lastRehydrationCount = 0;
-                    while (!commandTask.IsCompleted)
+                    while (!commandTask.IsCompleted && !progressUpdates.IsEmpty)
                     {
-                        while (progressUpdates.TryDequeue(out var update))
+                        while (progressUpdates.TryDequeue(out var u))
                         {
-                            switch (update)
+                            // Handle different types of progress updates
+                            if (u is TaskProgressUpdate tpu)
                             {
-                                case TaskProgressUpdate taskUpdate:
-                                    mainTask.Value = taskUpdate.Percentage;
-                                    mainTask.Description = taskUpdate.StatusMessage ?? $"[cyan1]{TruncateLeft(taskUpdate.TaskName, 50)}[/]";
-                                    break;
-
-                                case FileProgressUpdate fileUpdate:
-                                    if (!fileTask.IsStarted)
-                                        fileTask.StartTask();
-                                    fileTask.Value = fileUpdate.Percentage;
-                                    fileTask.Description = fileUpdate.StatusMessage ?? $"[cyan3]{TruncateLeft(fileUpdate.FileName, 50)}[/]";
-                                    break;
-
-                                case RehydrationProgressUpdate rehydrationUpdate:
-                                    if (rehydrationUpdate.Count != lastRehydrationCount)
-                                    {
-                                        lastRehydrationCount = rehydrationUpdate.Count;
-                                        mainTask.Description = $"[yellow]Rehydrating blobs ({lastRehydrationCount})... {rehydrationUpdate.Status}[/]";
-                                    }
-                                    break;
+                                var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[cyan1]{taskName}[/]").IsIndeterminate());
+                                if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                                    task.Description = $"[cyan1]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                                task.Value = tpu.Percentage;
+                                if (tpu.Percentage >= 100)
+                                    task.StopTask();
+                            }
+                            else if (u is FileProgressUpdate fpu)
+                            {
+                                var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[cyan3]{fileName}[/]"));
+                                task.Description = $"[cyan3]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                                task.Value       = fpu.Percentage;
+                                if (fpu.Percentage >= 100)
+                                    task.StopTask();
+                            }
+                            else
+                            {
+                                AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {u.GetType().Name}[/]");
                             }
                         }
-
-                        await Task.Delay(50, cancellationToken);
+                        
+                        await Task.Delay(100); // Prevent a tight loop from consuming 100% CPU
                     }
 
-                    // Process any remaining updates
-                    while (progressUpdates.TryDequeue(out var update))
-                    {
-                        switch (update)
-                        {
-                            case TaskProgressUpdate taskUpdate:
-                                mainTask.Value = taskUpdate.Percentage;
-                                mainTask.Description = taskUpdate.StatusMessage ?? $"[cyan1]{TruncateLeft(taskUpdate.TaskName, 50)}[/]";
-                                break;
+                    await commandTask; // Propagate any exceptions from the command handler
 
-                            case FileProgressUpdate fileUpdate:
-                                if (!fileTask.IsStarted)
-                                    fileTask.StartTask();
-                                fileTask.Value = fileUpdate.Percentage;
-                                fileTask.Description = fileUpdate.StatusMessage ?? $"[cyan3]{TruncateLeft(fileUpdate.FileName, 50)}[/]";
-                                break;
-
-                            case RehydrationProgressUpdate rehydrationUpdate:
-                                if (rehydrationUpdate.Count != lastRehydrationCount)
-                                {
-                                    lastRehydrationCount = rehydrationUpdate.Count;
-                                    mainTask.Description = $"[yellow]Rehydrating blobs ({lastRehydrationCount})... {rehydrationUpdate.Status}[/]";
-                                }
-                                break;
-                        }
-                    }
-
-                    // Ensure tasks are completed
-                    mainTask.Value = 100;
-                    mainTask.Description = "[green]Restore completed[/]";
-                    if (fileTask.IsStarted)
-                    {
-                        fileTask.Value = 100;
-                        fileTask.Description = "[green]Files completed[/]";
-                    }
-
-                    // Wait for the actual command to complete and get result
-                    await commandTask;
+                    AnsiConsole.MarkupLine("[green]All files processed![/]");
                 });
         }
         catch (Exception e)
@@ -169,20 +128,6 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
             logger.LogError(e, "Unhandled exception");
             throw new CommandException(e.Message, showHelp: false, innerException: e);
         }
-    }
-
-    private static string TruncateLeft(string text, int maxLength)
-    {
-        if (text.Length <= maxLength)
-            return text;
-        return "..." + text.Substring(text.Length - maxLength + 3);
-    }
-
-    private static string TruncateRight(string text, int maxLength)
-    {
-        if (text.Length <= maxLength)
-            return text;
-        return text.Substring(0, maxLength - 3) + "...";
     }
 }
 
