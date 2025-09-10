@@ -65,8 +65,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                 )
                 .StartAsync(async ctx =>
                 {
-                    var queue = new ConcurrentQueue<ProgressUpdate>();
-                    var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
+                    var progressUpdates = new ConcurrentQueue<ProgressUpdate>();
 
                     // Create the Mediator command from the CLI arguments
                     var command = new ArchiveCommand
@@ -78,7 +77,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                         RemoveLocal      = RemoveLocal,
                         Tier             = Tier,
                         LocalRoot        = LocalRoot,
-                        ProgressReporter = pu
+                        ProgressReporter = new Progress<ProgressUpdate>(u => progressUpdates.Enqueue(u))
                     };
 
                     // Send the command and start the progress display loop
@@ -89,7 +88,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
                     while (!commandTask.IsCompleted)
                     {
-                        while (queue.TryDequeue(out var u))
+                        while (progressUpdates.TryDequeue(out var u))
                         {
                             // Handle different types of progress updates
                             if (u is TaskProgressUpdate tpu)
