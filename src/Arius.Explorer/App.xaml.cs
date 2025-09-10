@@ -22,10 +22,10 @@ public partial class App : Application
             var logger = ServiceProvider.GetRequiredService<ILogger<App>>();
             logger.LogInformation("Application starting up");
             
-            // Get the main window from DI
-            var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
-            MainWindow = mainWindow;
-            mainWindow.Show();
+            // Get the repository explorer window from DI
+            var repositoryWindow = ServiceProvider.GetRequiredService<RepositoryExplorer.Window>();
+            MainWindow = repositoryWindow;
+            repositoryWindow.Show();
             
             base.OnStartup(e);
         }

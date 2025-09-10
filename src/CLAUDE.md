@@ -30,16 +30,21 @@ dotnet run -- archive <path> --accountname <name> --accountkey <key> --passphras
 
 # Restore command example
 dotnet run -- restore <path> --accountname <name> --accountkey <key> --passphrase <pass> --container <container>
+
+# Run WPF Explorer application
+cd Arius.Explorer
+dotnet run
 ```
 
 ## Architecture
 
 The solution follows CQRS pattern with Mediator, using Domain-Driven Design principles:
-
-- **Arius.Core**: Core business logic containing Commands (with handlers), Models, Repositories, and Services
-- **Arius.Cli**: CLI application using CliFx framework with CliCommands that dispatch to Core handlers
-- **Arius.Explorer**: WPF application providing graphical interface for repository exploration and file management
 - **Commands flow**: CLI/WPF → Mediator → Command Handlers → Services/Repositories → Azure Storage
+
+Projects:
+- **Arius.Explorer**: WPF application providing graphical interface for repository exploration and file management
+- **Arius.Cli**: CLI application using CliFx framework with CliCommands that dispatch to Core handlers
+- **Arius.Core**: Core business logic containing Commands (with handlers), Models, Repositories, and Services
 
 Key architectural decisions:
 - File-level deduplication for storage optimization
@@ -57,11 +62,10 @@ Key architectural decisions:
 
 ## Development Configuration
 
-The project uses:
+The projects use:
 - **.NET 9.0** as target framework
 - **Central Package Management** via Directory.Packages.props
-- **User Secrets** for local development (UserSecretsId: 2c53e63e-555d-44f4-a474-29c01fb8c564)
-- **Nullable reference types** enabled
+- **User Secrets** for local development
 - **Dependency Injection** configured in Program.cs
 
 Required environment variables for integration tests:
@@ -81,21 +85,28 @@ When implementing new features:
 
 ## Key Dependencies
 
-- **Azure.Storage.Blobs**: Azure Blob Storage integration
+### Arius.Cli
 - **CliFx**: Command-line interface framework
-- **Mediator**: CQRS implementation
-- **Serilog**: Structured logging
 - **Spectre.Console**: Enhanced console output
+
+## Arius.Explorer (WPF)
 - **CommunityToolkit.Mvvm**: MVVM framework for WPF applications
-- **WouterVanRanst.Utils**: Utility library for common extensions
+- 
+### Arius.Core
+- **Azure.Storage.Blobs**: Azure Blob Storage integration
+- **Mediator**: CQRS implementation
 - **Zio**: File system abstraction (only used in Arius.Core)
-- **xUnit, NSubstitute, Shouldly**: Testing stack
 - **FluentValidation**: Command validation
+- 
+### All
+- **Serilog**: Structured logging
+- **WouterVanRanst.Utils**: Utility library for common extensions
+- **xUnit, NSubstitute, Shouldly**: Testing stack
 
 ## Development Notes
 
 - Add FluentValidation to validate the commands
-- For unit tests, do not create temp directories & files, instead investigate to use/augment the existing Fixture which scaffolds already a lot of it
+- For unit tests, reuse the existing Fixtures
 - You do NOT need to take care of backwards compatibility
 - Naming convention for local fields is camelCase (without leading _)
 
@@ -106,3 +117,30 @@ When implementing new features:
 
 ### Helper Methods
 Prefer **local methods** over private static methods for helper functionality that is only used within a single method
+
+## Arius.Explorer WPF/MVVM Development Guidelines
+
+### Project Structure
+- Use **vertical slice architecture** - group files by feature/view rather than by type (no Views/, ViewModels/, Converters/ folders)
+- Each feature should have its own folder containing View, ViewModel, Converters, and related files
+- Example: `RepositoryExplorer/` contains Window.xaml, WindowViewModel.cs, ...
+
+### MVVM Best Practices
+- Use **CommunityToolkit.Mvvm** for ViewModels (ObservableObject, RelayCommand, etc.)
+- ViewModels should use **dependency injection** and be registered in the DI container
+- Views should be data-bound to ViewModels - avoid code-behind logic
+- Use **ICommand** for user interactions, never event handlers in code-behind
+- Converters for data transformation between View and ViewModel
+- Use **INotifyPropertyChanged** for all bindable properties
+
+### Data Binding Patterns
+- Use **{Binding}** for ViewModel properties
+- Use **FallbackValue** for design-time support
+- Implement **INotifyPropertyChanged** for all mutable ViewModel properties
+- Use **ObservableCollection<T>** for dynamic lists
+
+### Command Pattern
+- Use **RelayCommand** from CommunityToolkit.Mvvm
+- Commands should be async when calling Core services via Mediator
+- Commands should handle loading states and error handling
+- Use **CanExecute** to control command availability

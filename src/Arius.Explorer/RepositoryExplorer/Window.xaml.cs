@@ -1,20 +1,23 @@
 using Microsoft.Extensions.Logging;
-using System.Windows;
 
-namespace Arius.Explorer;
+namespace Arius.Explorer.RepositoryExplorer;
 
 /// <summary>
-/// Interaction logic for MainWindow.xaml
+/// Interaction logic for Window.xaml
 /// </summary>
-public partial class MainWindow : Window
+public partial class Window
 {
-    private readonly ILogger<MainWindow> logger;
+    private readonly ILogger<Window> logger;
+    private readonly WindowViewModel viewModel;
 
-    public MainWindow(ILogger<MainWindow> logger)
+    public Window(ILogger<Window> logger, WindowViewModel viewModel)
     {
         this.logger = logger;
-        InitializeComponent();
+        this.viewModel = viewModel;
         
-        logger.LogInformation("MainWindow initialized");
+        InitializeComponent();
+        DataContext = viewModel;
+        
+        logger.LogInformation("Repository Explorer Window initialized");
     }
 }

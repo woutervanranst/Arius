@@ -1,7 +1,7 @@
-﻿using System;
+﻿using Humanizer;
+using System;
 using System.Globalization;
 using System.Windows.Data;
-using Humanizer;
 
 namespace Arius.Explorer.Shared.Converters;
 

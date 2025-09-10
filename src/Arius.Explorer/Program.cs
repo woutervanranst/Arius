@@ -66,8 +66,9 @@ internal static class Program
             })
             .ConfigureServices((context, services) =>
             {
-                // Register main window
-                services.AddSingleton<MainWindow>();
+                // Register windows and viewmodels
+                services.AddTransient<RepositoryExplorer.Window>();
+                services.AddTransient<RepositoryExplorer.WindowViewModel>();
 
                 // Register Arius Core services
                 services.AddArius(c =>
