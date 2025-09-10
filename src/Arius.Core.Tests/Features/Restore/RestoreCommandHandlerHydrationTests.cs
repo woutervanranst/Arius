@@ -86,7 +86,7 @@ public class RestoreCommandHandlerHydrationTests : IClassFixture<FixtureWithFile
 
         // Assert
         // -- We read from the hydrated chunks
-        await storageMock.DidNotReceive().OpenReadChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadChunkAsync(default, default);
         await storageMock.Received(1).OpenReadHydratedChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
         // -- We logged it correctly
         fakeLoggerFactory
@@ -139,7 +139,7 @@ public class RestoreCommandHandlerHydrationTests : IClassFixture<FixtureWithFile
 
         // Assert
         // -- We read from the hydrated chunks
-        await storageMock.DidNotReceive().OpenReadChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadChunkAsync(default, default);
         await storageMock.Received(1).OpenReadHydratedChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
         // -- We logged it correctly
         fakeLoggerFactory
