@@ -16,8 +16,8 @@ using Zio;
 namespace Arius.Core.Features.Restore;
 
 public abstract record ProgressUpdate;
-public sealed record RestoreTaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
-public sealed record RestoreFileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public sealed record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public sealed record RehydrationProgressUpdate(string BlobName, string Status, int Count = 1) : ProgressUpdate;
 
 internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCommandResult>
@@ -116,7 +116,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             try
             {
                 logger.LogInformation("Starting target indexing for {TargetCount} targets", handlerContext.Targets.Length);
-                handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", 0));
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing targets...", 0));
                 
                 int totalFilesFound = 0;
                 int filesToRestore = 0;
@@ -169,14 +169,14 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     
                     // Update progress
                     var progressPercentage = (double)(i + 1) / handlerContext.Targets.Length * 100;
-                    handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", progressPercentage));
+                    handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing targets...", progressPercentage));
                 }
 
                 // only CreateIndexTask writes to the filePairsToHashChannel
                 filePairsToHashChannel.Writer.Complete();
                 
                 logger.LogInformation("Target indexing completed: found {TotalFiles} files ({FilesToRestore} to restore, {FilesToVerify} to verify)", totalFilesFound, filesToRestore, filesToVerify);
-                handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", 100, $"Found {totalFilesFound} files"));
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing targets...", 100, $"Found {totalFilesFound} files"));
             }
             catch (OperationCanceledException)
             {
@@ -205,7 +205,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 {
                     var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
                     
-                    handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 25, "Verifying hash..."));
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 25, "Verifying hash..."));
                     
                     var h = await handlerContext.Hasher.GetHashAsync(filePair);
 
@@ -213,13 +213,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     {
                         // The hash matches - this binaryfile is already restored
                         logger.LogDebug("File {FileName} hash verified, already restored", filePair.BinaryFile.FullName);
-                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Already restored"));
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Already restored"));
                     }
                     else
                     {
                         // The hash does not match - we need to restore this binaryfile
                         logger.LogWarning("File {FileName} hash mismatch (expected: {ExpectedHash}, actual: {ActualHash}), queued for restore", filePair.BinaryFile.FullName, pointerFileEntry.Hash.ToShortString(), h.ToShortString());
-                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 50, "Hash mismatch, restoring..."));
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Hash mismatch, restoring..."));
                         await filePairsToRestoreChannel.Writer.WriteAsync(filePairWithPointerFileEntry, innerCancellationToken);
                     }
                 }
@@ -251,13 +251,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     if (pointerFileEntry.BinaryProperties.ParentHash is not null)
                     {
                         logger.LogDebug("File {FileName} is small file (parent hash: {ParentHash}), downloading from TAR", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.ParentHash.ToShortString());
-                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading from TAR..."));
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading from TAR..."));
                         await DownloadSmallFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
                     else
                     {
                         logger.LogDebug("File {FileName} is large file (hash: {Hash}), downloading directly", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString());
-                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading..."));
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading..."));
                         await DownloadLargeFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
                 }
@@ -286,7 +286,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         var fileSizeFormatted = pointerFileEntry.BinaryProperties.OriginalSize.Bytes().Humanize();
 
         logger.LogDebug("Starting large file download for {FileName} (size: {FileSize}, hash: {Hash})", filePair.BinaryFile.FullName, fileSizeFormatted, pointerFileEntry.Hash.ToShortString());
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting chunk stream..."));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting chunk stream..."));
 
         // 1. Get the decrypted blob stream from storage - use hydrated chunk for archived blobs
         await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
@@ -294,11 +294,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         if (ss is null) // Chunk is not available (either archived or rehydrating)
         {
             logger.LogDebug("Chunk stream not available for {FileName}, skipping download (archived or rehydrating)", filePair.BinaryFile.FullName);
-            handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
             return;
         }
 
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 60, "Downloading..."));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 60, "Downloading..."));
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
@@ -313,7 +313,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
         
         logger.LogInformation("Large file download completed: {FileName} ({FileSize})", filePair.BinaryFile.FullName, fileSizeFormatted);
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
     }
 
     private async Task DownloadSmallFileAsync(HandlerContext handlerContext, FilePairWithPointerFileEntry filePairWithPointerFileEntry, CancellationToken cancellationToken = default)
@@ -323,18 +323,18 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         var parentHash = pointerFileEntry.BinaryProperties.ParentHash!;
 
         logger.LogDebug("Starting small file download for {FileName} from TAR (size: {FileSize}, parent hash: {ParentHash})", filePair.BinaryFile.FullName, fileSizeFormatted, parentHash.ToShortString());
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting TAR archive..."));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting TAR archive..."));
 
         // 1. Get the TarEntry
         var tar = await GetCachedTarAsync();
         if (tar is null) // TAR is not available (either archived or rehydrating)
         {
             logger.LogDebug("TAR archive not available for {FileName}, skipping download (archived or rehydrating)", filePair.BinaryFile.FullName);
-            handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
             return;
         }
 
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
         
         await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
@@ -346,7 +346,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
         }
 
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
@@ -360,7 +360,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
         logger.LogInformation("Small file download completed: {FileName} ({FileSize}) from TAR", filePair.BinaryFile.FullName, fileSizeFormatted);
-        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
         return;
 
 
