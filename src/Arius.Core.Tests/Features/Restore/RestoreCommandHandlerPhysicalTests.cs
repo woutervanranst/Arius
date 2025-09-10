@@ -9,13 +9,13 @@ using System.Text;
 
 namespace Arius.Core.Tests.Features.Restore;
 
-public class RestoreCommandHandlerPhysicalTests : IClassFixture<Fixture>
+public class RestoreCommandHandlerPhysicalTests : IClassFixture<FixtureWithFileSystem>
 {
-    private readonly Fixture        fixture;
+    private readonly FixtureWithFileSystem             fixture;
     private readonly FakeLogger<RestoreCommandHandler> logger;
     private readonly RestoreCommandHandler             handler;
 
-    public RestoreCommandHandlerPhysicalTests(Fixture fixture)
+    public RestoreCommandHandlerPhysicalTests(FixtureWithFileSystem fixture)
     {
         this.fixture = fixture;
         logger       = new();
