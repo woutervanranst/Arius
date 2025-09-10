@@ -78,7 +78,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 {
                     foreach (var g in toRehydrateList.GroupBy(pfe => pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash))
                     {
-                        await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, RehydrationPriority.Standard);
+                        await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, RehydratePriority.Standard);
 
                         foreach (var pfe in g)
                         {
@@ -365,7 +365,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
                     // Blob in chunks-rehydrated is unexpectedly in Archive tier - handle gracefully by starting rehydration again
                     logger.LogWarning("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrating it.", name, pointerFileEntry.RelativeName);
-                    await handlerContext.ArchiveStorage.StartHydrationAsync(hash, RehydrationPriority.Standard);
+                    await handlerContext.ArchiveStorage.StartHydrationAsync(hash, RehydratePriority.Standard);
                     stillRehydratingList.Add(pointerFileEntry);
                     return null;
                 default:

@@ -203,7 +203,7 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public async Task StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydrationPriority priority)
+    public async Task StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority)
     {
         logger.LogInformation("Starting hydration from blob '{SourceBlob}' to '{TargetBlob}' with priority '{Priority}'", sourceBlobName, targetBlobName, priority);
         

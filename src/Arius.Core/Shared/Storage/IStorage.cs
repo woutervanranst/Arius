@@ -6,7 +6,7 @@ namespace Arius.Core.Shared.Storage;
 /// <summary>
 /// Provides low-level blob storage operations for managing containers and binary data streams.
 /// </summary>
-public interface IStorage
+internal interface IStorage
 {
     Task<bool>               CreateContainerIfNotExistsAsync();
     Task<bool>               ContainerExistsAsync();
@@ -14,5 +14,5 @@ public interface IStorage
     Task<Result<Stream>>     OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default);
     Task<Stream>             OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default);
     Task                     SetAccessTierAsync(string blobName, AccessTier tier);
-    Task                     StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydrationPriority priority);
+    Task                     StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority);
 }

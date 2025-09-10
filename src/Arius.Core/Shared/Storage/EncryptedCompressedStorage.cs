@@ -161,7 +161,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         }
     }
 
-    public async Task StartHydrationAsync(Hash hash, RehydrationPriority priority)
+    public async Task StartHydrationAsync(Hash hash, RehydratePriority priority)
     {
         var source = $"{chunksFolderPrefix}{hash}";
         var target = $"{rehydratedChunksFolderPrefix}{hash}";

@@ -25,5 +25,5 @@ internal interface IArchiveStorage
     Task<Result<Stream>> OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default);
     Task<Stream>         OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default);
     Task<StorageTier>    SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
-    Task                 StartHydrationAsync(Hash hash, RehydrationPriority priority);
+    Task                 StartHydrationAsync(Hash hash, RehydratePriority priority);
 }
