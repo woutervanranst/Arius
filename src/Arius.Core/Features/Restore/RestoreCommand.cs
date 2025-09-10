@@ -7,7 +7,7 @@ public sealed record RestoreCommand : RepositoryCommand<RestoreCommandResult>
     public required bool          Download        { get; init; }
     public required bool          IncludePointers { get; init; }
 
-    public int HashParallelism { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
+    public int HashParallelism     { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
     public int DownloadParallelism { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }

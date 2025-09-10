@@ -1,19 +1,22 @@
-using Arius.Core.Shared.Extensions;
+﻿using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.Formats.Tar;
 using System.Threading.Channels;
+using WouterVanRanst.Utils.Extensions;
 using Zio;
 
 namespace Arius.Core.Features.Restore;
 
 public sealed record ProgressUpdate;
 
-internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
+internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCommandResult>
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
@@ -34,7 +37,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
-    public async ValueTask<Unit> Handle(RestoreCommand request, CancellationToken cancellationToken)
+    public async ValueTask<RestoreCommandResult> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await new HandlerContextBuilder(request, loggerFactory.CreateLogger<HandlerContextBuilder>())
             .BuildAsync();
@@ -42,7 +45,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         return await Handle(handlerContext, cancellationToken);
     }
 
-    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    internal async ValueTask<RestoreCommandResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -66,7 +69,16 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             throw;
         }
 
-        return Unit.Value;
+        var r = new RestoreCommandResult
+        {
+            Rehydrating = stillRehydratingList.Concat(toRehydrateList).Select(pfe => new RestoreCommandResult.RehydratingDetail()
+            {
+                RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
+                ArchivedSize = pfe.BinaryProperties.ArchivedSize.Value
+            }).ToArray()
+        };
+
+        return r;
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
@@ -189,8 +201,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
-        // 1. Get the decrypted blob stream from storage
-        await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(pointerFileEntry.BinaryProperties.Hash, cancellationToken);
+        // 1. Get the decrypted blob stream from storage - use hydrated chunk for archived blobs
+        await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
+
+        if (ss is null) // Chunk is not available (either archived or rehydrating)
+            return;
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
@@ -210,7 +225,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
 
         // 1. Get the TarEntry
-        var tar       = await GetCachedFileEntryAsync(pointerFileEntry.BinaryProperties.ParentHash!);
+        var tar       = await GetCachedTarAsync();
+        if (tar is null) // TAR is not available (either archived or rehydrating)
+            return;
+
         await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
         var             tarEntry  = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
@@ -228,22 +246,27 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
+        return;
 
-        async Task<FileEntry> GetCachedFileEntryAsync(Hash parentHash)
+
+        async Task<FileEntry?> GetCachedTarAsync()
         {
-            var fe = handlerContext.BinaryCache.GetFileEntry(parentHash.ToString());
-
-            if (!fe.Exists)
+            var cachedBinary = handlerContext.BinaryCache.GetFileEntry(pointerFileEntry.BinaryProperties.ParentHash!.ToString());
+            if (!cachedBinary.Exists)
             {
                 // The TAR was not yet downloaded from blob storage
-                await using var ss = await handlerContext.ArchiveStorage.OpenReadChunkAsync(parentHash, cancellationToken);
-                await using var ts = fe.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
+
+                if (ss is null) // Chunk is not available (either archived or rehydrating)
+                    return null;
+
+                await using var ts = cachedBinary.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
 
                 await ss.CopyToAsync(ts, cancellationToken);
                 await ts.FlushAsync(cancellationToken); // Explicitly flush
             }
 
-            return fe;
+            return cachedBinary;
         }
 
         async Task<TarEntry?> GetTarEntryAsync(Hash hash)
@@ -251,11 +274,69 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand>
             TarEntry? entry;
             while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)
             {
-                if (entry.Name == pointerFileEntry.Hash)
+                if (entry.Name == hash)
                     break;
             }
 
             return entry;
+        }
+    }
+
+    private readonly ConcurrentBag<PointerFileEntry> toRehydrateList = new();
+    private readonly ConcurrentBag<PointerFileEntry> stillRehydratingList = new();
+
+    private async Task<Stream?> GetChunkStreamAsync(HandlerContext handlerContext, PointerFileEntry pointerFileEntry, CancellationToken cancellationToken = default)
+    {
+        var hash = pointerFileEntry.BinaryProperties.ParentHash ?? pointerFileEntry.BinaryProperties.Hash;
+
+        if (pointerFileEntry.BinaryProperties.StorageTier != StorageTier.Archive)
+        {
+            // This is supposed to be a blob in an online tier
+            var result = await handlerContext.ArchiveStorage.OpenReadChunkAsync(hash, cancellationToken);
+            switch (result)
+            {
+                case { IsSuccess: true }:
+                    return result.Value;
+                case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
+                    // Blob is unexpectedly archived
+                    return null;
+                case { Errors: [BlobRehydratingError { BlobName: var name }, ..] }:
+                    // Blob is unexpectedly rehydrating. Try again later
+                    return null;
+                case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
+                    // Blob not found
+                    throw new InvalidOperationException("Chunk not found");
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        else
+        {
+            // This blob needs to be/has been/is being rehydrated
+            var result = await handlerContext.ArchiveStorage.OpenReadHydratedChunkAsync(hash, cancellationToken);
+            switch (result)
+            {
+                case { IsSuccess: true }:
+                    return result.Value;
+                case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
+                    // Blob not found in chunks-rehydrated --> add it to the rehydration list
+                    logger.LogInformation("Blob {BlobName} for '{RelativeName}' is in the Archive tier. Added to the rehydration list.", name, pointerFileEntry.RelativeName);
+                    toRehydrateList.Add(pointerFileEntry);
+                    return null;
+                case { Errors: [BlobRehydratingError { BlobName: var name }, ..] }:
+                    // Blob is still rehydrating. Try again later
+                    logger.LogInformation("Blob {BlobName} for '{RelativeName}' is still rehydrating. Try again later.", name, pointerFileEntry.RelativeName);
+                    stillRehydratingList.Add(pointerFileEntry);
+                    return null;
+                case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
+                    // Blob in chunks-rehydrated is in Archive tier
+                    logger.LogWarning("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrate it.", name, pointerFileEntry.RelativeName);
+                    await handlerContext.ArchiveStorage.StartRehydrationAsync(hash);
+                    stillRehydratingList.Add(pointerFileEntry);
+                    return null;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
     }
 }

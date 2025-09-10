@@ -4,7 +4,6 @@ using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
-using Xunit;
 using Zio;
 
 namespace Arius.Core.Tests.Shared.StateRepositories;
