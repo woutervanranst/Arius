@@ -199,7 +199,54 @@ public class RestoreCommandHandlerHydrationTests
     [Fact]
     public async Task GetChunkStreamAsync_OnlineTier_BlobNotFoundErrorPath()
     {
+        // Arrange
+        var BINARY = new FakeFileBuilder(fixture)
+            .WithNonExistingFile("/file.jpg")
+            .WithRandomContent(10, 1)
+            .Build();
 
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            // ! No chunk is added
+            .Build();
+
+        var sr = new StateRepositoryBuilder()
+            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .BuildFake();
+
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets("./")
+            .WithIncludePointers(true)
+            .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
+            .Build();
+
+        var hc = await new HandlerContextBuilder(command)
+            .WithArchiveStorage(storageMock)
+            .WithStateRepository(sr)
+            .WithBaseFileSystem(fixture.FileSystem)
+            .BuildAsync();
+
+        // Act
+        var result = await handler.Handle(hc, CancellationToken.None);
+
+        // Assert
+        // -- We read from the hydrated chunks
+        await storageMock.Received(1).OpenReadChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadHydratedChunkAsync(default, default);
+        // -- We logged it correctly
+        fakeLoggerFactory
+            .GetLogRecordByTemplate("Did not find blob {BlobName} for '{RelativeName}'. This binary is lost.")
+            .ShouldNotBeNull();
+        // -- The rehydration question handler NOT called
+        rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
+        // -- The command result shows that no binaries are rehydrating
+        result.Rehydrating.ShouldBeEmpty();
+        // -- Rehydration not started - already ongoing
+        await storageMock.ReceivedWithAnyArgs(0).StartRehydrationAsync(default);
+        // -- The Binary is not restored
+        BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
 
 

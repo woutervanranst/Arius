@@ -332,7 +332,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     return null;
                 case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
                     // Blob not found
-                    throw new InvalidOperationException("Chunk not found");
+                    logger.LogError("Did not find blob {BlobName} for '{RelativeName}'. This binary is lost.", name, pointerFileEntry.RelativeName);
+                    // TODO surface this better to the user
+                    return null;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
