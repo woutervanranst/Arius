@@ -326,7 +326,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     handlerContext.StateRepository.SetBinaryPropertyArchiveTier(hash, StorageTier.Archive);
                     return null;
                 case { Errors: [BlobRehydratingError { BlobName: var name }, ..] }:
-                    // Blob is unexpectedly rehydrating. Try again later
+                    // Blob is unexpectedly rehydrating in-place. Try again later
+                    logger.LogInformation("Blob {BlobName} for '{RelativeName}' is still rehydrating. Try again later.", name, pointerFileEntry.RelativeName);
+                    stillRehydratingList.Add(pointerFileEntry);
                     return null;
                 case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
                     // Blob not found

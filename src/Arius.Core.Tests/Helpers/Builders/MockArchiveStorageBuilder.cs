@@ -10,8 +10,13 @@ namespace Arius.Core.Tests.Helpers.Builders;
 internal class MockArchiveStorageBuilder
 {
     private readonly Fixture                  fixture;
+
+    // /chunks/ folder
     private readonly Dictionary<Hash, byte[]> chunks                      = new();
     private readonly HashSet<Hash>            chunksInArchiveTier         = new();
+    private readonly HashSet<Hash>            chunksRehydrating           = new();
+
+    // /chunks-rehydrated/ folder
     private readonly Dictionary<Hash, byte[]> chunksRehydrated            = new();
     private readonly HashSet<Hash>            chunksRehydratedRehydrating = new();
     private readonly HashSet<Hash>            chunksRehydratedArchiveTier = new();
@@ -21,13 +26,19 @@ internal class MockArchiveStorageBuilder
         this.fixture = fixture;
     }
 
-    public MockArchiveStorageBuilder AddBinaryChunk(Hash hash, byte[] content, StorageTier tier = StorageTier.Hot)
+    public MockArchiveStorageBuilder AddChunks_BinaryChunk(Hash hash, byte[] content, StorageTier tier = StorageTier.Hot)
     {
         chunks[hash] = content;
         if (tier == StorageTier.Archive)
         {
             chunksInArchiveTier.Add(hash);
         }
+        return this;
+    }
+
+    public MockArchiveStorageBuilder AddChunks_Rehydrating_BinaryChunk(Hash hash)
+    {
+        chunksRehydrating.Add(hash);
         return this;
     }
 
@@ -45,19 +56,19 @@ internal class MockArchiveStorageBuilder
         return this;
     }
 
-    public MockArchiveStorageBuilder AddHydratedBinaryChunk(Hash hash, byte[] content)
+    public MockArchiveStorageBuilder AddChunksRehydrated_BinaryChunk(Hash hash, byte[] content)
     {
         chunksRehydrated[hash] = content;
         return this;
     }
 
-    public MockArchiveStorageBuilder AddHydratingBinaryChunk(Hash hash, byte[] content)
+    public MockArchiveStorageBuilder AddChunksRehydrated_Rehydrating_BinaryChunk(Hash hash, byte[] content)
     {
         chunksRehydratedRehydrating.Add(hash);
         return this;
     }
 
-    public MockArchiveStorageBuilder AddArchivedChunkInRehydrateFolder(Hash hash, byte[] content)
+    public MockArchiveStorageBuilder AddChunksRehydrated_InArchiveTier_BinaryChunk(Hash hash, byte[] content)
     {
         chunksRehydratedArchiveTier.Add(hash);
         return this;
@@ -89,6 +100,12 @@ internal class MockArchiveStorageBuilder
                 if (chunksInArchiveTier.Contains(hash))
                 {
                     return Task.FromResult(Result.Fail<Stream>(new BlobArchivedError(hash.ToString())));
+                }
+
+                // If this chunk is currently rehydrating, return rehydrating error
+                if (chunksRehydrating.Contains(hash))
+                {
+                    return Task.FromResult(Result.Fail<Stream>(new BlobRehydratingError(hash.ToString())));
                 }
                 
                 // Otherwise, return regular chunk content
