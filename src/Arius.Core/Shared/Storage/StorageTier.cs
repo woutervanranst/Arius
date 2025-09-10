@@ -36,4 +36,6 @@ internal static class StorageTierExtensions
             _ => throw new ArgumentException("Unknown StorageTier")
         };
     }
+
+    //public static bool IsOnlineTier(this StorageTier? storageTier) => storageTier != StorageTier.Archive;
 }
