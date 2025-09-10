@@ -8,7 +8,7 @@
 		<UseWPF>true</UseWPF>
 
 		<ApplicationIcon>Resources\iceberg.ico</ApplicationIcon> <!--Windows Application icon-->
-		<PackageIcon>Resources\iceberg.ico</PackageIcon> <!--Nuget package icon-->
+		<!--<PackageIcon>Resources\iceberg.ico</PackageIcon> --><!--Nuget package icon-->
 
 		<UseWPF>true</UseWPF>
 		<!--<UseWindowsForms>True</UseWindowsForms>-->
@@ -20,7 +20,7 @@
 		<RepositoryUrl>https://github.com/woutervanranst/Arius</RepositoryUrl>
 		<AssemblyName>Arius.Explorer</AssemblyName>
 		<Title>Arius Explorer</Title>
-		<PackageId>Arius.Explorer</PackageId>
+		<!--<PackageId>Arius.Explorer</PackageId>-->
 		<Product>Arius Explorer</Product>
 		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
 	</PropertyGroup>
