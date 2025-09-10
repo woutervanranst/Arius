@@ -25,7 +25,54 @@ public class RestoreCommandHandlerHydrationTests
     [Fact]
     public async Task GetChunkStreamAsync_OnlineTier_IsSuccessPath()
     {
+        // Arrange
+        var BINARY = new FakeFileBuilder(fixture)
+            .WithNonExistingFile("/file.jpg")
+            .WithRandomContent(10, 1)
+            .Build();
 
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            .AddBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent, StorageTier.Hot)
+            .Build();
+
+        var sr = new StateRepositoryBuilder()
+            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .BuildFake();
+
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets("./")
+            .WithIncludePointers(true)
+            .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
+            .Build();
+
+        var hc = await new HandlerContextBuilder(command)
+            .WithArchiveStorage(storageMock)
+            .WithStateRepository(sr)
+            .WithBaseFileSystem(fixture.FileSystem)
+            .BuildAsync();
+
+        // Act
+        var result = await handler.Handle(hc, CancellationToken.None);
+
+        // Assert
+        // -- We read from the hydrated chunks
+        await storageMock.Received(1).OpenReadChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadHydratedChunkAsync(default, default);
+        // -- We logged it correctly
+        fakeLoggerFactory
+            .GetLogRecordByTemplate("Reading from hydrated blob {BlobName} for '{RelativeName}'.")
+            .ShouldNotBeNull();
+        // -- The rehydration question handler was NOT called
+        rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
+        // -- The command result shows that no binaries are rehydrating
+        result.Rehydrating.ShouldBeEmpty();
+        // -- We did NOT start the rehydration
+        await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+        // -- The Binary is successfully restored
+        BINARY.FilePair.BinaryFile.ReadAllBytes().ShouldBe(BINARY.OriginalContent);
     }
 
     [Fact]
@@ -45,6 +92,10 @@ public class RestoreCommandHandlerHydrationTests
     {
 
     }
+
+
+
+
 
     [Fact]
     public async Task GetChunkStreamAsync_OfflineTier_IsSuccessPath()
@@ -93,7 +144,7 @@ public class RestoreCommandHandlerHydrationTests
             .ShouldNotBeNull();
         // -- The rehydration question handler was NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
-        // -- It is in the result
+        // -- The command result shows that no binaries are rehydrating
         result.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
         await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
@@ -286,46 +337,6 @@ public class RestoreCommandHandlerHydrationTests
 
 
 
-
-
-    //[Fact]
-    //public async Task Restore_HotBlob_UsesRegularChunkAsync()
-    //{
-    //    // Arrange
-    //    var hotFile = new FakeFileBuilder(fixture)
-    //        .WithNonExistingFile("/hot-file.jpg")
-    //        .WithRandomContent(10, 1)
-    //        .Build();
-
-    //    var storageMock = new MockArchiveStorageBuilder(fixture)
-    //        .AddBinaryChunk(hotFile.OriginalHash, hotFile.OriginalContent)
-    //        .Build();
-
-    //    var sr = new StateRepositoryBuilder()
-    //        .WithBinaryProperty(hotFile.OriginalHash, hotFile.OriginalContent.Length, storageTier: StorageTier.Hot, pointerFileEntries: pfes =>
-    //        {
-    //            pfes.WithPointerFileEntry(hotFile.OriginalPath);
-    //        })
-    //        .BuildFake();
-
-    //    var command = new RestoreCommandBuilder(fixture)
-    //        .WithTargets($".{hotFile.OriginalPath}")
-    //        .Build();
-
-    //    var hc = await new HandlerContextBuilder(command)
-    //        .WithArchiveStorage(storageMock)
-    //        .WithStateRepository(sr)
-    //        .WithBaseFileSystem(fixture.FileSystem)
-    //        .BuildAsync();
-
-    //    // Act
-    //    await handler.Handle(hc, CancellationToken.None);
-
-    //    // Assert
-    //    await storageMock.Received(1).OpenReadChunkAsync(hotFile.OriginalHash, Arg.Any<CancellationToken>());
-    //    await storageMock.DidNotReceive().OpenReadHydratedChunkAsync(hotFile.OriginalHash, Arg.Any<CancellationToken>());
-    //    hotFile.FilePair.BinaryFile.ReadAllBytes().ShouldBe(hotFile.OriginalContent);
-    //}
 
     //[Fact]
     //public async Task Restore_ArchivedTarBlob_UsesHydratedChunkAsync()

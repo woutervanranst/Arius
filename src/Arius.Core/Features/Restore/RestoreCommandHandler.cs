@@ -317,6 +317,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             switch (result)
             {
                 case { IsSuccess: true }:
+                    logger.LogInformation("Reading from hydrated blob {BlobName} for '{RelativeName}'.", hash, pointerFileEntry.RelativeName);
                     return result.Value;
                 case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
                     // Blob is unexpectedly archived
