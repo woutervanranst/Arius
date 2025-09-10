@@ -27,7 +27,7 @@ internal static class Program
             .Enrich.FromLogContext()
             .WriteTo.File(logPath,
                 //rollingInterval: RollingInterval.Day, // Not strictly needed for unique files, but good practice
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         try
