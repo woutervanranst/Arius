@@ -1,5 +1,4 @@
 using Arius.Core.Features.Restore;
-using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.FakeLogger;
@@ -96,12 +95,16 @@ public class RestoreCommandHandlerHydrationTests
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- It is in the result
         result.Rehydrating.ShouldBeEmpty();
+        // -- We did NOT start the rehydration
+        await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
         // -- The Binary is successfully restored
         BINARY.FilePair.BinaryFile.ReadAllBytes().ShouldBe(BINARY.OriginalContent);
     }
 
-    [Fact]
-    public async Task GetChunkStreamAsync_InArchive_HydrationStarted()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetChunkStreamAsync_InArchive(bool rehydrate)
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -120,7 +123,7 @@ public class RestoreCommandHandlerHydrationTests
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(rehydrate);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -148,8 +151,19 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was called with the correct file
         rehydrationQuestionHandlerMock.Received(1)(Arg.Is<IReadOnlyList<RehydrationDetail>>(list =>
             list.Any(d => d.RelativeName == BINARY.FilePair.FullName)));
-        // -- It is in the result
-        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        if (rehydrate)
+        {
+            // -- The command result shows that this binary is rehydrating
+            result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+            // -- We started the rehydration
+            await storageMock.Received(1).StartRehydrationAsync(BINARY.OriginalHash);
+        }
+        else
+        {
+            // -- The command result shows that no binaries are rehydrating
+            result.Rehydrating.ShouldBeEmpty();
+            await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+        }
         // -- The Binary is not restored
         BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
