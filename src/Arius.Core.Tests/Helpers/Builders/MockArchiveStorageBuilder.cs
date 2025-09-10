@@ -1,6 +1,7 @@
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Fixtures;
+using FluentResults;
 using NSubstitute;
 using System.Formats.Tar;
 
@@ -10,24 +11,50 @@ internal class MockArchiveStorageBuilder
 {
     private readonly Fixture                  fixture;
     private readonly Dictionary<Hash, byte[]> chunks = new();
+    private readonly Dictionary<Hash, byte[]> hydratedChunks = new();
+    private readonly HashSet<Hash>            archivedChunks = new();
 
     public MockArchiveStorageBuilder(Fixture fixture)
     {
         this.fixture = fixture;
     }
 
-    public MockArchiveStorageBuilder AddBinaryChunk(Hash hash, byte[] content)
+    public MockArchiveStorageBuilder AddBinaryChunk(Hash hash, byte[] content, StorageTier tier = StorageTier.Hot)
     {
         chunks[hash] = content;
+        if (tier == StorageTier.Archive)
+        {
+            archivedChunks.Add(hash);
+        }
         return this;
     }
 
-    public MockArchiveStorageBuilder AddTarChunk(out Hash tarHash, Action<TarChunkBuilder> configureTar)
+    public MockArchiveStorageBuilder AddTarChunk(out Hash tarHash, Action<TarChunkBuilder> configureTar, StorageTier tier = StorageTier.Hot)
     {
         var tarBuilder = new TarChunkBuilder(fixture);
         configureTar(tarBuilder);
         var tar = tarBuilder.Build();
         chunks[tar.Hash] = tar.Content;
+        if (tier == StorageTier.Archive)
+        {
+            archivedChunks.Add(tar.Hash);
+        }
+        tarHash = tar.Hash;
+        return this;
+    }
+
+    public MockArchiveStorageBuilder AddHydratedBinaryChunk(Hash hash, byte[] content)
+    {
+        hydratedChunks[hash] = content;
+        return this;
+    }
+
+    public MockArchiveStorageBuilder AddHydratedTarChunk(out Hash tarHash, Action<TarChunkBuilder> configureTar)
+    {
+        var tarBuilder = new TarChunkBuilder(fixture);
+        configureTar(tarBuilder);
+        var tar = tarBuilder.Build();
+        hydratedChunks[tar.Hash] = tar.Content;
         tarHash = tar.Hash;
         return this;
     }
@@ -43,8 +70,34 @@ internal class MockArchiveStorageBuilder
             .Returns(callInfo =>
             {
                 var hash = callInfo.Arg<Hash>();
-                var content = chunks[hash];
-                return Task.FromResult<Stream>(new MemoryStream(content));
+                
+                // If this chunk is explicitly marked as archived, return archived error
+                if (archivedChunks.Contains(hash))
+                {
+                    return Task.FromResult(Result.Fail<Stream>(new BlobArchivedError(hash.ToString())));
+                }
+                
+                // Otherwise, return regular chunk content
+                if (chunks.TryGetValue(hash, out var content))
+                {
+                    return Task.FromResult(Result.Ok<Stream>(new MemoryStream(content)));
+                }
+                
+                return Task.FromResult(Result.Fail<Stream>(new BlobNotFoundError(hash.ToString())));
+            });
+            
+        storageMock.OpenReadHydratedChunkAsync(Arg.Any<Hash>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var hash = callInfo.Arg<Hash>();
+                
+                // Only hydrated chunks can be read via this method
+                if (hydratedChunks.TryGetValue(hash, out var content))
+                {
+                    return Task.FromResult(Result.Ok<Stream>(new MemoryStream(content)));
+                }
+                
+                return Task.FromResult(Result.Fail<Stream>(new BlobNotFoundError(hash.ToString())));
             });
             
         return storageMock;
