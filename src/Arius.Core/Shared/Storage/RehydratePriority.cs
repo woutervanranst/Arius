@@ -2,8 +2,8 @@
 
 namespace Arius.Core.Shared.Storage;
 
-using AzureRehydratePriority = Azure.Storage.Blobs.Models.RehydratePriority;
 using AriusRehydratePriority = RehydratePriority;
+using AzureRehydratePriority = Azure.Storage.Blobs.Models.RehydratePriority;
 
 internal enum RehydratePriority
 {
