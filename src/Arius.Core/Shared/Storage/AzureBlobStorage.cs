@@ -3,6 +3,7 @@ using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using FluentResults;
 using System.Net;
 
 namespace Arius.Core.Shared.Storage;
@@ -85,14 +86,33 @@ internal class AzureBlobStorage : IStorage
             .Select(blob => blob.Name);
     }
 
-    public async Task<Stream> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
     {
-        var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
-        return await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
-
-        // TODO Azure.RequestFailedException: 'Service request failed.
-        // Status: 404 (The specified blob does not exist.)
-        // ErrorCode: BlobNotFound
+        try
+        {
+            var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
+            var stream = await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
+            return Result.Ok(stream);
+        }
+        catch (RequestFailedException e) when (e.BlobNotFound())
+        {
+            return Result.Fail(StorageErrors.BlobNotFound(blobName));
+        }
+        catch (RequestFailedException e) when (e.BlobIsArchived())
+        {
+            return Result.Fail(StorageErrors.BlobArchived(blobName));
+        }
+        catch (RequestFailedException e) when (e.BlobIsRehydrating())
+        {
+            return Result.Fail(StorageErrors.BlobRehydrating(blobName));
+        }
+        catch (RequestFailedException e)
+        {
+            return Result.Fail(new Error($"Azure storage operation failed: {e.Message}")
+                .WithMetadata("StatusCode", e.Status)
+                .WithMetadata("ErrorCode", e.ErrorCode ?? "Unknown")
+                .CausedBy(e));
+        }
     }
 
     public async Task<Stream> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)

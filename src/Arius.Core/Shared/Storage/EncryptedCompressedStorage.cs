@@ -1,6 +1,7 @@
 using Arius.Core.Shared.Crypto;
 using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
+using FluentResults;
 using System.IO.Compression;
 using Zio;
 
@@ -17,6 +18,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     private const string statesFolderPrefix = "states/";
     private const string chunksFolderPrefix = "chunks/";
+    private const string rehydratedChunksFolderPrefix = "chunks-rehydrated/";
 
     public EncryptedCompressedStorage(IStorage storage, string passphrase)
     {
@@ -48,11 +50,19 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)
     {
-        var             blobName           = $"{statesFolderPrefix}{stateName}";
-        await using var blobStream         = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
-        await using var decryptedStream    = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        var blobName = $"{statesFolderPrefix}{stateName}";
+        var blobStreamResult = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+        
+        if (blobStreamResult.IsFailed)
+        {
+            var firstError = blobStreamResult.Errors.First();
+            throw new InvalidOperationException($"Failed to download state '{stateName}': {firstError.Message}");
+        }
+
+        await using var blobStream = blobStreamResult.Value;
+        await using var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
         await using var decompressedStream = new GZipStream(decryptedStream, CompressionMode.Decompress);
-        await using var fileStream         = targetFile.Create();
+        await using var fileStream = targetFile.Create();
 
         await decompressedStream.CopyToAsync(fileStream, cancellationToken);
     }
@@ -71,15 +81,29 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     // -- CHUNKS
 
-    public async Task<Stream> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
+        return await OpenReadChunkInternalAsync(h, chunksFolderPrefix, cancellationToken);
+    }
+
+    public async Task<Result<Stream>> OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default)
+    {
+        return await OpenReadChunkInternalAsync(h, rehydratedChunksFolderPrefix, cancellationToken);
+    }
+
+    private async Task<Result<Stream>> OpenReadChunkInternalAsync(Hash h, string prefix, CancellationToken cancellationToken)
+    {
+        var blobName = $"{prefix}{h}";
+        var blobStreamResult = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+        if (blobStreamResult.IsFailed)
+            return blobStreamResult;
+
         // NOTE: do not use `await using` here, as we need to return the stream to the caller; the DisposableStreamWrapper takes care of proper disposal
-        var blobName        = $"{chunksFolderPrefix}{h}";
-        var blobStream      = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+        var blobStream      = blobStreamResult.Value;
         var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
         var gzipStream      = new GZipStream(decryptedStream, CompressionMode.Decompress);
 
-        return new StreamWrapper(gzipStream, decryptedStream, blobStream);
+        return Result.Ok<Stream>(new StreamWrapper(gzipStream, decryptedStream, blobStream));
     }
 
     public async Task<Stream> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)

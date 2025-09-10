@@ -51,6 +51,14 @@ public class Fixture : IDisposable
     }
 }
 
+//public class FixtureWithTestRunSourceFolder : Fixture
+//{
+//    public FixtureWithTestRunSourceFolder() : base()
+//    {
+
+//    }
+//}
+
 public record TestRemoteRepositoryOptions
 {
     public required string AccountName   { get; init; }

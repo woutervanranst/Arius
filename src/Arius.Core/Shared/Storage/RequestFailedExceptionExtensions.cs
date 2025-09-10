@@ -2,7 +2,7 @@ using Azure;
 
 namespace Arius.Core.Shared.Storage;
 
-public static class RequestFailedExceptionExtensions
+internal static class RequestFailedExceptionExtensions
 {
     /// <summary>
     /// Determines if the exception indicates that the blob is in archive tier and needs to be rehydrated

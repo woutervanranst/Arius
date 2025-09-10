@@ -1,4 +1,5 @@
 using Arius.Core.Shared.Hashing;
+using FluentResults;
 using System.IO.Compression;
 using Zio;
 
@@ -15,7 +16,8 @@ internal interface IArchiveStorage
     IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default);
     Task                     DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default);
     Task                     UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default);
-    Task<Stream>             OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>     OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>     OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default);
     Task<Stream>             OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default);
     Task<StorageTier>        SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
 }
