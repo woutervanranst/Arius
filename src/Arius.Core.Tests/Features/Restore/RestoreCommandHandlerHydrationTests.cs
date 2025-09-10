@@ -51,7 +51,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -105,7 +105,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -171,7 +171,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -223,7 +223,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -280,7 +280,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -336,7 +336,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -401,7 +401,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -455,7 +455,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)
@@ -532,7 +532,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)

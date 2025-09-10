@@ -39,7 +39,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
     public async ValueTask<RestoreCommandResult> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = await new HandlerContextBuilder(request, loggerFactory.CreateLogger<HandlerContextBuilder>())
+        var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
             .BuildAsync();
 
         return await Handle(handlerContext, cancellationToken);

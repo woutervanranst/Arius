@@ -102,7 +102,7 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<FixtureWithFileS
             .WithIncludePointers(true)
             .Build();
 
-        var hc = await new HandlerContextBuilder(command)
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
             .WithArchiveStorage(storageMock)
             .WithStateRepository(sr)
             .WithBaseFileSystem(fixture.FileSystem)

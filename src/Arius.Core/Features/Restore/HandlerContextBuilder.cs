@@ -15,15 +15,17 @@ internal class HandlerContextBuilder
 {
     private readonly RestoreCommand                 request;
     private readonly ILogger<HandlerContextBuilder> logger;
+    private readonly ILoggerFactory                 loggerFactory;
 
     private IArchiveStorage?  archiveStorage;
     private IStateRepository? stateRepository;
     private IFileSystem?      baseFileSystem;
 
-    public HandlerContextBuilder(RestoreCommand request, ILogger<HandlerContextBuilder>? logger = null)
+    public HandlerContextBuilder(RestoreCommand request, ILoggerFactory loggerFactory)
     {
-        this.request = request;
-        this.logger  = logger ?? NullLogger<HandlerContextBuilder>.Instance;
+        this.request       = request;
+        this.loggerFactory = loggerFactory;
+        this.logger        = loggerFactory.CreateLogger<HandlerContextBuilder>();
     }
 
     public HandlerContextBuilder WithArchiveStorage(IArchiveStorage archiveStorage)
@@ -51,8 +53,8 @@ internal class HandlerContextBuilder
         // Blob Storage
         if (archiveStorage == null)
         {
-            var remoteStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy);
-            archiveStorage = new EncryptedCompressedStorage(remoteStorage, request.Passphrase);
+            var blobStorage = new AzureBlobStorage(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy, loggerFactory.CreateLogger<AzureBlobStorage>());
+            archiveStorage = new EncryptedCompressedStorage(blobStorage, request.Passphrase);
         }
 
         var exists = await archiveStorage.ContainerExistsAsync();

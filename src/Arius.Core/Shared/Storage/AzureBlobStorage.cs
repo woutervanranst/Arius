@@ -5,6 +5,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using FluentResults;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Shared.Storage;
 
@@ -14,10 +15,12 @@ namespace Arius.Core.Shared.Storage;
 /// </summary>
 internal class AzureBlobStorage : IStorage
 {
-    private readonly BlobContainerClient blobContainerClient;
+    private readonly ILogger<AzureBlobStorage> logger;
+    private readonly BlobContainerClient       blobContainerClient;
 
-    public AzureBlobStorage(string accountName, string accountKey, string containerName, bool useRetryPolicy = true)
+    public AzureBlobStorage(string accountName, string accountKey, string containerName, bool useRetryPolicy, ILogger<AzureBlobStorage> logger)
     {
+        this.logger = logger;
         try
         {
             var blobServiceClient = new BlobServiceClient(
