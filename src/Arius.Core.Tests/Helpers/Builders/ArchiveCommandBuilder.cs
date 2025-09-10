@@ -34,7 +34,7 @@ public class ArchiveCommandBuilder
         {
             accountName   = fixture.RepositoryOptions.AccountName ?? "testaccount";
             accountKey    = fixture.RepositoryOptions.AccountKey ?? "testkey";
-            containerName = $"{fixture.RepositoryOptions.ContainerName ?? "testcontainer"}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
+            containerName = fixture.RepositoryOptions.ContainerName ?? "testcontainer";
             localRoot     = fixture.TestRunSourceFolder;
             passphrase    = fixture.RepositoryOptions.Passphrase ?? Fixture.PASSPHRASE;
         }

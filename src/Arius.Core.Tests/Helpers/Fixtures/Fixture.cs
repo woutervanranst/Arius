@@ -22,7 +22,8 @@ public class Fixture
             .AddEnvironmentVariables()
             .Build();
 
-        RepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+        RepositoryOptions               = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+        RepositoryOptions.ContainerName = $"{RepositoryOptions.ContainerName}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
 
         var ariusConfig = new AriusConfiguration();
         configuration.Bind(ariusConfig);
