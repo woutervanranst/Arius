@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net9.0</TargetFramework>
@@ -9,6 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="Azure.Storage.Blobs" />
 		<PackageReference Include="EFCore.BulkExtensions.Sqlite" />
+		<PackageReference Include="FluentResults" />
 		<PackageReference Include="FluentValidation" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
 		<PackageReference Include="Humanizer.Core" />
