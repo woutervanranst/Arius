@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 
 namespace Arius.Explorer.RepositoryExplorer;
@@ -62,7 +63,10 @@ public partial class WindowViewModel : ObservableObject
     [RelayCommand]
     private void ChooseRepository()
     {
-        // TODO: Implement repository selection
+        if (App.ServiceProvider == null) return;
+        
+        var chooseRepositoryWindow = App.ServiceProvider.GetRequiredService<ChooseRepository.Window>();
+        chooseRepositoryWindow.ShowDialog();
     }
 
     [RelayCommand]

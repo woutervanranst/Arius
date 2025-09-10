@@ -69,6 +69,8 @@ internal static class Program
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
                 services.AddTransient<RepositoryExplorer.WindowViewModel>();
+                services.AddTransient<ChooseRepository.Window>();
+                services.AddTransient<ChooseRepository.WindowViewModel>();
 
                 // Register Arius Core services
                 services.AddArius(c =>
