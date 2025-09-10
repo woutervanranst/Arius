@@ -38,7 +38,8 @@ The solution follows CQRS pattern with Mediator, using Domain-Driven Design prin
 
 - **Arius.Core**: Core business logic containing Commands (with handlers), Models, Repositories, and Services
 - **Arius.Cli**: CLI application using CliFx framework with CliCommands that dispatch to Core handlers
-- **Commands flow**: CLI commands → Mediator → Command Handlers → Services/Repositories → Azure Storage
+- **Arius.Explorer**: WPF application providing graphical interface for repository exploration and file management
+- **Commands flow**: CLI/WPF → Mediator → Command Handlers → Services/Repositories → Azure Storage
 
 Key architectural decisions:
 - File-level deduplication for storage optimization
@@ -85,6 +86,8 @@ When implementing new features:
 - **Mediator**: CQRS implementation
 - **Serilog**: Structured logging
 - **Spectre.Console**: Enhanced console output
+- **CommunityToolkit.Mvvm**: MVVM framework for WPF applications
+- **WouterVanRanst.Utils**: Utility library for common extensions
 - **Zio**: File system abstraction (only used in Arius.Core)
 - **xUnit, NSubstitute, Shouldly**: Testing stack
 - **FluentValidation**: Command validation

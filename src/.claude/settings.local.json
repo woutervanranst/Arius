@@ -19,7 +19,8 @@
       "Bash(dotnet build:*)",
       "Bash(./build-wsl.sh:*)",
       "Read(/mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius5/docs/**)",
-      "WebSearch"
+      "WebSearch",
+      "Read(//mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius/**)"
     ],
     "deny": [],
     "ask": []
