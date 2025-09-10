@@ -47,7 +47,7 @@ public class RestoreCommandHandlerHydrationTests
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_ButHydrated_UsesHydratedAndRestored() // OK
+    public async Task GetChunkStreamAsync_InArchive_IsSuccessPath()
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -57,7 +57,7 @@ public class RestoreCommandHandlerHydrationTests
 
         var storageMock = new MockArchiveStorageBuilder(fixture)
             .AddBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent, StorageTier.Archive)
-            // -- There is a hydrated binary chunk
+            // ! There is a hydrated binary chunk
             .AddHydratedBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent)
             .Build();
 
@@ -104,7 +104,7 @@ public class RestoreCommandHandlerHydrationTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task GetChunkStreamAsync_InArchive(bool rehydrate)
+    public async Task GetChunkStreamAsync_InArchive_BlobNotFoundErrorPath(bool rehydrate)
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -114,7 +114,7 @@ public class RestoreCommandHandlerHydrationTests
 
         var storageMock = new MockArchiveStorageBuilder(fixture)
             .AddBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent, StorageTier.Archive)
-            // -- There is NO hydrated binary chunk
+            // ! There is NO hydrated binary chunk
             //.AddHydratedBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent)
             .Build();
 
@@ -169,14 +169,112 @@ public class RestoreCommandHandlerHydrationTests
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_BlobRehydratingError()
+    public async Task GetChunkStreamAsync_InArchive_BlobRehydratingErrorPath()
     {
+        // Arrange
+        var BINARY = new FakeFileBuilder(fixture)
+            .WithNonExistingFile("/file.jpg")
+            .WithRandomContent(10, 1)
+            .Build();
 
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            .AddBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent, StorageTier.Archive)
+            // ! Add the Hydrating Binary Chunk
+            .AddHydratingBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent)
+            .Build();
+
+        var sr = new StateRepositoryBuilder()
+            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .BuildFake();
+
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets("./")
+            .WithIncludePointers(true)
+            .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
+            .Build();
+
+        var hc = await new HandlerContextBuilder(command)
+            .WithArchiveStorage(storageMock)
+            .WithStateRepository(sr)
+            .WithBaseFileSystem(fixture.FileSystem)
+            .BuildAsync();
+
+        // Act
+        var result = await handler.Handle(hc, CancellationToken.None);
+
+        // Assert
+        // -- We read from the hydrated chunks
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadChunkAsync(default, default);
+        await storageMock.Received(1).OpenReadHydratedChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        // -- We logged it correctly
+        fakeLoggerFactory
+            .GetLogRecordByTemplate("Blob {BlobName} for '{RelativeName}' is still rehydrating. Try again later.")
+            .ShouldNotBeNull();
+        // -- The rehydration question handler NOT called
+        rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
+        // -- The command result shows that this binary is rehydrating
+        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        // -- Rehydration not started - already ongoing
+        await storageMock.ReceivedWithAnyArgs(0).StartRehydrationAsync(default);
+        // -- The Binary is not restored
+        BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_BlobNotFoundError_ShouldStartRehydration()
+    public async Task GetChunkStreamAsync_InArchive_BlobArchivedErrorPath()
     {
+        // Arrange
+        var BINARY = new FakeFileBuilder(fixture)
+            .WithNonExistingFile("/file.jpg")
+            .WithRandomContent(10, 1)
+            .Build();
+
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            .AddBinaryChunk(BINARY.OriginalHash, BINARY.OriginalContent, StorageTier.Archive)
+            // ! Edge case: add an archived chunk in the chunks-hydrated folder
+            .AddArchivedChunkInRehydrateFolder(BINARY.OriginalHash, BINARY.OriginalContent)
+            .Build();
+
+        var sr = new StateRepositoryBuilder()
+            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .BuildFake();
+
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets("./")
+            .WithIncludePointers(true)
+            .WithRehydrationQuestionHandler(rehydrationQuestionHandlerMock)
+            .Build();
+
+        var hc = await new HandlerContextBuilder(command)
+            .WithArchiveStorage(storageMock)
+            .WithStateRepository(sr)
+            .WithBaseFileSystem(fixture.FileSystem)
+            .BuildAsync();
+
+        // Act
+        var result = await handler.Handle(hc, CancellationToken.None);
+
+        // Assert
+        // -- We read from the hydrated chunks
+        await storageMock.DidNotReceiveWithAnyArgs().OpenReadChunkAsync(default, default);
+        await storageMock.Received(1).OpenReadHydratedChunkAsync(BINARY.OriginalHash, Arg.Any<CancellationToken>());
+        // -- We logged it correctly
+        fakeLoggerFactory
+            .GetLogRecordByTemplate("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrating it.")
+            .ShouldNotBeNull();
+        // -- The command result shows that this binary is rehydrating
+        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        // -- Rehydration started without asking
+        await storageMock.Received(1).StartRehydrationAsync(BINARY.OriginalHash);
+        rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
+        // -- The Binary is not restored
+        BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
 
 

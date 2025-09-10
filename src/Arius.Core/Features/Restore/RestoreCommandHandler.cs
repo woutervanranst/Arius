@@ -351,8 +351,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     stillRehydratingList.Add(pointerFileEntry);
                     return null;
                 case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
-                    // Blob in chunks-rehydrated is in Archive tier
-                    logger.LogWarning("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrate it.", name, pointerFileEntry.RelativeName);
+                    // Blob in chunks-rehydrated is unexpectedly in Archive tier - handle gracefully by starting rehydration again
+                    logger.LogWarning("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrating it.", name, pointerFileEntry.RelativeName);
                     await handlerContext.ArchiveStorage.StartRehydrationAsync(hash);
                     stillRehydratingList.Add(pointerFileEntry);
                     return null;

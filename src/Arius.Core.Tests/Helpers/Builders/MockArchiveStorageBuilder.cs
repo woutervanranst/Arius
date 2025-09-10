@@ -10,10 +10,11 @@ namespace Arius.Core.Tests.Helpers.Builders;
 internal class MockArchiveStorageBuilder
 {
     private readonly Fixture                  fixture;
-    private readonly Dictionary<Hash, byte[]> chunks              = new();
-    private readonly HashSet<Hash>            chunksInArchiveTier = new();
-    private readonly Dictionary<Hash, byte[]> chunksRehydrated = new();
+    private readonly Dictionary<Hash, byte[]> chunks                      = new();
+    private readonly HashSet<Hash>            chunksInArchiveTier         = new();
+    private readonly Dictionary<Hash, byte[]> chunksRehydrated            = new();
     private readonly HashSet<Hash>            chunksRehydratedRehydrating = new();
+    private readonly HashSet<Hash>            chunksRehydratedArchiveTier = new();
 
     public MockArchiveStorageBuilder(Fixture fixture)
     {
@@ -52,8 +53,13 @@ internal class MockArchiveStorageBuilder
 
     public MockArchiveStorageBuilder AddHydratingBinaryChunk(Hash hash, byte[] content)
     {
-        chunks[hash] = content;
         chunksRehydratedRehydrating.Add(hash);
+        return this;
+    }
+
+    public MockArchiveStorageBuilder AddArchivedChunkInRehydrateFolder(Hash hash, byte[] content)
+    {
+        chunksRehydratedArchiveTier.Add(hash);
         return this;
     }
 
@@ -103,6 +109,12 @@ internal class MockArchiveStorageBuilder
                 if (chunksRehydratedRehydrating.Contains(hash))
                 {
                     return Task.FromResult(Result.Fail<Stream>(new BlobRehydratingError(hash.ToString())));
+                }
+
+                // If this chunk is still in archive tier, return archived error (this should not happen in practice)
+                if (chunksRehydratedArchiveTier.Contains(hash))
+                {
+                    return Task.FromResult(Result.Fail<Stream>(new BlobArchivedError(hash.ToString())));
                 }
 
                 // Only hydrated chunks can be read via this method
