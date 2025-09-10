@@ -5,15 +5,16 @@ namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class RestoreCommandBuilder
 {
-    private string                     accountName;
-    private string                     accountKey;
-    private string                     containerName;
-    private string                     passphrase;
-    private string[]                   targets;
-    private bool                       download;
-    private bool                       includePointers;
-    private DirectoryInfo              localRoot;
-    private IProgress<ProgressUpdate>? progressReporter;
+    private string                                       accountName;
+    private string                                       accountKey;
+    private string                                       containerName;
+    private string                                       passphrase;
+    private string[]                                     targets;
+    private bool                                         download;
+    private bool                                         includePointers;
+    private DirectoryInfo                                localRoot;
+    private IProgress<ProgressUpdate>?                   progressReporter;
+    private Func<IReadOnlyList<RehydrationDetail>, bool> rehydrationQuestionHandler;
 
     public RestoreCommandBuilder()
     {
@@ -44,10 +45,11 @@ internal class RestoreCommandBuilder
             targets       = ["dummy"];
         }
 
-        download         = false;
-        includePointers  = false;
-        localRoot        = new DirectoryInfo(Environment.CurrentDirectory);
-        progressReporter = null;
+        download                   = false;
+        includePointers            = false;
+        localRoot                  = new DirectoryInfo(Environment.CurrentDirectory);
+        progressReporter           = null;
+        rehydrationQuestionHandler = _ => true;
     }
 
     public RestoreCommandBuilder WithAccountName(string accountName)
@@ -104,19 +106,26 @@ internal class RestoreCommandBuilder
         return this;
     }
 
+    public RestoreCommandBuilder WithRehydrationQuestionHandler(Func<IReadOnlyList<RehydrationDetail>, bool> rehydrationQuestionHandler)
+    {
+        this.rehydrationQuestionHandler = rehydrationQuestionHandler;
+        return this;
+    }
+
     public RestoreCommand Build()
     {
         return new RestoreCommand
         {
-            AccountName      = accountName,
-            AccountKey       = accountKey,
-            ContainerName    = containerName,
-            Passphrase       = passphrase,
-            Targets          = targets,
-            Download         = download,
-            IncludePointers  = includePointers,
-            LocalRoot        = localRoot,
-            ProgressReporter = progressReporter
+            AccountName                = accountName,
+            AccountKey                 = accountKey,
+            ContainerName              = containerName,
+            Passphrase                 = passphrase,
+            Targets                    = targets,
+            Download                   = download,
+            IncludePointers            = includePointers,
+            LocalRoot                  = localRoot,
+            ProgressReporter           = progressReporter,
+            RehydrationQuestionHandler = rehydrationQuestionHandler
         };
     }
 }

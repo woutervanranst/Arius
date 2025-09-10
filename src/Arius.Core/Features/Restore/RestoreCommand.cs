@@ -11,4 +11,6 @@ public sealed record RestoreCommand : RepositoryCommand<RestoreCommandResult>
     public int DownloadParallelism { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
+
+    public Func<IReadOnlyList<RehydrationDetail>, bool> RehydrationQuestionHandler { get; init; } = _ => true;
 }

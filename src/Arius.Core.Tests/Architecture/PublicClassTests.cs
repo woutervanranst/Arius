@@ -40,6 +40,7 @@ public class PublicClassTests
             
             typeof(RestoreCommand).FullName,
             typeof(RestoreCommandResult).FullName,
+            typeof(RehydrationDetail).FullName,
             typeof(Arius.Core.Features.Restore.ProgressUpdate).FullName,
         ], ignoreOrder: true);
     }
