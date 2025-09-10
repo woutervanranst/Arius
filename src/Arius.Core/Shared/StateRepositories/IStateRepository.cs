@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.Storage;
 using Zio;
 
 namespace Arius.Core.Shared.StateRepositories;
@@ -10,6 +11,7 @@ internal interface IStateRepository
     void                          Vacuum();
     void                          Delete();
     BinaryProperties?             GetBinaryProperty(Hash h);
+    void                          SetBinaryPropertyArchiveTier(Hash h, StorageTier tier);
     void                          AddBinaryProperties(params BinaryProperties[] bps);
     void                          UpsertPointerFileEntries(params PointerFileEntry[] pfes);
     IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false);

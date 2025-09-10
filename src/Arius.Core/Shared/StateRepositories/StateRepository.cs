@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.Storage;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using WouterVanRanst.Utils.Extensions;
@@ -36,6 +37,18 @@ internal class StateRepository : IStateRepository
         return findBinaryProperty(context, h);
     }
 
+    public void SetBinaryPropertyArchiveTier(Hash h, StorageTier tier)
+    {
+        using var context = contextPool.CreateContext();
+
+        var bp = context.BinaryProperties.SingleOrDefault(x => x.Hash == h);
+        if (bp != null && bp.StorageTier != tier)
+        {
+            bp.StorageTier = tier;
+            context.SaveChanges();
+        }
+    }
+
     public void AddBinaryProperties(params BinaryProperties[] bps)
     {
         using var context = contextPool.CreateContext();
@@ -53,7 +66,7 @@ internal class StateRepository : IStateRepository
         if (HasChanges())
         {
             context.BulkInsertOrUpdate(pfes);
-            contextPool.SetHasChanges();
+            contextPool.SetHasChanges(); // Set changes explicitly as the AnyChangesInterceptor is not triggered
         }
 
         bool HasChanges()

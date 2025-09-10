@@ -1,5 +1,6 @@
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
 using System.Collections.Concurrent;
 using Zio;
 
@@ -31,6 +32,16 @@ internal class InMemoryStateRepository : IStateRepository
     {
         binaryProperties.TryGetValue(h, out var result);
         return result;
+    }
+
+    public void SetBinaryPropertyArchiveTier(Hash h, StorageTier tier)
+    {
+        if (binaryProperties.TryGetValue(h, out var bp) && bp.StorageTier != tier)
+        {
+            var updatedBp = bp with { StorageTier = tier };
+            binaryProperties[h] = updatedBp;
+            SetHasChanges();
+        }
     }
 
     public void AddBinaryProperties(params BinaryProperties[] bps)

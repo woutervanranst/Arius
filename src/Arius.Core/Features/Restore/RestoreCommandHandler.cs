@@ -320,7 +320,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     logger.LogInformation("Reading from hydrated blob {BlobName} for '{RelativeName}'.", hash, pointerFileEntry.RelativeName);
                     return result.Value;
                 case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
-                    // Blob is unexpectedly archived
+                    // Blob is unexpectedly archived. Update the StateRepository with the correct state
+                    logger.LogWarning("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Updating StateDatabase & added to the rehydration list.", name, pointerFileEntry.RelativeName);
+                    toRehydrateList.Add(pointerFileEntry);
+                    handlerContext.StateRepository.SetBinaryPropertyArchiveTier(hash, StorageTier.Archive);
                     return null;
                 case { Errors: [BlobRehydratingError { BlobName: var name }, ..] }:
                     // Blob is unexpectedly rehydrating. Try again later
