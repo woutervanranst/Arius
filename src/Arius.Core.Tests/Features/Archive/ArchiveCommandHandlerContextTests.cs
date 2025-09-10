@@ -1,7 +1,7 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
-using Arius.Core.Tests.Helpers;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fixtures;
 using NSubstitute;
 using Shouldly;

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
 using System.Collections.Concurrent;
 
-namespace Arius.Core.Tests.Helpers;
+namespace Arius.Core.Tests.Helpers.FakeLogger;
 
 public class FakeLoggerFactory : ILoggerFactory
 {
@@ -17,7 +17,7 @@ public class FakeLoggerFactory : ILoggerFactory
     public ILogger CreateLogger(string categoryName)
     {
         // Return an existing FakeLogger or create a new non-generic one
-        return _loggers.GetOrAdd(categoryName, _ => new FakeLogger(_collector, categoryName));
+        return _loggers.GetOrAdd(categoryName, _ => new Microsoft.Extensions.Logging.Testing.FakeLogger(_collector, categoryName));
     }
 
     public void Dispose()
