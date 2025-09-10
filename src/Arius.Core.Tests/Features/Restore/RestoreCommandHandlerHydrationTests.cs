@@ -23,31 +23,31 @@ public class RestoreCommandHandlerHydrationTests
 
 
     [Fact]
-    public async Task GetChunkStreamAsync_Online_Success()
+    public async Task GetChunkStreamAsync_OnlineTier_IsSuccessPath()
     {
 
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_Online_BlobArchivedError()
+    public async Task GetChunkStreamAsync_OnlineTier_BlobArchivedErrorPath()
     {
 
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_Online_BlobRehydratingError()
+    public async Task GetChunkStreamAsync_OnlineTier_BlobRehydratingErrorPath()
     {
 
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_Online_BlobNotFoundError()
+    public async Task GetChunkStreamAsync_OnlineTier_BlobNotFoundErrorPath()
     {
 
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_IsSuccessPath()
+    public async Task GetChunkStreamAsync_OfflineTier_IsSuccessPath()
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -104,7 +104,7 @@ public class RestoreCommandHandlerHydrationTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task GetChunkStreamAsync_InArchive_BlobNotFoundErrorPath(bool rehydrate)
+    public async Task GetChunkStreamAsync_OfflineTier_BlobNotFoundErrorPath(bool rehydrate)
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -169,7 +169,7 @@ public class RestoreCommandHandlerHydrationTests
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_BlobRehydratingErrorPath()
+    public async Task GetChunkStreamAsync_OfflineTier_BlobRehydratingErrorPath()
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -224,7 +224,7 @@ public class RestoreCommandHandlerHydrationTests
     }
 
     [Fact]
-    public async Task GetChunkStreamAsync_InArchive_BlobArchivedErrorPath()
+    public async Task GetChunkStreamAsync_OfflineTier_BlobArchivedErrorPath()
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
