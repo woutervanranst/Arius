@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Zio;
 using FileSystemExtensions = Arius.Core.Shared.FileSystem.FileSystemExtensions;
 
-namespace Arius.Core.Shared.Storage;
+namespace Arius.Core.Shared.StateRepositories;
 
 [DebuggerDisplay("CacheDirectory = {cacheDirectory.FullName}")]
 internal class StateCache
