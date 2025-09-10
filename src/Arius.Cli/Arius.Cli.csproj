@@ -27,6 +27,7 @@
     <PackageReference Include="CliFx" />
     <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Serilog.Enrichers.Thread" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Spectre.Console" />

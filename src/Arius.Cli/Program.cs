@@ -25,9 +25,10 @@ internal static class Program
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug() // Capture all levels of logs
             .Enrich.FromLogContext()
+            .Enrich.WithThreadId()
             .WriteTo.File(logPath,
                 //rollingInterval: RollingInterval.Day, // Not strictly needed for unique files, but good practice
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         try
