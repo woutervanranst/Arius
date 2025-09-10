@@ -386,11 +386,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         var parentHash = await handlerContext.Hasher.GetHashAsync(archiveStream);
         archiveStream.Seek(0, SeekOrigin.Begin);
 
-
-        //File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ((MemoryStream)archiveStream).ToArray());
-
-        //archiveStream.Seek(0, SeekOrigin.Begin);
-
         foreach (var entry in tarWriter.TarredEntries)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 70, $"Uploading TAR..."));
 
@@ -410,23 +405,23 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(parentHash, encryptedStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
-        var bps = tarWriter.TarredEntries.Select(e => new BinaryProperties
+        var tarBps = tarWriter.TarredEntries.Select(e => new BinaryProperties
         {
             Hash         = e.Hash,
             ParentHash   = parentHash,
             OriginalSize = e.FilePair.BinaryFile.Length,
             ArchivedSize = e.ArchivedSize,
             StorageTier  = actualTier
-        }).ToArray();
-        handlerContext.StateRepository.AddBinaryProperties(bps);
-
-        handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
+        });
+        var parentBp = new BinaryProperties
         {
             Hash         = parentHash,
             OriginalSize = tarWriter.TotalOriginalSize,
             ArchivedSize = encryptedStream.Position,
             StorageTier  = actualTier
-        });
+        };
+        IEnumerable<BinaryProperties> bps = [.. tarBps, parentBp];
+        handlerContext.StateRepository.AddBinaryProperties(bps.ToArray());
 
         // Mark as uploaded
         foreach (var entry in tarWriter.TarredEntries)

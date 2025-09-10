@@ -47,7 +47,7 @@ internal class StateRepositoryBuilder
     {
         return WithBinaryProperty(hash, originalSize, archivedSize, StorageTier.Hot, pointerFileEntries);
     }
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
     {
         var pointerFileBuilder = new PointerFileEntryBuilder();
         pointerFileEntries?.Invoke(pointerFileBuilder);
@@ -68,15 +68,15 @@ internal class StateRepositoryBuilder
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        return WithBinaryProperty(hash, parentHash, originalSize, null, null, pointerFileEntries);
+        return WithBinaryProperty(hash, parentHash, originalSize, null, StorageTier.Hot, pointerFileEntries);
     }
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        return WithBinaryProperty(hash, parentHash, originalSize, archivedSize, null, pointerFileEntries);
+        return WithBinaryProperty(hash, parentHash, originalSize, archivedSize, StorageTier.Hot, pointerFileEntries);
     }
 
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier? storageTier = null, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
     {
         var pointerFileBuilder = new PointerFileEntryBuilder();
         pointerFileEntries?.Invoke(pointerFileBuilder);
