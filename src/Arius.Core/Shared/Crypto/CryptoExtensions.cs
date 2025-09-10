@@ -17,9 +17,16 @@ internal static class CryptoExtensions
 
     public static async Task<Stream> GetDecryptionStreamAsync(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
     {
+        // NOTE: This used to be Seek() but the DownloadStreamingAsync returns a non-seekable stream, so we're reading the bytes and validating it instead.
+        var prefix = new byte[OPENSSL_SALT_PREFIX_BYTES.Length];
+        await baseStream.ReadAsync(prefix, 0, prefix.Length);
+        if (!prefix.SequenceEqual(OPENSSL_SALT_PREFIX_BYTES))
+        {
+            throw new InvalidOperationException("The data does not start with the OpenSSL salt prefix. Decryption cannot proceed.");
+        }
+
         var salt = new byte[saltSize];
-        baseStream.Seek(OPENSSL_SALT_PREFIX_BYTES.Length, SeekOrigin.Begin);
-        baseStream.Read(salt, 0, salt.Length);
+        await baseStream.ReadAsync(salt, 0, salt.Length);
 
         DeriveBytes(passphrase, salt, out var key, out var iv);
 

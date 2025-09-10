@@ -113,15 +113,10 @@ internal class AzureBlobStorage : IStorage
 
         try
         {
-            var stream = await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
+            var r = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
             logger.LogDebug("Successfully opened blob '{BlobName}' for reading", blobName);
 
-            // Try reading the blob here to catch Archive status early. The read bytes (4 MB by default) will be in the cache.
-            var testBuffer = new byte[1];
-            await stream.ReadAsync(testBuffer, 0, 1, cancellationToken);
-            stream.Seek(0, SeekOrigin.Begin);
-
-            return Result.Ok(stream);
+            return Result.Ok(r.Value.Content);
         }
         catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
         {
@@ -225,6 +220,10 @@ internal class AzureBlobStorage : IStorage
         {
             await target.StartCopyFromUriAsync(source.Uri, options);
             logger.LogInformation("Successfully started hydration from blob '{SourceBlob}' to '{TargetBlob}'", sourceBlobName, targetBlobName);
+        }
+        catch (RequestFailedException e) when (e is { Status: 409, ErrorCode: "BlobArchived" } && target.Exists())
+        {
+            logger.LogWarning("Rehydration already started for blob '{SourceBlob}' to '{TargetBlob}'. Status: {Status}, ErrorCode: {ErrorCode}", sourceBlobName, targetBlobName, e.Status, e.ErrorCode);
         }
         catch (RequestFailedException e)
         {
