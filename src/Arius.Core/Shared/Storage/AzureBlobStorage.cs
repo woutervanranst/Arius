@@ -144,5 +144,29 @@ internal class AzureBlobStorage : IStorage
     {
         var blobClient = blobContainerClient.GetBlobClient(blobName);
         await blobClient.SetAccessTierAsync(tier);
+
+    public async Task StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydrationPriority priority)
+    {
+        logger.LogInformation("Starting hydration from blob '{SourceBlob}' to '{TargetBlob}' with priority '{Priority}'", sourceBlobName, targetBlobName, priority);
+        
+        var source = blobContainerClient.GetBlobClient(sourceBlobName);
+        var target = blobContainerClient.GetBlobClient(targetBlobName);
+
+        var options = new BlobCopyFromUriOptions
+        {
+            AccessTier        = AccessTier.Cold,
+            RehydratePriority = priority.ToRehydratePriority()
+        };
+
+        try
+        {
+            await target.StartCopyFromUriAsync(source.Uri, options);
+            logger.LogInformation("Successfully started hydration from blob '{SourceBlob}' to '{TargetBlob}'", sourceBlobName, targetBlobName);
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to start hydration from blob '{SourceBlob}' to '{TargetBlob}'. Status: {Status}, ErrorCode: {ErrorCode}", sourceBlobName, targetBlobName, e.Status, e.ErrorCode);
+            throw;
+        }
     }
 }

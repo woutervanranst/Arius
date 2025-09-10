@@ -106,10 +106,6 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         return Result.Ok<Stream>(new StreamWrapper(gzipStream, decryptedStream, blobStream));
     }
 
-    public async Task StartRehydrationAsync(Hash h)
-    {
-
-    }
     public async Task<Stream> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
         // Validate compression settings against content type to prevent double compression or missing compression
@@ -165,4 +161,11 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         }
     }
 
+    public async Task StartHydrationAsync(Hash hash, RehydrationPriority priority)
+    {
+        var source = $"{chunksFolderPrefix}{hash}";
+        var target = $"{rehydratedChunksFolderPrefix}{hash}";
+
+        await storage.StartHydrationAsync(source, target, priority);
+    }
 }
