@@ -21,12 +21,12 @@ internal class RestoreCommandBuilder
         SetDefaults(null);
     }
 
-    public RestoreCommandBuilder(Fixture? fixture)
+    public RestoreCommandBuilder(FixtureWithFileSystem? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(Fixture? fixture)
+    private void SetDefaults(FixtureWithFileSystem? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {

@@ -9,17 +9,17 @@ using Zio;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
+public class ArchiveCommandHandlerContextCreateAsyncTests
 {
-    private readonly FakeLoggerFactory loggerFactory;
-    private readonly IArchiveStorage   mockArchiveStorage;
-    private readonly StateCache        stateCache;
-    private readonly ArchiveCommand    testCommand;
-    private readonly Fixture           fixture;
+    private readonly FakeLoggerFactory     loggerFactory;
+    private readonly IArchiveStorage       mockArchiveStorage;
+    private readonly StateCache            stateCache;
+    private readonly ArchiveCommand        testCommand;
+    private readonly FixtureWithFileSystem fixture;
 
     public ArchiveCommandHandlerContextCreateAsyncTests()
     {
-        fixture            = new Fixture();
+        fixture            = new FixtureWithFileSystem();
         loggerFactory      = new FakeLoggerFactory();
         mockArchiveStorage = Substitute.For<IArchiveStorage>();
 
@@ -139,15 +139,5 @@ public class ArchiveCommandHandlerContextCreateAsyncTests : IDisposable
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
         newStateFile.ShouldNotBeNull("a new state file should be created");
         newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
-    }
-
-    public void Dispose()
-    {
-        fixture?.Dispose();
-        loggerFactory?.Dispose();
-        //if (tempStateDirectory.Exists)
-        //{
-        //    tempStateDirectory.Delete(recursive: true);
-        //}
     }
 }

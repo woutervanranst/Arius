@@ -8,11 +8,11 @@ using System.IO.Compression;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class InMemoryGzippedTarWriterTests : IClassFixture<Fixture>
+public class InMemoryGzippedTarWriterTests : IClassFixture<FixtureWithFileSystem>
 {
-    private readonly Fixture fixture;
+    private readonly FixtureWithFileSystem fixture;
 
-    public InMemoryGzippedTarWriterTests(Fixture fixture)
+    public InMemoryGzippedTarWriterTests(FixtureWithFileSystem fixture)
     {
         this.fixture = fixture;
     }

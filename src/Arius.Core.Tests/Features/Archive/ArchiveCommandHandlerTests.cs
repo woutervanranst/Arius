@@ -7,13 +7,13 @@ using System.Runtime.InteropServices;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
+public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 {
-    private readonly Fixture        fixture;
+    private readonly FixtureWithFileSystem             fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
 
-    public ArchiveCommandHandlerTests(Fixture fixture)
+    public ArchiveCommandHandlerTests(FixtureWithFileSystem fixture)
     {
         this.fixture = fixture;
         logger       = new();
@@ -42,10 +42,5 @@ public class ArchiveCommandHandlerTests : IClassFixture<Fixture>, IDisposable
     public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
     {
 
-    }
-
-    public void Dispose()
-    {
-        fixture?.Dispose();
     }
 }

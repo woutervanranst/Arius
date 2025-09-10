@@ -6,14 +6,12 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Tests.Helpers.Fixtures;
 
-public class Fixture : IDisposable
+public class Fixture
 {
     public const string PASSPHRASE = "wouterpassphrase";
 
     public TestRemoteRepositoryOptions? RepositoryOptions   { get; } // can be null when no appsettings etc
     public IOptions<AriusConfiguration> AriusConfiguration  { get; }
-    public IFileSystem                  FileSystem          { get; }
-    public DirectoryInfo                TestRunSourceFolder { get; }
 
     public Fixture()
     {
@@ -29,9 +27,17 @@ public class Fixture : IDisposable
         var ariusConfig = new AriusConfiguration();
         configuration.Bind(ariusConfig);
         AriusConfiguration = Options.Create(ariusConfig);
+    }
+}
 
+public class FixtureWithFileSystem : Fixture, IDisposable
+{
+    public IFileSystem   FileSystem          { get; }
+    public DirectoryInfo TestRunSourceFolder { get; }
 
-        TestRunSourceFolder = Directory.CreateTempSubdirectory($"Arius.Core.Tests-{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}");
+    public FixtureWithFileSystem() : base()
+    {
+        TestRunSourceFolder = Directory.CreateTempSubdirectory($"arius-core-tests-{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}");
         TestRunSourceFolder.Create();
 
         var pfs = new PhysicalFileSystem();
@@ -50,14 +56,6 @@ public class Fixture : IDisposable
         //}
     }
 }
-
-//public class FixtureWithTestRunSourceFolder : Fixture
-//{
-//    public FixtureWithTestRunSourceFolder() : base()
-//    {
-
-//    }
-//}
 
 public record TestRemoteRepositoryOptions
 {

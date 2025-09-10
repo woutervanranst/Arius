@@ -23,12 +23,12 @@ public class ArchiveCommandBuilder
         SetDefaults(null);
     }
 
-    public ArchiveCommandBuilder(Fixture? fixture)
+    public ArchiveCommandBuilder(FixtureWithFileSystem? fixture)
     {
         SetDefaults(fixture);
     }
 
-    private void SetDefaults(Fixture? fixture)
+    private void SetDefaults(FixtureWithFileSystem? fixture)
     {
         if (fixture?.RepositoryOptions != null)
         {

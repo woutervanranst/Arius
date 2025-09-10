@@ -10,14 +10,14 @@ namespace Arius.Core.Tests.Shared.StateRepositories;
 
 public class StateRepositoryTests : IDisposable
 {
-    private readonly Fixture fixture;
+    private readonly FixtureWithFileSystem fixture;
     private readonly StateRepositoryDbContextPool contextPool;
     private readonly StateRepository stateRepository;
     private readonly FileEntry stateFile;
 
     public StateRepositoryTests()
     {
-        fixture = new Fixture();
+        fixture = new FixtureWithFileSystem();
         
         // Create state database file path in test folder using proper filesystem
         var stateFileName = $"test-state-{DateTime.UtcNow:yyyyMMddTHHmmss}-{Guid.NewGuid():N}.db";

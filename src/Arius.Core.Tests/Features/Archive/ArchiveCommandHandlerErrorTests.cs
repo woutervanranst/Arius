@@ -7,16 +7,16 @@ using Shouldly;
 
 namespace Arius.Core.Tests.Features.Archive;
 
-public class ArchiveCommandHandlerErrorTests : IDisposable
+public class ArchiveCommandHandlerErrorTests
 {
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
-    private readonly Fixture        fixture;
+    private readonly FixtureWithFileSystem             fixture;
 
     public ArchiveCommandHandlerErrorTests()
     {
         logger  = new();
-        fixture = new Fixture();
+        fixture = new FixtureWithFileSystem();
         handler = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 
@@ -61,10 +61,5 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
             Random.Shared.NextBytes(keyBytes);
             return Convert.ToBase64String(keyBytes);
         }
-    }
-
-    public void Dispose()
-    {
-        fixture?.Dispose();
     }
 }
