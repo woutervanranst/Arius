@@ -23,14 +23,17 @@ internal class AzureBlobStorage : IStorage
         this.logger = logger;
         try
         {
+            logger.LogInformation("Initializing Azure Blob Storage client for account '{AccountName}' and container '{ContainerName}' with retry policy: {UseRetryPolicy}", accountName, containerName, useRetryPolicy);
             var blobServiceClient = new BlobServiceClient(
                 new Uri($"https://{accountName}.blob.core.windows.net"),
                 new StorageSharedKeyCredential(accountName, accountKey),
                 GetBlobClientOptions());
             blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
+            logger.LogInformation("Azure Blob Storage client initialized successfully");
         }
         catch (FormatException e)
         {
+            logger.LogError(e, "Failed to initialize Azure Blob Storage client due to invalid account credentials format");
             throw new FormatException("Invalid account credentials format", e);
         }
 
@@ -61,11 +64,20 @@ internal class AzureBlobStorage : IStorage
     {
         try
         {
+            logger.LogInformation("Creating container '{ContainerName}' if it does not exist", blobContainerClient.Name);
             var result = await blobContainerClient.CreateIfNotExistsAsync(PublicAccessType.None);
-            return result is not null && result.GetRawResponse().Status == (int)HttpStatusCode.Created;
+            var wasCreated = result is not null && result.GetRawResponse().Status == (int)HttpStatusCode.Created;
+            
+            if (wasCreated)
+                logger.LogInformation("Container '{ContainerName}' was created successfully", blobContainerClient.Name);
+            else
+                logger.LogInformation("Container '{ContainerName}' already exists", blobContainerClient.Name);
+                
+            return wasCreated;
         }
         catch (RequestFailedException e)
         {
+            logger.LogError(e, "Failed to create or access Azure Storage container '{ContainerName}'. Status: {Status}, ErrorCode: {ErrorCode}", blobContainerClient.Name, e.Status, e.ErrorCode);
             // Either invalid credentials ("No such host is known.") or invalid permissions ("Server failed to authenticate the request")
             throw new InvalidOperationException($"Failed to create or access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", e);
         }
@@ -75,16 +87,21 @@ internal class AzureBlobStorage : IStorage
     {
         try
         {
-            return await blobContainerClient.ExistsAsync();
+            logger.LogDebug("Checking if container '{ContainerName}' exists", blobContainerClient.Name);
+            var exists = await blobContainerClient.ExistsAsync();
+            logger.LogDebug("Container '{ContainerName}' exists: {Exists}", blobContainerClient.Name, exists);
+            return exists;
         }
         catch (RequestFailedException e)
         {
+            logger.LogError(e, "Failed to check if Azure Storage container '{ContainerName}' exists. Status: {Status}, ErrorCode: {ErrorCode}", blobContainerClient.Name, e.Status, e.ErrorCode);
             throw new InvalidOperationException($"Failed to access Azure Storage container '{blobContainerClient.Name}'. Please check your account credentials and permissions. See the log file for detailed error information.", e);
         }
     }
 
     public IAsyncEnumerable<string> GetNamesAsync(string prefix, CancellationToken cancellationToken = default)
     {
+        logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
         return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
             .Select(blob => blob.Name);
     }
@@ -120,6 +137,8 @@ internal class AzureBlobStorage : IStorage
 
     public async Task<Stream> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
     {
+        logger.LogDebug("Opening blob '{BlobName}' for writing in container '{ContainerName}', throwOnExists: {ThrowOnExists}", blobName, blobContainerClient.Name, throwOnExists);
+        
         var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
 
         var options = new BlockBlobOpenWriteOptions();
@@ -137,13 +156,34 @@ internal class AzureBlobStorage : IStorage
         if (progress is not null)
             options.ProgressHandler = progress;
 
-        return await blobClient.OpenWriteAsync(overwrite: !throwOnExists, options: options, cancellationToken: cancellationToken);
+        try
+        {
+            var stream = await blobClient.OpenWriteAsync(overwrite: !throwOnExists, options: options, cancellationToken: cancellationToken);
+            logger.LogDebug("Successfully opened blob '{BlobName}' for writing", blobName);
+            return stream;
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to open blob '{BlobName}' for writing. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
+            throw;
+        }
     }
 
     public async Task SetAccessTierAsync(string blobName, AccessTier tier)
     {
+        logger.LogInformation("Setting access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
         var blobClient = blobContainerClient.GetBlobClient(blobName);
-        await blobClient.SetAccessTierAsync(tier);
+        try
+        {
+            await blobClient.SetAccessTierAsync(tier);
+            logger.LogInformation("Successfully set access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to set access tier for blob '{BlobName}' to '{AccessTier}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, tier, e.Status, e.ErrorCode);
+            throw;
+        }
+    }
 
     public async Task StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydrationPriority priority)
     {
