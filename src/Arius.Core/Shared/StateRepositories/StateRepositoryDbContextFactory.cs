@@ -14,21 +14,24 @@ internal class StateRepositoryDbContextPool
     private readonly PooledDbContextFactory<StateRepositoryDbContext> factory;
     private readonly ILogger<StateRepositoryDbContextPool> logger;
 
-    private bool hasChanges;
+    private readonly Lock ensureCreatedLock = new();
 
     public FileEntry StateDatabaseFile { get; }
-    public bool HasChanges => Volatile.Read(ref hasChanges);
+
+    public  bool HasChanges => Volatile.Read(ref hasChanges);
+    private bool hasChanges;
+
 
     public StateRepositoryDbContextPool(FileEntry stateDatabaseFile, bool ensureCreated, ILogger<StateRepositoryDbContextPool> logger)
     {
-        this.logger = logger;
+        this.logger       = logger;
         StateDatabaseFile = stateDatabaseFile;
 
         var interceptor = new AnyChangesInterceptor(SetHasChanges);
 
         var internalName = stateDatabaseFile.ConvertPathToInternal();
         var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
-            .UseSqlite($"Data Source={internalName}"/*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .UseSqlite($"Data Source={internalName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .AddInterceptors(interceptor)
             .Options;
 
@@ -36,10 +39,14 @@ internal class StateRepositoryDbContextPool
 
         //context.Database.Migrate();
 
+
         if (ensureCreated)
         {
-            using var context = CreateContext();
-            context.Database.EnsureCreated();
+            lock (ensureCreatedLock)
+            {
+                using var context = CreateContext();
+                context.Database.EnsureCreated();
+            }
         }
     }
 
