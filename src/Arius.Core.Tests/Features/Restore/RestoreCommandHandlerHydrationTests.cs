@@ -43,8 +43,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -73,15 +73,15 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that no binaries are rehydrating
         result.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
-        await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+        await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
         BINARY.FilePair.BinaryFile.ReadAllBytes().ShouldBe(BINARY.OriginalContent);
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task GetChunkStreamAsyncForLargeFile_OnlineTier_BlobArchivedErrorPath(bool rehydrate)
+    [InlineData(RehydrationDecision.StandardPriority)]
+    [InlineData(RehydrationDecision.DoNotRehydrate)]
+    public async Task GetChunkStreamAsyncForLargeFile_OnlineTier_BlobArchivedErrorPath(RehydrationDecision rehydrate)
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -97,7 +97,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot /* ! Notice the mismatch with (1) */, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
         rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(rehydrate);
 
         var command = new RestoreCommandBuilder(fixture)
@@ -127,18 +127,18 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was called with the correct file
         rehydrationQuestionHandlerMock.Received(1)(Arg.Is<IReadOnlyList<RehydrationDetail>>(list =>
             list.Any(d => d.RelativeName == BINARY.FilePair.FullName)));
-        if (rehydrate)
+        if (rehydrate != RehydrationDecision.DoNotRehydrate)
         {
             // -- The command result shows that this binary is rehydrating
             result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
             // -- We started the rehydration
-            await storageMock.Received(1).StartRehydrationAsync(BINARY.OriginalHash);
+            await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         }
         else
         {
             // -- The command result shows that no binaries are rehydrating
             result.Rehydrating.ShouldBeEmpty();
-            await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+            await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         }
 
         // -- The Binary is not restored
@@ -163,8 +163,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -193,7 +193,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that this binary is rehydrating
         result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration not started - already ongoing
-        await storageMock.ReceivedWithAnyArgs(0).StartRehydrationAsync(default);
+        await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
         BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
@@ -215,8 +215,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -245,7 +245,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that no binaries are rehydrating
         result.Rehydrating.ShouldBeEmpty();
         // -- No rehydrations started
-        await storageMock.ReceivedWithAnyArgs(0).StartRehydrationAsync(default);
+        await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
         BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
@@ -272,8 +272,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -302,15 +302,15 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that no binaries are rehydrating
         result.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
-        await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+        await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
         BINARY.FilePair.BinaryFile.ReadAllBytes().ShouldBe(BINARY.OriginalContent);
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task GetChunkStreamAsyncForLargeFile_OfflineTier_BlobNotFoundErrorPath(bool rehydrate)
+    [InlineData(RehydrationDecision.StandardPriority)]
+    [InlineData(RehydrationDecision.DoNotRehydrate)]
+    public async Task GetChunkStreamAsyncForLargeFile_OfflineTier_BlobNotFoundErrorPath(RehydrationDecision rehydrate)
     {
         // Arrange
         var BINARY = new FakeFileBuilder(fixture)
@@ -328,7 +328,7 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
         rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(rehydrate);
 
         var command = new RestoreCommandBuilder(fixture)
@@ -356,18 +356,18 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was called with the correct file
         rehydrationQuestionHandlerMock.Received(1)(Arg.Is<IReadOnlyList<RehydrationDetail>>(list =>
             list.Any(d => d.RelativeName == BINARY.FilePair.FullName)));
-        if (rehydrate)
+        if (rehydrate != RehydrationDecision.DoNotRehydrate)
         {
             // -- The command result shows that this binary is rehydrating
             result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
             // -- We started the rehydration
-            await storageMock.Received(1).StartRehydrationAsync(BINARY.OriginalHash);
+            await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         }
         else
         {
             // -- The command result shows that no binaries are rehydrating
             result.Rehydrating.ShouldBeEmpty();
-            await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+            await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         }
 
         // -- The Binary is not restored
@@ -393,8 +393,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -423,7 +423,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that this binary is rehydrating
         result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration not started - already ongoing
-        await storageMock.ReceivedWithAnyArgs(0).StartRehydrationAsync(default);
+        await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
         BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
     }
@@ -447,8 +447,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -475,7 +475,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that this binary is rehydrating
         result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration started without asking
-        await storageMock.Received(1).StartRehydrationAsync(BINARY.OriginalHash);
+        await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The Binary is not restored
         BINARY.FilePair.BinaryFile.Exists.ShouldBeFalse();
@@ -524,8 +524,8 @@ public class RestoreCommandHandlerHydrationTests
             .WithBinaryProperty(tarContent.OriginalHash, parentHash, tarContent.OriginalContent.Length, storageTier: StorageTier.Archive, pointerFileEntries: pfes => { pfes.WithPointerFileEntry(tarContent.OriginalPath); })
             .BuildFake();
 
-        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
-        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(true);
+        var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
+        rehydrationQuestionHandlerMock(Arg.Any<IReadOnlyList<RehydrationDetail>>()).Returns(RehydrationDecision.StandardPriority);
 
         var command = new RestoreCommandBuilder(fixture)
             .WithTargets("./")
@@ -555,7 +555,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The command result shows that no binaries are rehydrating
         result.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
-        await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
+        await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
         tarContent.FilePair.BinaryFile.ReadAllBytes().ShouldBe(tarContent.OriginalContent);
     }

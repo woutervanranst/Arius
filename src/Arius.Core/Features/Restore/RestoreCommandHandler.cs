@@ -74,11 +74,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             if (rds.Any())
             {
                 var rehydrateDecision = handlerContext.Request.RehydrationQuestionHandler(rds);
-                if (rehydrateDecision)
+                if (rehydrateDecision != RehydrationDecision.DoNotRehydrate)
                 {
                     foreach (var g in toRehydrateList.GroupBy(pfe => pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash))
                     {
-                        await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, RehydratePriority.Standard);
+                        await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, rehydrateDecision.ToRehydratePriority());
 
                         foreach (var pfe in g)
                         {

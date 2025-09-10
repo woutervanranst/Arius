@@ -5,16 +5,16 @@ namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class RestoreCommandBuilder
 {
-    private string                                       accountName;
-    private string                                       accountKey;
-    private string                                       containerName;
-    private string                                       passphrase;
-    private string[]                                     targets;
-    private bool                                         download;
-    private bool                                         includePointers;
-    private DirectoryInfo                                localRoot;
-    private IProgress<ProgressUpdate>?                   progressReporter;
-    private Func<IReadOnlyList<RehydrationDetail>, bool> rehydrationQuestionHandler;
+    private string                                                      accountName;
+    private string                                                      accountKey;
+    private string                                                      containerName;
+    private string                                                      passphrase;
+    private string[]                                                    targets;
+    private bool                                                        download;
+    private bool                                                        includePointers;
+    private DirectoryInfo                                               localRoot;
+    private IProgress<ProgressUpdate>?                                  progressReporter;
+    private Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision> rehydrationQuestionHandler;
 
     public RestoreCommandBuilder()
     {
@@ -49,7 +49,7 @@ internal class RestoreCommandBuilder
         includePointers            = false;
         localRoot                  = new DirectoryInfo(Environment.CurrentDirectory);
         progressReporter           = null;
-        rehydrationQuestionHandler = _ => true;
+        rehydrationQuestionHandler = _ => RehydrationDecision.StandardPriority;
     }
 
     public RestoreCommandBuilder WithAccountName(string accountName)
@@ -106,7 +106,7 @@ internal class RestoreCommandBuilder
         return this;
     }
 
-    public RestoreCommandBuilder WithRehydrationQuestionHandler(Func<IReadOnlyList<RehydrationDetail>, bool> rehydrationQuestionHandler)
+    public RestoreCommandBuilder WithRehydrationQuestionHandler(Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision> rehydrationQuestionHandler)
     {
         this.rehydrationQuestionHandler = rehydrationQuestionHandler;
         return this;

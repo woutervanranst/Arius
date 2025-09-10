@@ -12,5 +12,12 @@ public sealed record RestoreCommand : RepositoryCommand<RestoreCommandResult>
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 
-    public Func<IReadOnlyList<RehydrationDetail>, bool> RehydrationQuestionHandler { get; init; } = _ => true;
+    public Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision> RehydrationQuestionHandler { get; init; } = _ => RehydrationDecision.StandardPriority;
+}
+
+public enum RehydrationDecision
+{
+    StandardPriority,
+    HighPriority,
+    DoNotRehydrate
 }
