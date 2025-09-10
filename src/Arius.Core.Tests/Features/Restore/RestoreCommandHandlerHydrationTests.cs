@@ -10,15 +10,15 @@ using Shouldly;
 
 namespace Arius.Core.Tests.Features.Restore;
 
-public class RestoreCommandHandlerHydrationTests : IClassFixture<FixtureWithFileSystem>
+public class RestoreCommandHandlerHydrationTests
 {
     private readonly FixtureWithFileSystem fixture;
     private readonly FakeLoggerFactory     fakeLoggerFactory = new();
     private readonly RestoreCommandHandler handler;
 
-    public RestoreCommandHandlerHydrationTests(FixtureWithFileSystem fixture)
+    public RestoreCommandHandlerHydrationTests()
     {
-        this.fixture = fixture;
+        fixture = new();
         handler      = new RestoreCommandHandler(fakeLoggerFactory.CreateLogger<RestoreCommandHandler>(), fakeLoggerFactory, fixture.AriusConfiguration);
     }
 
