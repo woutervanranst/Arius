@@ -64,11 +64,11 @@ public class RestoreCommandHandlerInMemoryTests : IClassFixture<Fixture>
             .WithRandomContent(10, 7)
             .Build();
 
-
+        
         var storageMock = new MockArchiveStorageBuilder(fixture)
             .AddBinaryChunk(NOTEXISTINGFILE.OriginalHash, NOTEXISTINGFILE.OriginalContent)
             .AddBinaryChunk(DUPLICATEBINARIES[0].OriginalHash, DUPLICATEBINARIES[1].OriginalContent)
-            .AddBinaryChunk(EXISTINGFILE.OriginalHash, EXISTINGFILE.FilePair.BinaryFile.ReadAllBytes())
+            .AddBinaryChunk(EXISTINGFILE.OriginalHash, EXISTINGFILE.OriginalContent)
             .AddBinaryChunk(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.OriginalContent)
             .AddTarChunk(out var TARHASH, t =>
             {
