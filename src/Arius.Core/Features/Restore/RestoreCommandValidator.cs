@@ -6,7 +6,7 @@ internal class RestoreCommandValidator : AbstractValidator<RestoreCommand>
 {
     public RestoreCommandValidator()
     {
-        Include(new RepositoryCommandValidator());
+        Include(new RepositoryCommandValidator<RestoreCommandResult>());
 
         RuleFor(x => x.Targets)
             .NotEmpty()

@@ -2,7 +2,7 @@ using Mediator;
 
 namespace Arius.Core.Features;
 
-public abstract record RepositoryCommand : ICommand
+public abstract record RepositoryCommand<TResponse> : ICommand<TResponse>
 {
     public required string AccountName    { get; init; }
     public required string AccountKey     { get; init; }

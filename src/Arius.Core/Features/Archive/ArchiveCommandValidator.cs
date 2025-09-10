@@ -1,4 +1,5 @@
 using FluentValidation;
+using Mediator;
 
 namespace Arius.Core.Features.Archive;
 
@@ -6,7 +7,7 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 {
     public ArchiveCommandValidator()
     {
-        Include(new RepositoryCommandValidator());
+        Include(new RepositoryCommandValidator<Unit>());
 
         RuleFor(x => x.LocalRoot)
             .NotNull()

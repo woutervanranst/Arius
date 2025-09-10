@@ -1,8 +1,9 @@
 ﻿using Arius.Core.Shared.Storage;
+using Mediator;
 
 namespace Arius.Core.Features.Archive;
 
-public sealed record ArchiveCommand : RepositoryCommand
+public sealed record ArchiveCommand : RepositoryCommand<Unit>
 {
     public required bool          RemoveLocal { get; init; }
     public required StorageTier   Tier        { get; init; }

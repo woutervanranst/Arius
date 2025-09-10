@@ -31,7 +31,7 @@ public class PublicClassTests
             typeof(Core.Bootstrapper).FullName,
             typeof(Core.AriusConfiguration).FullName,
 
-            typeof(RepositoryCommand).FullName,
+            typeof(RepositoryCommand<>).FullName,
 
             typeof(ArchiveCommand).FullName,
             typeof(Arius.Core.Features.Archive.ProgressUpdate).FullName,
@@ -39,6 +39,7 @@ public class PublicClassTests
             typeof(Arius.Core.Features.Archive.FileProgressUpdate).FullName,
             
             typeof(RestoreCommand).FullName,
+            typeof(RestoreCommandResult).FullName,
             typeof(Arius.Core.Features.Restore.ProgressUpdate).FullName,
         ], ignoreOrder: true);
     }

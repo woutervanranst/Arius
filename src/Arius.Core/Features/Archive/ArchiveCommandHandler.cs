@@ -16,7 +16,7 @@ public abstract record ProgressUpdate;
 public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public sealed record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
-internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
+internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
