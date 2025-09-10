@@ -36,9 +36,12 @@ internal static class Program
             // Start the host synchronously on STA thread
             host.Start();
 
-            var app = new Application();
-            var mainWindow = host.Services.GetRequiredService<MainWindow>();
-            app.Run(mainWindow);
+            // Set the service provider for the App
+            App.ServiceProvider = host.Services;
+
+            // Create and run the WPF application on STA thread
+            var app = new App();
+            app.Run();
 
             // Stop the host
             host.StopAsync().GetAwaiter().GetResult();
