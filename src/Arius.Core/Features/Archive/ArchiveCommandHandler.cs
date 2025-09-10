@@ -162,7 +162,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 indexedFilesChannel.Writer.Complete();
                 throw;
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 indexedFilesChannel.Writer.Complete();
                 errorCancellationTokenSource.Cancel();
@@ -194,7 +194,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 {
                     throw;
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     errorCancellationTokenSource.Cancel();
                     throw;
@@ -223,7 +223,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
                 {
                     throw;
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
                     errorCancellationTokenSource.Cancel();
                     throw;
@@ -241,7 +241,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             {
                 throw;
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 errorCancellationTokenSource.Cancel();
                 throw;
@@ -265,27 +265,17 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             // Upload
-            await using var targetStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
-                h: hash,
-                compressionLevel: CompressionLevel.SmallestSize,
-                contentType: ChunkContentType,
-                metadata: null,
-                progress: null,
-                cancellationToken: cancellationToken);
-
-            await using var sourceStream = filePair.BinaryFile.OpenRead();
-            await sourceStream.CopyToAsync(targetStream, bufferSize: 81920, cancellationToken);
-            await targetStream.FlushAsync(cancellationToken);
+            var (sourceStreamPosition, targetStreamPosition) = await UploadInternal();
 
             // Update tier
-            var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, targetStream.Position, handlerContext.Request.Tier);
+            var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, targetStreamPosition, handlerContext.Request.Tier);
 
             // Add to db
             handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
             {
                 Hash         = hash,
-                OriginalSize = sourceStream.Position,
-                ArchivedSize = targetStream.Position,
+                OriginalSize = sourceStreamPosition,
+                ArchivedSize = targetStreamPosition,
                 StorageTier  = actualTier
             });
 
@@ -310,6 +300,24 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand>
         });
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+
+        async Task<(long sourceStreamPosition, long targetStreamPosition)> UploadInternal()
+        {
+            // NOTE: put this in a separate block or wrap it in a using {} block to ensure the streams are disposed _before_ we change the tier to Archive (otherwise it is only disposed at the end of the method and we Flush the stream to an archived blob)
+            await using var targetStream = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
+                h: hash,
+                compressionLevel: CompressionLevel.SmallestSize,
+                contentType: ChunkContentType,
+                metadata: null,
+                progress: null,
+                cancellationToken: cancellationToken);
+
+            await using var sourceStream = filePair.BinaryFile.OpenRead();
+            await sourceStream.CopyToAsync(targetStream, bufferSize: 81920, cancellationToken);
+            await targetStream.FlushAsync(cancellationToken);
+
+            return (sourceStream.Position, targetStream.Position);
+        }
     }
 
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
