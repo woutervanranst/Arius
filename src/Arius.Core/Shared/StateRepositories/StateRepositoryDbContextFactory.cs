@@ -39,7 +39,6 @@ internal class StateRepositoryDbContextPool
 
         //context.Database.Migrate();
 
-
         if (ensureCreated)
         {
             lock (ensureCreatedLock)

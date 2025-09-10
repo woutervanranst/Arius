@@ -204,11 +204,6 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     {
                         await DownloadLargeFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
-
-
-                    //    // to rehydrate list
-
-                    //    // todo hydrate
                 }
                 catch (InvalidDataException e) when (e.Message.Contains("The archive entry was compressed using an unsupported compression method."))
                 {
