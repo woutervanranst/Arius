@@ -3,6 +3,7 @@ using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,7 +15,10 @@ using Zio;
 
 namespace Arius.Core.Features.Restore;
 
-public sealed record ProgressUpdate;
+public abstract record ProgressUpdate;
+public sealed record RestoreTaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public sealed record RestoreFileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public sealed record RehydrationProgressUpdate(string BlobName, string Status, int Count = 1) : ProgressUpdate;
 
 internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCommandResult>
 {
@@ -47,13 +51,15 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
     internal async ValueTask<RestoreCommandResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
+        logger.LogInformation("Starting restore operation for {TargetCount} targets with hash parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
+        
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
         var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var downloadBinariesTask = CreateDownloadBinariesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-
+        
         try
         {
             Task.WhenAll(indexTask, hashTask).ContinueWith(x =>
@@ -63,44 +69,42 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 });
             await Task.WhenAll(indexTask, hashTask, downloadBinariesTask);
 
+            // When all files have been downloaded, we know which files still need rehydration
+            await CreateRehydrateTask(handlerContext, cancellationToken, errorCancellationTokenSource);
 
-
-
-            var rds = toRehydrateList.Select(pfe => new RehydrationDetail
-            {
-                RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
-                ArchivedSize = pfe.BinaryProperties.ArchivedSize
-            }).ToArray();
-            if (rds.Any())
-            {
-                var rehydrateDecision = handlerContext.Request.RehydrationQuestionHandler(rds);
-                if (rehydrateDecision != RehydrationDecision.DoNotRehydrate)
-                {
-                    foreach (var g in toRehydrateList.GroupBy(pfe => pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash))
-                    {
-                        await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, rehydrateDecision.ToRehydratePriority());
-
-                        foreach (var pfe in g)
-                        {
-                            stillRehydratingList.Add(pfe);
-                        }
-                    }
-                }
-            }
+            // TODO reupload state file in case of changes (eg. tier in /chunks/ does not match)
         }
-        catch (Exception)
+        catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
-            // TODO
+            logger.LogDebug("Restore operation cancelled by user");
+            throw;
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Restore operation failed with exception");
+            
+            // Wait for all tasks to complete gracefully
+            var allTasks = new[] { indexTask, hashTask, downloadBinariesTask };
+            await Task.WhenAll(allTasks.Select(async t =>
+            {
+                try { await t; }
+                catch { /* Ignore exceptions during graceful shutdown */ }
+            }));
+            
             throw;
         }
 
+        var rehydratingFiles = stillRehydratingList.Select(pfe => new RehydrationDetail
+        {
+            RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
+            ArchivedSize = pfe.BinaryProperties.ArchivedSize
+        }).ToArray();
+
+        logger.LogInformation("Restore operation completed with {RehydratingCount} files still rehydrating", rehydratingFiles.Length);
+        
         var r = new RestoreCommandResult
         {
-            Rehydrating = stillRehydratingList.Select(pfe => new RehydrationDetail
-            {
-                RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
-                ArchivedSize = pfe.BinaryProperties.ArchivedSize
-            }).ToArray()
+            Rehydrating = rehydratingFiles
         };
 
         return r;
@@ -111,15 +115,28 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         {
             try
             {
+                logger.LogInformation("Starting target indexing for {TargetCount} targets", handlerContext.Targets.Length);
+                handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", 0));
+                
+                int totalFilesFound = 0;
+                int filesToRestore = 0;
+                int filesToVerify = 0;
+                
                 // 1. Iterate over all targets, and establish which binaryfiles need to be restored
-                foreach (var targetPath in handlerContext.Targets)
+                for (int i = 0; i < handlerContext.Targets.Length; i++)
                 {
+                    var targetPath = handlerContext.Targets[i];
                     var binaryFileTargetPath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath; // trim the pointerfile extension if present
                     var pfes = handlerContext.StateRepository.GetPointerFileEntries(binaryFileTargetPath.FullName, true).ToArray();
 
                     if (!pfes.Any())
                     {
-                        logger.LogWarning($"Target {targetPath} was specified but no matching PointerFileEntry");
+                        logger.LogWarning("Target {TargetPath} was specified but no matching PointerFileEntry found", targetPath);
+                    }
+                    else
+                    {
+                        logger.LogDebug("Found {FileCount} pointer file entries for target {TargetPath}", pfes.Length, targetPath);
+                        totalFilesFound += pfes.Length;
                     }
 
                     foreach (var pfe in pfes)
@@ -129,6 +146,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                         if (handlerContext.Request.IncludePointers)
                         {
                             // Create PointerFiles
+                            logger.LogDebug("Creating pointer file for {FileName}", fp.PointerFile.FullName);
                             fp.PointerFile.Directory.Create();
                             fp.PointerFile.Write(pfe.Hash, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
                         }
@@ -136,59 +154,93 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                         if (fp.BinaryFile.Exists)
                         {
                             // BinaryFile exists -- check the hash before restoring
+                            logger.LogDebug("File {FileName} exists, queued for hash verification", fp.BinaryFile.FullName);
                             await filePairsToHashChannel.Writer.WriteAsync(new (fp, pfe), cancellationToken);
+                            filesToVerify++;
                         }
                         else
                         {
                             // BinaryFile does not exist -- restore it
+                            logger.LogDebug("File {FileName} missing, queued for restore", fp.BinaryFile.FullName);
                             await filePairsToRestoreChannel.Writer.WriteAsync(new (fp, pfe), cancellationToken);
-
+                            filesToRestore++;
                         }
                     }
+                    
+                    // Update progress
+                    var progressPercentage = (double)(i + 1) / handlerContext.Targets.Length * 100;
+                    handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", progressPercentage));
                 }
 
                 // only CreateIndexTask writes to the filePairsToHashChannel
                 filePairsToHashChannel.Writer.Complete();
+                
+                logger.LogInformation("Target indexing completed: found {TotalFiles} files ({FilesToRestore} to restore, {FilesToVerify} to verify)", totalFilesFound, filesToRestore, filesToVerify);
+                handlerContext.Request.ProgressReporter?.Report(new RestoreTaskProgressUpdate("Indexing targets...", 100, $"Found {totalFilesFound} files"));
             }
             catch (OperationCanceledException)
             {
-                filePairsToHashChannel.Writer.Complete(); // TODO can this be in the finally block?
+                logger.LogDebug("Target indexing cancelled");
+                filePairsToHashChannel.Writer.Complete();
                 throw;
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                logger.LogError(e, "Target indexing failed with exception");
                 filePairsToHashChannel.Writer.Complete();
                 errorCancellationTokenSource.Cancel();
                 throw;
             }
-
-
         }, cancellationToken);
 
-    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
-        Parallel.ForEachAsync(filePairsToHashChannel.Reader.ReadAllAsync(cancellationToken),
+    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource)
+    {
+        logger.LogInformation("Starting hash verification with parallelism {HashParallelism}", handlerContext.Request.HashParallelism);
+        
+        return Parallel.ForEachAsync(filePairsToHashChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.HashParallelism, CancellationToken = cancellationToken },
             async (filePairWithPointerFileEntry, innerCancellationToken) =>
             {
-                var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
-
-                var h = await handlerContext.Hasher.GetHashAsync(filePair);
-
-                if (h == pointerFileEntry.Hash)
+                try
                 {
-                    // The hash matches - this binaryfile is already restored
-                }
-                else
-                {
-                    // The hash does not match - we need to restore this binaryfile
-                    // TODO log a warning that the binary did not match, or should it stop execution?
-                    await filePairsToRestoreChannel.Writer.WriteAsync(filePairWithPointerFileEntry, innerCancellationToken);
-                }
+                    var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+                    
+                    handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 25, "Verifying hash..."));
+                    
+                    var h = await handlerContext.Hasher.GetHashAsync(filePair);
 
+                    if (h == pointerFileEntry.Hash)
+                    {
+                        // The hash matches - this binaryfile is already restored
+                        logger.LogDebug("File {FileName} hash verified, already restored", filePair.BinaryFile.FullName);
+                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Already restored"));
+                    }
+                    else
+                    {
+                        // The hash does not match - we need to restore this binaryfile
+                        logger.LogWarning("File {FileName} hash mismatch (expected: {ExpectedHash}, actual: {ActualHash}), queued for restore", filePair.BinaryFile.FullName, pointerFileEntry.Hash.ToShortString(), h.ToShortString());
+                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 50, "Hash mismatch, restoring..."));
+                        await filePairsToRestoreChannel.Writer.WriteAsync(filePairWithPointerFileEntry, innerCancellationToken);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Hash verification failed for file {FileName}", filePairWithPointerFileEntry.FilePair.BinaryFile.FullName);
+                    errorCancellationTokenSource.Cancel();
+                    throw;
+                }
             });
+    }
 
-    private Task CreateDownloadBinariesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
-        Parallel.ForEachAsync(filePairsToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
+    private Task CreateDownloadBinariesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource)
+    {
+        logger.LogInformation("Starting binary download with parallelism {DownloadParallelism}", handlerContext.Request.DownloadParallelism);
+        
+        return Parallel.ForEachAsync(filePairsToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (filePairWithPointerFileEntry, innerCancellationToken) =>
             {
@@ -198,34 +250,55 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 {
                     if (pointerFileEntry.BinaryProperties.ParentHash is not null)
                     {
+                        logger.LogDebug("File {FileName} is small file (parent hash: {ParentHash}), downloading from TAR", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.ParentHash.ToShortString());
+                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading from TAR..."));
                         await DownloadSmallFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
                     else
                     {
+                        logger.LogDebug("File {FileName} is large file (hash: {Hash}), downloading directly", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString());
+                        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 10, "Downloading..."));
                         await DownloadLargeFileAsync(handlerContext, filePairWithPointerFileEntry, innerCancellationToken);
                     }
                 }
                 catch (InvalidDataException e) when (e.Message.Contains("The archive entry was compressed using an unsupported compression method."))
                 {
-                    logger.LogError($"Decryption failed for file '{filePair.BinaryFile.FullName}'. The passphrase may be incorrect or the file may be corrupted.");
+                    logger.LogError("Decryption failed for file {FileName}. The passphrase may be incorrect or the file may be corrupted", filePair.BinaryFile.FullName);
                     errorCancellationTokenSource.Cancel();
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
                     throw;
                 }
                 catch (Exception e)
                 {
+                    logger.LogError(e, "Download failed for file {FileName}", filePair.BinaryFile.FullName);
+                    errorCancellationTokenSource.Cancel();
                     throw;
                 }
             });
+    }
 
     private async Task DownloadLargeFileAsync(HandlerContext handlerContext, FilePairWithPointerFileEntry filePairWithPointerFileEntry, CancellationToken cancellationToken = default)
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+        var fileSizeFormatted = pointerFileEntry.BinaryProperties.OriginalSize.Bytes().Humanize();
+
+        logger.LogDebug("Starting large file download for {FileName} (size: {FileSize}, hash: {Hash})", filePair.BinaryFile.FullName, fileSizeFormatted, pointerFileEntry.Hash.ToShortString());
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting chunk stream..."));
 
         // 1. Get the decrypted blob stream from storage - use hydrated chunk for archived blobs
         await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
 
         if (ss is null) // Chunk is not available (either archived or rehydrating)
+        {
+            logger.LogDebug("Chunk stream not available for {FileName}, skipping download (archived or rehydrating)", filePair.BinaryFile.FullName);
+            handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
             return;
+        }
+
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 60, "Downloading..."));
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
@@ -238,52 +311,84 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
+        
+        logger.LogInformation("Large file download completed: {FileName} ({FileSize})", filePair.BinaryFile.FullName, fileSizeFormatted);
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
     }
 
     private async Task DownloadSmallFileAsync(HandlerContext handlerContext, FilePairWithPointerFileEntry filePairWithPointerFileEntry, CancellationToken cancellationToken = default)
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
+        var fileSizeFormatted = pointerFileEntry.BinaryProperties.OriginalSize.Bytes().Humanize();
+        var parentHash = pointerFileEntry.BinaryProperties.ParentHash!;
+
+        logger.LogDebug("Starting small file download for {FileName} from TAR (size: {FileSize}, parent hash: {ParentHash})", filePair.BinaryFile.FullName, fileSizeFormatted, parentHash.ToShortString());
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting TAR archive..."));
 
         // 1. Get the TarEntry
-        var tar       = await GetCachedTarAsync();
+        var tar = await GetCachedTarAsync();
         if (tar is null) // TAR is not available (either archived or rehydrating)
+        {
+            logger.LogDebug("TAR archive not available for {FileName}, skipping download (archived or rehydrating)", filePair.BinaryFile.FullName);
+            handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Skipped (rehydrating)"));
             return;
+        }
 
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
+        
         await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
-        var             tarEntry  = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
+        var tarEntry = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
 
-        // TODO throw exception if tarEntry is null
+        if (tarEntry is null)
+        {
+            logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
+            throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
+        }
+
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
 
         // 2. Write to the target file
         filePair.BinaryFile.Directory.Create();
         await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
         {
-            await tarEntry.DataStream.CopyToAsync(ts, cancellationToken);
+            await tarEntry.DataStream!.CopyToAsync(ts, cancellationToken);
             await ts.FlushAsync(cancellationToken); // Explicitly flush
         }
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
+        logger.LogInformation("Small file download completed: {FileName} ({FileSize}) from TAR", filePair.BinaryFile.FullName, fileSizeFormatted);
+        handlerContext.Request.ProgressReporter?.Report(new RestoreFileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
         return;
 
 
         async Task<FileEntry?> GetCachedTarAsync()
         {
-            var cachedBinary = handlerContext.BinaryCache.GetFileEntry(pointerFileEntry.BinaryProperties.ParentHash!.ToString());
+            var cachedBinary = handlerContext.BinaryCache.GetFileEntry(parentHash.ToString());
             if (!cachedBinary.Exists)
             {
+                logger.LogDebug("TAR archive not cached, downloading from blob storage (parent hash: {ParentHash})", parentHash.ToShortString());
+                
                 // The TAR was not yet downloaded from blob storage
                 await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
 
                 if (ss is null) // Chunk is not available (either archived or rehydrating)
+                {
+                    logger.LogDebug("TAR archive chunk stream not available for {ParentHash}", parentHash.ToShortString());
                     return null;
+                }
 
                 await using var ts = cachedBinary.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
-
                 await ss.CopyToAsync(ts, cancellationToken);
                 await ts.FlushAsync(cancellationToken); // Explicitly flush
+                
+                logger.LogDebug("TAR archive cached successfully for {ParentHash}", parentHash.ToShortString());
+            }
+            else
+            {
+                logger.LogDebug("Using cached TAR archive for {ParentHash}", parentHash.ToShortString());
             }
 
             return cachedBinary;
@@ -291,11 +396,21 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         async Task<TarEntry?> GetTarEntryAsync(Hash hash)
         {
+            logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
+            
             TarEntry? entry;
-            while ((entry = await tarReader.GetNextEntryAsync(copyData: false /* todo investigate */, cancellationToken)) != null)
+            while ((entry = await tarReader.GetNextEntryAsync(copyData: false, cancellationToken)) != null)
             {
                 if (entry.Name == hash)
+                {
+                    logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
                     break;
+                }
+            }
+
+            if (entry is null)
+            {
+                logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
             }
 
             return entry;
@@ -368,4 +483,59 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             }
         }
     }
+
+    private Task CreateRehydrateTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+        Task.Run(async () =>
+        {
+            try
+            {
+                var rds = toRehydrateList.Select(pfe => new RehydrationDetail
+                {
+                    RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
+                    ArchivedSize = pfe.BinaryProperties.ArchivedSize
+                }).ToArray();
+
+                if (rds.Any())
+                {
+                    logger.LogInformation("Found {RehydrationCount} files requiring rehydration (total size: {TotalSize})", rds.Length, rds.Sum(rd => rd.ArchivedSize).Bytes().Humanize());
+
+                    var rehydrateDecision = handlerContext.Request.RehydrationQuestionHandler(rds);
+                    if (rehydrateDecision != RehydrationDecision.DoNotRehydrate)
+                    {
+                        logger.LogInformation("Starting rehydration with priority {Priority} for {BlobCount} unique blobs", rehydrateDecision.ToRehydratePriority(), toRehydrateList.GroupBy(pfe => pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash).Count());
+
+                        handlerContext.Request.ProgressReporter?.Report(new RehydrationProgressUpdate("Starting rehydration...", "Initiated", rds.Length));
+
+                        foreach (var g in toRehydrateList.GroupBy(pfe => pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash))
+                        {
+                            await handlerContext.ArchiveStorage.StartHydrationAsync(g.Key, rehydrateDecision.ToRehydratePriority());
+                            logger.LogDebug("Started rehydration for blob {BlobHash} covering {FileCount} files", g.Key.ToShortString(), g.Count());
+
+                            foreach (var pfe in g)
+                            {
+                                stillRehydratingList.Add(pfe);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        logger.LogInformation("User chose not to rehydrate {FileCount} archived files", rds.Length);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                logger.LogDebug("Rehydration cancelled");
+                filePairsToHashChannel.Writer.Complete();
+                throw;
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Rehydration failed with exception");
+                filePairsToHashChannel.Writer.Complete();
+                errorCancellationTokenSource.Cancel();
+                throw;
+            }
+        }, cancellationToken);
+
 }
