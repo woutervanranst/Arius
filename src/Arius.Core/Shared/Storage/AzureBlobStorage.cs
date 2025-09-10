@@ -108,26 +108,49 @@ internal class AzureBlobStorage : IStorage
 
     public async Task<Result<Stream>> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
     {
+        logger.LogDebug("Opening blob '{BlobName}' for reading from container '{ContainerName}'", blobName, blobContainerClient.Name);
+        var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
+
         try
         {
-            var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
             var stream = await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
+            logger.LogDebug("Successfully opened blob '{BlobName}' for reading", blobName);
+
+            // Try reading the blob here to catch Archive status early. The read bytes (4 MB by default) will be in the cache.
+            var testBuffer = new byte[1];
+            await stream.ReadAsync(testBuffer, 0, 1, cancellationToken);
+            stream.Seek(0, SeekOrigin.Begin);
+
             return Result.Ok(stream);
         }
-        catch (RequestFailedException e) when (e.BlobNotFound())
+        catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
         {
+            logger.LogWarning("Blob '{BlobName}' not found in container '{ContainerName}'", blobName, blobContainerClient.Name);
             return Result.Fail(new BlobNotFoundError(blobName));
         }
-        catch (RequestFailedException e) when (e.BlobIsArchived())
+        catch (RequestFailedException e) when (e is { Status: 409, ErrorCode: "BlobArchived" })
         {
-            return Result.Fail(new BlobArchivedError(blobName));
-        }
-        catch (RequestFailedException e) when (e.BlobIsRehydrating())
-        {
-            return Result.Fail(new BlobRehydratingError(blobName));
+            var p = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+
+            // TODO zie tooltip van ArchiveStatus - only for LRS accounts?
+            if (p.Value.ArchiveStatus?.StartsWith("rehydrate-pending-to-", StringComparison.OrdinalIgnoreCase) ?? false)
+            {
+                logger.LogInformation("Blob '{BlobName}' is currently rehydrating", blobName);
+                return Result.Fail(new BlobRehydratingError(blobName));
+            }
+            else if (p.Value.AccessTier == "Archive")
+            {
+                logger.LogInformation("Blob '{BlobName}' is archived and needs rehydration", blobName);
+                return Result.Fail(new BlobArchivedError(blobName));
+            }
+            else
+            {
+                throw new InvalidOperationException();
+            }
         }
         catch (RequestFailedException e)
         {
+            logger.LogError(e, "Failed to open blob '{BlobName}' for reading. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
             return Result.Fail(new Error($"Azure storage operation failed: {e.Message}")
                 .WithMetadata("StatusCode", e.Status)
                 .WithMetadata("ErrorCode", e.ErrorCode ?? "Unknown")
