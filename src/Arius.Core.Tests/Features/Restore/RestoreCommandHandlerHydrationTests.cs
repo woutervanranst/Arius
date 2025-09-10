@@ -24,6 +24,8 @@ public class RestoreCommandHandlerHydrationTests
     }
 
 
+    // -- LARGE | ONLINE
+
     [Fact]
     public async Task GetChunkStreamAsyncForLargeFile_OnlineTier_IsSuccessPath()
     {
@@ -249,6 +251,7 @@ public class RestoreCommandHandlerHydrationTests
     }
 
 
+    // -- LARGE | OFFLINE
 
     [Fact]
     public async Task GetChunkStreamAsyncForLargeFile_OfflineTier_IsSuccessPath()
@@ -479,6 +482,30 @@ public class RestoreCommandHandlerHydrationTests
     }
 
 
+    // -- SMALL | ONLINE
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OnlineTier_IsSuccessPath()
+    {
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OnlineTier_BlobArchivedErrorPath()
+    {
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OnlineTier_BlobRehydratingErrorPath()
+    {
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OnlineTier_BlobNotFoundErrorPath()
+    {
+    }
+
+
+    // -- SMALL | OFFLINE
 
     [Fact]
     public async Task GetChunkStreamAsyncForSmallFile_OfflineTier_IsSuccessPath()
@@ -490,17 +517,11 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var storageMock = new MockArchiveStorageBuilder(fixture)
-            .AddHydratedTarChunk(out var parentHash, t =>
-            {
-                t.AddBinary(tarContent.OriginalHash, tarContent.OriginalContent);
-            })
+            .AddHydratedTarChunk(out var parentHash, t => { t.AddBinary(tarContent.OriginalHash, tarContent.OriginalContent); })
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(tarContent.OriginalHash, parentHash, tarContent.OriginalContent.Length, storageTier: StorageTier.Archive, pointerFileEntries: pfes =>
-            {
-                pfes.WithPointerFileEntry(tarContent.OriginalPath);
-            })
+            .WithBinaryProperty(tarContent.OriginalHash, parentHash, tarContent.OriginalContent.Length, storageTier: StorageTier.Archive, pointerFileEntries: pfes => { pfes.WithPointerFileEntry(tarContent.OriginalPath); })
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, bool>>();
@@ -537,5 +558,21 @@ public class RestoreCommandHandlerHydrationTests
         await storageMock.DidNotReceiveWithAnyArgs().StartRehydrationAsync(default);
         // -- The Binary is successfully restored
         tarContent.FilePair.BinaryFile.ReadAllBytes().ShouldBe(tarContent.OriginalContent);
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OfflineTier_BlobNotFoundErrorPath()
+    {
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+
+    public async Task GetChunkStreamAsyncForSmallFile_OfflineTier_BlobRehydratingErrorPath()
+    {
+    }
+
+    [Fact(Skip = "Not yet implemented")]
+    public async Task GetChunkStreamAsyncForSmallFile_OfflineTier_BlobArchivedErrorPath()
+    {
     }
 }
