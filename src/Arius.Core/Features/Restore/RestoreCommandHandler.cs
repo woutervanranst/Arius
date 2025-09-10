@@ -62,6 +62,27 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     filePairsToRestoreChannel.Writer.Complete();
                 });
             await Task.WhenAll(indexTask, hashTask, downloadBinariesTask);
+
+
+
+
+            var rds = toRehydrateList.Select(pfe => new RehydrationDetail
+            {
+                RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
+                ArchivedSize = pfe.BinaryProperties.ArchivedSize.Value
+            }).ToArray();
+            if (rds.Any())
+            {
+                var rehydrateDecision = handlerContext.Request.RehydrationQuestionHandler(rds);
+                if (rehydrateDecision)
+                {
+                    foreach (var pfe in toRehydrateList)
+                    {
+                        await handlerContext.ArchiveStorage.StartRehydrationAsync(pfe.BinaryProperties.ParentHash ?? pfe.BinaryProperties.Hash);
+                        stillRehydratingList.Add(pfe);
+                    }
+                }
+            }
         }
         catch (Exception)
         {
@@ -71,7 +92,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         var r = new RestoreCommandResult
         {
-            Rehydrating = stillRehydratingList.Concat(toRehydrateList).Select(pfe => new RestoreCommandResult.RehydratingDetail()
+            Rehydrating = stillRehydratingList.Select(pfe => new RehydrationDetail
             {
                 RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
                 ArchivedSize = pfe.BinaryProperties.ArchivedSize.Value
@@ -317,6 +338,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             switch (result)
             {
                 case { IsSuccess: true }:
+                    logger.LogInformation("Reading from rehydrated blob {BlobName} for '{RelativeName}'.", hash, pointerFileEntry.RelativeName);
                     return result.Value;
                 case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
                     // Blob not found in chunks-rehydrated --> add it to the rehydration list
