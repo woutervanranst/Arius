@@ -36,18 +36,14 @@ internal class StateRepositoryBuilder
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        return WithBinaryProperty(hash, originalSize, null, StorageTier.Hot, pointerFileEntries);
+        return WithBinaryProperty(hash, originalSize, 42, StorageTier.Hot, pointerFileEntries);
     }
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, StorageTier storageTier, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        return WithBinaryProperty(hash, originalSize, null, storageTier, pointerFileEntries);
+        return WithBinaryProperty(hash, originalSize, 42, storageTier, pointerFileEntries);
     }
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize, Action<PointerFileEntryBuilder> pointerFileEntries)
-    {
-        return WithBinaryProperty(hash, originalSize, archivedSize, StorageTier.Hot, pointerFileEntries);
-    }
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long? archivedSize = null, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long archivedSize, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
     {
         var pointerFileBuilder = new PointerFileEntryBuilder();
         pointerFileEntries?.Invoke(pointerFileBuilder);
@@ -68,15 +64,10 @@ internal class StateRepositoryBuilder
 
     public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
     {
-        return WithBinaryProperty(hash, parentHash, originalSize, null, StorageTier.Hot, pointerFileEntries);
+        return WithBinaryProperty(hash, parentHash, originalSize, 42, StorageTier.Hot, pointerFileEntries);
     }
 
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize, Action<PointerFileEntryBuilder> pointerFileEntries)
-    {
-        return WithBinaryProperty(hash, parentHash, originalSize, archivedSize, StorageTier.Hot, pointerFileEntries);
-    }
-
-    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long? archivedSize = null, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long archivedSize, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
     {
         var pointerFileBuilder = new PointerFileEntryBuilder();
         pointerFileEntries?.Invoke(pointerFileBuilder);

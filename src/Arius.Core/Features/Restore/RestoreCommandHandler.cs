@@ -69,7 +69,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             var rds = toRehydrateList.Select(pfe => new RehydrationDetail
             {
                 RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
-                ArchivedSize = pfe.BinaryProperties.ArchivedSize.Value
+                ArchivedSize = pfe.BinaryProperties.ArchivedSize
             }).ToArray();
             if (rds.Any())
             {
@@ -99,7 +99,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             Rehydrating = stillRehydratingList.Select(pfe => new RehydrationDetail
             {
                 RelativeName = pfe.RelativeName.RemoveSuffix(PointerFile.Extension),
-                ArchivedSize = pfe.BinaryProperties.ArchivedSize.Value
+                ArchivedSize = pfe.BinaryProperties.ArchivedSize
             }).ToArray()
         };
 

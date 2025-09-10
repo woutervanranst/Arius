@@ -519,7 +519,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(tarContent.OriginalHash, parentHash, tarContent.OriginalContent.Length, storageTier: StorageTier.Archive, pointerFileEntries: pfes => { pfes.WithPointerFileEntry(tarContent.OriginalPath); })
+            .WithBinaryProperty(tarContent.OriginalHash, parentHash: parentHash, originalSize: tarContent.OriginalContent.Length, archivedSize: 42, storageTier: StorageTier.Archive, pointerFileEntries: pfes => { pfes.WithPointerFileEntry(tarContent.OriginalPath); })
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();

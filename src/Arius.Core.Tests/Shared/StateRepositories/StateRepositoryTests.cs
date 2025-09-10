@@ -56,19 +56,20 @@ public class StateRepositoryTests : IDisposable
         
         var bp1 = new BinaryProperties
         {
-            Hash = hash1,
-            OriginalSize = 100,
-            ArchivedSize = 80,
-            StorageTier = StorageTier.Hot,
+            Hash               = hash1,
+            OriginalSize       = 100,
+            ArchivedSize       = 80,
+            StorageTier        = StorageTier.Hot,
             PointerFileEntries = new List<PointerFileEntry>()
         };
         
         var bp2 = new BinaryProperties
         {
-            Hash = hash2,
-            OriginalSize = 200,
-            ParentHash = hash1,
-            StorageTier = StorageTier.Cold,
+            Hash               = hash2,
+            OriginalSize       = 200,
+            ArchivedSize       = 80,
+            ParentHash         = hash1,
+            StorageTier        = StorageTier.Cold,
             PointerFileEntries = new List<PointerFileEntry>()
         };
 
@@ -90,7 +91,7 @@ public class StateRepositoryTests : IDisposable
         retrieved2.ShouldNotBeNull();
         retrieved2.Hash.ShouldBe(hash2);
         retrieved2.OriginalSize.ShouldBe(200);
-        retrieved2.ArchivedSize.ShouldBeNull();
+        retrieved2.ArchivedSize.ShouldBe(80);
         retrieved2.StorageTier.ShouldBe(StorageTier.Cold);
         retrieved2.ParentHash.ShouldBe(hash1);
     }

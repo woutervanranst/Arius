@@ -8,8 +8,9 @@ internal record BinaryProperties
     public         Hash                          Hash               { get; init; }
     public         Hash?                         ParentHash         { get; init; } // Null in case of a non-TARred entry
     public         long                          OriginalSize       { get; init; }
-    public         long?                         ArchivedSize       { get; init; } // null in case of tarred archives
-    public         StorageTier                  StorageTier        { get; set; } // settable in case of tarred archives
+    public         long                          ArchivedSize       { get; init; } // null in case of tarred archives
+    public         StorageTier                   StorageTier        { get; set; } // can be set by SetBinaryPropertyArchiveTier. Should you split up with dto, the DTO can be set, and the domain object init;
+    
     public virtual ICollection<PointerFileEntry> PointerFileEntries { get; set; }
 }
 
@@ -19,5 +20,6 @@ internal record PointerFileEntry
     public         string           RelativeName     { get; init; }
     public         DateTime?        CreationTimeUtc  { get; set; }
     public         DateTime?        LastWriteTimeUtc { get; set; }
+    
     public virtual BinaryProperties BinaryProperties { get; init; }
 }
