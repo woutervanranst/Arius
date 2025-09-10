@@ -1,15 +1,43 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net9.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net9.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		
+		<UseWPF>true</UseWPF>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
-  </ItemGroup>
+		<ApplicationIcon>Resources\iceberg.ico</ApplicationIcon> <!--Windows Application icon-->
+		<PackageIcon>Resources\iceberg.ico</PackageIcon> <!--Nuget package icon-->
+
+		<UseWPF>true</UseWPF>
+		<!--<UseWindowsForms>True</UseWindowsForms>-->
+
+		<Authors>Wouter Van Ranst</Authors>
+		<Company>Blue Software</Company>
+		<Copyright>Blue Software</Copyright>
+		<PackageProjectUrl>https://github.com/woutervanranst/Arius</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/woutervanranst/Arius</RepositoryUrl>
+		<AssemblyName>Arius.Explorer</AssemblyName>
+		<Title>Arius Explorer</Title>
+		<PackageId>Arius.Explorer</PackageId>
+		<Product>Arius Explorer</Product>
+		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+		<PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+		<PackageReference Include="Serilog.Extensions.Hosting" />
+		<PackageReference Include="Serilog.Sinks.File" />
+		<PackageReference Include="Serilog.Enrichers.Thread" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+	</ItemGroup>
 
 </Project>
