@@ -29,7 +29,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
 
     [Fact]
-    public async Task RunArchiveCommand() // NOTE this one is skipped in CI
+    public async Task RunArchiveCommandTEMP() // NOTE this one is skipped in CI
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
 
@@ -51,7 +51,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     }
 
     [Fact]
-    public async Task UploadIfNotExistsAsync_WhenFileDoesNotExist_ShouldUploadSuccessfully()
+    public async Task UploadIfNotExistsAsync_WhenChunkDoesNotExist_ShouldUpload()
     {
         // Arrange
         var testContent = "test content for new upload";
@@ -89,7 +89,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     }
 
     [Fact]
-    public async Task UploadIfNotExistsAsync_WhenFileExistsWithCorrectContentType_ShouldReturnExistingMetadata()
+    public async Task UploadIfNotExistsAsync_WhenValidChunkExists_ShouldNotUploadAgain()
     {
         // Arrange
         var testContent = "test content for existing blob";
@@ -135,7 +135,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     }
 
     [Fact]
-    public async Task UploadIfNotExistsAsync_WhenFileExistsWithWrongContentType_ShouldDeleteAndReUpload()
+    public async Task UploadIfNotExistsAsync_WhenInvalidChunk_ShouldDeleteAndReUpload()
     {
         // Arrange
         var testContent = "test content for corrupted blob";

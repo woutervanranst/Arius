@@ -47,8 +47,8 @@ jobs:
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
         run: |
-          dotnet test Arius.Cli.Tests/Arius.Cli.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Archive.ArchiveCommandHandlerTests.RunArchiveCommand" --logger "trx;LogFileName=cli-test-results.trx" --collect:"XPlat Code Coverage"
-          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Archive.ArchiveCommandHandlerTests.RunArchiveCommand" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Cli.Tests/Arius.Cli.Tests.csproj --configuration Release --logger "trx;LogFileName=cli-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Archive.ArchiveCommandHandlerTests.RunArchiveCommandTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: "📄 Publish Test Report"
         if: always()
