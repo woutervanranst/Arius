@@ -20,11 +20,12 @@ permissions:
 
 jobs:
   arius_cli_test:
-    name: "🧪 Arius.Cli & Core Tests on ${{ matrix.os }}"
+    name: "🧪 CLI & Core Tests on ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        name: [Linux, Windows]
     defaults:
       run:
         working-directory: src
@@ -66,7 +67,7 @@ jobs:
           fail_ci_if_error: true
 
   arius_cli_build:
-    name: "🚀 Arius.Cli Build & Release"
+    name: "🚀 CLI Build & Release"
     runs-on: ubuntu-latest
     needs: arius_cli_test
     defaults:
@@ -94,7 +95,7 @@ jobs:
             echo "IS_PRERELEASE=true" >> $GITHUB_ENV
           fi
 
-      - name: "📦 Publish Arius.Cli"
+      - name: "📦 Publish CLI"
         run: dotnet publish Arius.Cli/Arius.Cli.csproj --configuration Release --output publish
 
       - name: "🗜️ Package artifact"
@@ -135,7 +136,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   arius_explorer_test:
-    name: "🧪 Arius.Explorer Tests (Windows)"
+    name: "🧪 Explorer Tests (Windows)"
     runs-on: windows-latest
     defaults:
       run:
@@ -175,7 +176,7 @@ jobs:
           fail_ci_if_error: true
 
   arius_explorer_build:
-    name: "🏗️ Arius.Explorer Build (stub)"
+    name: "🏗️ Explorer Build (stub)"
     runs-on: windows-latest
     needs: arius_explorer_test
     steps:
