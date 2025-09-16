@@ -2,9 +2,9 @@ using FluentValidation;
 
 namespace Arius.Core.Features;
 
-internal sealed class StorageAccountValidator : AbstractValidator<StorageAccountCommandProperties>
+internal sealed class StorageAccountCommandValidator : AbstractValidator<StorageAccountCommandProperties>
 {
-    public StorageAccountValidator()
+    public StorageAccountCommandValidator()
     {
         RuleFor(x => x.AccountName)
             .NotEmpty()

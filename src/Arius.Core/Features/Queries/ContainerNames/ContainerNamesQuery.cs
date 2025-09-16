@@ -27,7 +27,7 @@ internal class ContainerNamesQueryHandler : IStreamQueryHandler<ContainerNamesQu
         //    yield return name;
         //}
 
-        await new StorageAccountValidator().ValidateAndThrowAsync(request, cancellationToken);
+        await new StorageAccountCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
         var storage = new AzureBlobStorageAccount(request.AccountName, request.AccountKey, false, loggerFactory.CreateLogger<AzureBlobStorageAccount>());
 

@@ -6,8 +6,8 @@ internal sealed class RepositoryCommandValidator : AbstractValidator<RepositoryC
 {
     public RepositoryCommandValidator()
     {
-        // Reuse the StorageAccountValidator rules
-        Include(new StorageAccountValidator());
+        // Reuse the StorageAccountCommandValidator rules
+        Include(new StorageAccountCommandValidator());
 
         RuleFor(x => x.ContainerName)
             .NotEmpty()
