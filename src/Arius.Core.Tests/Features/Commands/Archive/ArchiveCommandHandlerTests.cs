@@ -1,4 +1,4 @@
-using Arius.Core.Features.Archive;
+using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fakes;
@@ -12,7 +12,7 @@ using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Arius.Core.Tests.Features.Archive;
+namespace Arius.Core.Tests.Features.Commands.Archive;
 
 public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 {

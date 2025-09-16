@@ -3,7 +3,7 @@ using Arius.Core.Shared.Hashing;
 using System.Formats.Tar;
 using System.IO.Compression;
 
-namespace Arius.Core.Features.Archive;
+namespace Arius.Core.Features.Commands.Archive;
 
 internal sealed class InMemoryGzippedTarWriter : IDisposable
 {

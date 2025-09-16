@@ -1,4 +1,4 @@
-using Arius.Core.Features.Archive;
+using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
@@ -8,7 +8,7 @@ using NSubstitute;
 using Shouldly;
 using Zio;
 
-namespace Arius.Core.Tests.Features.Archive;
+namespace Arius.Core.Tests.Features.Commands.Archive;
 
 public class ArchiveCommandHandlerContextCreateAsyncTests
 {
@@ -87,18 +87,18 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
 
         // Verify the remote state was downloaded
         await mockArchiveStorage.Received(1).DownloadStateAsync(
-            existingStateName, 
-            Arg.Is<FileEntry>(fi => fi.Name == $"{existingStateName}.db"), 
+            existingStateName,
+            Arg.Is<FileEntry>(fi => fi.Name == $"{existingStateName}.db"),
             Arg.Any<CancellationToken>());
 
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = stateCache.GetStateFileEntries().ToArray();
         stateFiles.Length.ShouldBeGreaterThan(0);
-        
+
         // Should have the downloaded state file and the new version
         var downloadedStateFile = stateFiles.FirstOrDefault(f => f.Name == $"{existingStateName}.db");
         downloadedStateFile.ShouldNotBeNull("the downloaded state file should exist");
-        
+
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
         newStateFile.ShouldNotBeNull("a new state file should be created");
         newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
@@ -109,7 +109,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
     {
         // Arrange
         const string existingStateName = "2024-01-01T12-00-00";
-        
+
         mockArchiveStorage.CreateContainerIfNotExistsAsync().Returns(true);
         mockArchiveStorage.GetStates(Arg.Any<CancellationToken>()).Returns(new[] { existingStateName }.ToAsyncEnumerable());
 
@@ -132,11 +132,11 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = stateCache.GetStateFileEntries().ToArray();
         stateFiles.Length.ShouldBeGreaterThan(1);
-        
+
         // Should have the existing state file and the new version
         var existingFile = stateFiles.FirstOrDefault(f => f.Name == $"{existingStateName}.db");
         existingFile.ShouldNotBeNull("the existing state file should still exist");
-        
+
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
         newStateFile.ShouldNotBeNull("a new state file should be created");
         newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");

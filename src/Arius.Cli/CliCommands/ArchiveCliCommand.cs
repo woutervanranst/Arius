@@ -1,4 +1,4 @@
-﻿using Arius.Core.Features.Archive;
+﻿using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.Storage;
 using CliFx.Attributes;
 using CliFx.Exceptions;

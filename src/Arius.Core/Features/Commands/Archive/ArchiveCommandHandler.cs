@@ -11,7 +11,7 @@ using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
 
-namespace Arius.Core.Features.Archive;
+namespace Arius.Core.Features.Commands.Archive;
 
 public abstract record ProgressUpdate;
 public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
@@ -318,9 +318,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             // Blob exists - check content type
             var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
-            if (properties?.ContentType == contentType && (properties.Metadata != null &&
-                                                           properties.Metadata.TryGetValue("OriginalContentLength", out var originalSizeStr) &&
-                                                           long.TryParse(originalSizeStr, out var originalSize)))
+            if (properties?.ContentType == contentType && properties.Metadata != null &&
+                                                          properties.Metadata.TryGetValue("OriginalContentLength", out var originalSizeStr) &&
+                                                          long.TryParse(originalSizeStr, out var originalSize))
             {
                 // Correct content type: file was already uploaded previous time --> read from metadata
                 logger.LogInformation("Using existing metadata for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, properties.ContentLength);

@@ -1,4 +1,4 @@
-using Arius.Core.Features.Restore;
+using Arius.Core.Features.Commands.Restore;
 using Mediator;
 using NSubstitute;
 using Shouldly;

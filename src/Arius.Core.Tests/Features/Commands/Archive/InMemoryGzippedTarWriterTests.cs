@@ -1,4 +1,4 @@
-using Arius.Core.Features.Archive;
+using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
@@ -6,7 +6,7 @@ using Shouldly;
 using System.Formats.Tar;
 using System.IO.Compression;
 
-namespace Arius.Core.Tests.Features.Archive;
+namespace Arius.Core.Tests.Features.Commands.Archive;
 
 public class InMemoryGzippedTarWriterTests : IClassFixture<FixtureWithFileSystem>
 {

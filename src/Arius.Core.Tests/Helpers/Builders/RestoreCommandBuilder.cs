@@ -1,4 +1,4 @@
-using Arius.Core.Features.Restore;
+using Arius.Core.Features.Commands.Restore;
 using Arius.Core.Tests.Helpers.Fixtures;
 
 namespace Arius.Core.Tests.Helpers.Builders;

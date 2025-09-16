@@ -1,7 +1,7 @@
 ﻿using Arius.Core.Shared.Storage;
 using Mediator;
 
-namespace Arius.Core.Features.Archive;
+namespace Arius.Core.Features.Commands.Archive;
 
 public sealed record ArchiveCommand : RepositoryCommand<Unit>
 {

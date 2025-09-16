@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Features.Archive;
+namespace Arius.Core.Features.Commands.Archive;
 
 internal class HandlerContextBuilder
 {

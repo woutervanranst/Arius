@@ -1,4 +1,4 @@
-namespace Arius.Core.Features.Restore;
+namespace Arius.Core.Features.Commands.Restore;
 
 public sealed record RestoreCommandResult
 {

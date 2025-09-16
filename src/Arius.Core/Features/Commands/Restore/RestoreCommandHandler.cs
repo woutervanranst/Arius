@@ -13,7 +13,7 @@ using System.Threading.Channels;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 
-namespace Arius.Core.Features.Restore;
+namespace Arius.Core.Features.Commands.Restore;
 
 public abstract record ProgressUpdate;
 public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;

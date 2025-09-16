@@ -1,4 +1,4 @@
-using Arius.Core.Features.Restore;
+using Arius.Core.Features.Commands.Restore;
 using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;

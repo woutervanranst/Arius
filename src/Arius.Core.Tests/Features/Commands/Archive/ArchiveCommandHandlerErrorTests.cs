@@ -1,11 +1,11 @@
-using Arius.Core.Features.Archive;
+using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
 
-namespace Arius.Core.Tests.Features.Archive;
+namespace Arius.Core.Tests.Features.Commands.Archive;
 
 public class ArchiveCommandHandlerErrorTests
 {

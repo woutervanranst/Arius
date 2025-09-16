@@ -1,4 +1,4 @@
-using Arius.Core.Features.Restore;
+using Arius.Core.Features.Commands.Restore;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.FakeLogger;
@@ -7,7 +7,7 @@ using Arius.Core.Tests.Helpers.Fixtures;
 using NSubstitute;
 using Shouldly;
 
-namespace Arius.Core.Tests.Features.Restore;
+namespace Arius.Core.Tests.Features.Commands.Restore;
 
 public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 {

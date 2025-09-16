@@ -1,8 +1,5 @@
 using ArchUnitNET.Domain;
 using ArchUnitNET.Loader;
-using Arius.Core.Features;
-using Arius.Core.Features.Archive;
-using Arius.Core.Features.Restore;
 using Shouldly;
 
 namespace Arius.Core.Tests.Architecture;
@@ -31,20 +28,20 @@ public class PublicClassTests
             typeof(Core.Bootstrapper).FullName,
             typeof(Core.AriusConfiguration).FullName,
 
-            typeof(RepositoryCommand<>).FullName,
+            typeof(Core.Features.RepositoryCommand<>).FullName,
 
-            typeof(ArchiveCommand).FullName,
-            typeof(Arius.Core.Features.Archive.ProgressUpdate).FullName,
-            typeof(Arius.Core.Features.Archive.TaskProgressUpdate).FullName,
-            typeof(Arius.Core.Features.Archive.FileProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Archive.ArchiveCommand).FullName,
+            typeof(Core.Features.Commands.Archive.ProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Archive.TaskProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Archive.FileProgressUpdate).FullName,
             
-            typeof(RestoreCommand).FullName,
-            typeof(RestoreCommandResult).FullName,
-            typeof(RehydrationDetail).FullName,
+            typeof(Core.Features.Commands.Restore.RestoreCommand).FullName,
+            typeof(Core.Features.Commands.Restore.RestoreCommandResult).FullName,
+            typeof(Core.Features.Commands.Restore.RehydrationDetail).FullName,
             
-            typeof(Arius.Core.Features.Restore.ProgressUpdate).FullName,
-            typeof(Arius.Core.Features.Restore.TaskProgressUpdate).FullName,
-            typeof(Arius.Core.Features.Restore.FileProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Restore.ProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Restore.TaskProgressUpdate).FullName,
+            typeof(Core.Features.Commands.Restore.FileProgressUpdate).FullName,
         ], ignoreOrder: true);
     }
 
