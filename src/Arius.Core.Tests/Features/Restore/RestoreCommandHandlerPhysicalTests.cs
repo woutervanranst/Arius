@@ -1,11 +1,8 @@
 using Arius.Core.Features.Restore;
-using Arius.Core.Shared.Hashing;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Arius.Core.Tests.Features.Restore;
 

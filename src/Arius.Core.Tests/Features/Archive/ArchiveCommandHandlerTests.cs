@@ -1,6 +1,7 @@
 using Arius.Core.Features.Archive;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -10,7 +11,6 @@ using Shouldly;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
-using Arius.Core.Tests.Helpers.Fakes;
 
 namespace Arius.Core.Tests.Features.Archive;
 

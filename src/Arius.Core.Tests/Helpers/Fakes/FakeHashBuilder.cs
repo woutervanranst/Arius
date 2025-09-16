@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using Arius.Core.Shared.Hashing;
+using System.Security.Cryptography;
 
 namespace Arius.Core.Tests.Helpers.Fakes;
 

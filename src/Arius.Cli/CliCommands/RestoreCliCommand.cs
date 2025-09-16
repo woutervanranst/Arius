@@ -5,11 +5,8 @@ using CliFx.Infrastructure;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace Arius.Cli.CliCommands;
 

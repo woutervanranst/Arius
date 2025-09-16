@@ -3,7 +3,6 @@ using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using FluentResults;
 using System.IO.Compression;
-using Arius.Core.Features.Archive;
 using Zio;
 
 namespace Arius.Core.Shared.Storage;
