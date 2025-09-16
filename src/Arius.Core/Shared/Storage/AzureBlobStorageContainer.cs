@@ -27,7 +27,7 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
             var blobServiceClient = new BlobServiceClient(
                 new Uri($"https://{accountName}.blob.core.windows.net"),
                 new StorageSharedKeyCredential(accountName, accountKey),
-                GetBlobClientOptions());
+                AzureBlobStorageAccount.GetBlobClientOptions(useRetryPolicy));
             blobContainerClient = blobServiceClient.GetBlobContainerClient(containerName);
             logger.LogInformation("Azure Blob Storage client initialized successfully");
         }
@@ -35,28 +35,6 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         {
             logger.LogError(e, "Failed to initialize Azure Blob Storage client due to invalid account credentials format");
             throw new FormatException("Invalid account credentials format", e);
-        }
-
-        BlobClientOptions GetBlobClientOptions()
-        {
-            return useRetryPolicy
-                ? new BlobClientOptions
-                {
-                    Retry =
-                    {
-                        Mode       = Azure.Core.RetryMode.Exponential,
-                        Delay      = TimeSpan.FromSeconds(2),
-                        MaxDelay   = TimeSpan.FromSeconds(16),
-                        MaxRetries = 5
-                    }
-                }
-                : new BlobClientOptions
-                {
-                    Retry =
-                    {
-                        MaxRetries = 0
-                    }
-                };
         }
     }
 
