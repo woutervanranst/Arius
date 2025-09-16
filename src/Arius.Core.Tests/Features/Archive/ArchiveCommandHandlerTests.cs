@@ -63,8 +63,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         var handlerContext = await CreateHandlerContextAsync();
 
         // Act
-        var result = await handler.UploadIfNotExistsAsync(
-            handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
@@ -81,7 +80,6 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         properties.Metadata.ShouldContainKey("ArchivedSize");
         properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
         properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
-        
         
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
@@ -100,15 +98,15 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         var handlerContext = await CreateHandlerContextAsync();
 
         // First upload to create the blob
-        await handler.UploadIfNotExistsAsync(
-            handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+
+        await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, 0, StorageTier.Hot); // Set to Hot tier to check if the correct storage tier was applied afterwards
 
         // Reset stream for second call
         sourceStream.Seek(0, SeekOrigin.Begin);
 
         // Act - Second call should detect existing blob
-        var result = await handler.UploadIfNotExistsAsync(
-            handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
@@ -125,6 +123,9 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         properties.Metadata.ShouldContainKey("ArchivedSize");
         properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
         properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+
+        // Verify Storage Tier
+        properties.StorageTier.ShouldBe(StorageTier.Cool);
     }
 
     [Fact]

@@ -121,7 +121,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: !overwrite, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
-            return Result.Fail(blobStreamResult.Errors);
+            return blobStreamResult;
 
         var blobStream = blobStreamResult.Value;
         var cryptoStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);

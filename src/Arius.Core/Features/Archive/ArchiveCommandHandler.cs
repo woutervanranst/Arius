@@ -296,6 +296,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             }
 
             // Write Metadata
+            var metadata = new Dictionary<string, string>
+            {
                 ["OriginalSize"] = originalSize.ToString(),
                 ["ArchivedSize"] = archivedSize.ToString()
             };
@@ -304,40 +306,46 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             // Ensure correct storage tier
             await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, archivedSize, handlerContext.Request.Tier);
 
-            var originalSize = sourceStream.Position;
-            var archivedSize = targetStream.Position;
-
             logger.LogDebug("Upload completed for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, archivedSize);
 
             return (originalSize, archivedSize);
         }
         else if (targetStreamResult.HasError<BlobAlreadyExistsError>())
         {
-            logger.LogDebug("Chunk already exists for hash {Hash}, checking content type", hash.ToShortString());
+            logger.LogInformation("Chunk already exists for hash {Hash}, checking content type", hash.ToShortString());
 
             // Blob exists - check content type
             var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
             if (properties?.ContentType == contentType)
             {
-                logger.LogDebug("Chunk has correct content type for hash {Hash}, checking if we can determine size", hash.ToShortString());
-
+                logger.LogDebug("Chunk has correct content type for hash {Hash}", hash.ToShortString());
 
                 // Correct content type: file was already uploaded previous time --> read from metadata
-                throw new NotImplementedException();
-                //    logger.LogDebug("Found existing binary properties for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}",
-                //        hash.ToShortString(), existingBinaryProperties.OriginalSize, existingBinaryProperties.ArchivedSize);
-            }
-            else
-            {
-                // Incorrect content type: file was not properly uploaded last time --> delete and re-upload
-                logger.LogWarning("Chunk exists with incorrect content type '{ActualContentType}' (expected '{ExpectedContentType}') for hash {Hash}, deleting and re-uploading", properties?.ContentType, contentType, hash.ToShortString());
 
-                await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
+                // Correct content type - get size from metadata
+                if (properties.Metadata != null &&
+                    properties.Metadata.TryGetValue("OriginalSize", out var originalSizeStr) &&
+                    properties.Metadata.TryGetValue("ArchivedSize", out var archivedSizeStr) &&
+                    long.TryParse(originalSizeStr, out var originalSize) &&
+                    long.TryParse(archivedSizeStr, out var archivedSize))
+                {
+                    logger.LogDebug("Using existing metadata for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, archivedSize);
 
-                // Recursive call to upload
-                return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, contentType, cancellationToken);
+                    // Ensure correct storage tier
+                    await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, archivedSize, handlerContext.Request.Tier);
+
+                    return (originalSize, archivedSize);
+                }
             }
+
+            // Incorrect content type or metadata not set: file was not properly uploaded last time --> delete and re-upload
+            logger.LogWarning("Chunk exists with incorrect content type '{ActualContentType}' (expected '{ExpectedContentType}') for hash {Hash}, deleting and re-uploading", properties?.ContentType, contentType, hash.ToShortString());
+
+            await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
+
+            // Recursive call to upload
+            return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, contentType, cancellationToken);
         }
         else
         {
