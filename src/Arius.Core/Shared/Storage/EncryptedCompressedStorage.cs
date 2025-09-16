@@ -13,16 +13,16 @@ namespace Arius.Core.Shared.Storage;
 /// </summary>
 internal class EncryptedCompressedStorage : IArchiveStorage
 {
-    private readonly IStorage storage;
-    private readonly string   passphrase;
+    private readonly IRemoteStorageContainer container;
+    private readonly string                  passphrase;
 
-    private const string statesFolderPrefix = "states/";
-    private const string chunksFolderPrefix = "chunks/";
+    private const string statesFolderPrefix           = "states/";
+    private const string chunksFolderPrefix           = "chunks/";
     private const string rehydratedChunksFolderPrefix = "chunks-rehydrated/";
 
-    public EncryptedCompressedStorage(IStorage storage, string passphrase)
+    public EncryptedCompressedStorage(IRemoteStorageContainer container, string passphrase)
     {
-        this.storage    = storage;
+        this.container  = container;
         this.passphrase = passphrase;
     }
 
@@ -30,12 +30,12 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public Task<bool> CreateContainerIfNotExistsAsync()
     {
-        return storage.CreateContainerIfNotExistsAsync();
+        return container.CreateContainerIfNotExistsAsync();
     }
 
     public Task<bool> ContainerExistsAsync()
     {
-        return storage.ContainerExistsAsync();
+        return container.ContainerExistsAsync();
     }
 
 
@@ -43,42 +43,42 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
-        return storage.GetNamesAsync(statesFolderPrefix, cancellationToken)
+        return container.GetNamesAsync(statesFolderPrefix, cancellationToken)
             .OrderBy(blobName => blobName)
             .Select(blobName => blobName[statesFolderPrefix.Length..]); // remove the "states/" prefix
     }
 
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)
     {
-        var blobName = $"{statesFolderPrefix}{stateName}";
-        var blobStreamResult = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
-        
+        var blobName         = $"{statesFolderPrefix}{stateName}";
+        var blobStreamResult = await container.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+
         if (blobStreamResult.IsFailed)
         {
             var firstError = blobStreamResult.Errors.First();
             throw new InvalidOperationException($"Failed to download state '{stateName}': {firstError.Message}");
         }
 
-        await using var blobStream = blobStreamResult.Value;
-        await using var decryptedStream = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
+        await using var blobStream         = blobStreamResult.Value;
+        await using var decryptedStream    = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
         await using var decompressedStream = new GZipStream(decryptedStream, CompressionMode.Decompress);
-        await using var fileStream = targetFile.Create();
+        await using var fileStream         = targetFile.Create();
 
         await decompressedStream.CopyToAsync(fileStream, cancellationToken);
     }
 
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
-        var blobName = $"{statesFolderPrefix}{stateName}";
-        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip" /* TODO refactor me */, cancellationToken: cancellationToken);
+        var blobName         = $"{statesFolderPrefix}{stateName}";
+        var blobStreamResult = await container.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip" /* TODO refactor me */, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
 
-        await using var blobStream = blobStreamResult.Value;
-        await using var encryptedStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
+        await using var blobStream       = blobStreamResult.Value;
+        await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
         await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.Optimal);
-        await using var fileStream = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+        await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
         await fileStream.CopyToAsync(compressedStream, cancellationToken);
     }
@@ -98,8 +98,8 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     private async Task<Result<Stream>> OpenReadChunkInternalAsync(Hash h, string prefix, CancellationToken cancellationToken)
     {
-        var blobName = $"{prefix}{h}";
-        var blobStreamResult = await storage.OpenReadAsync(blobName, cancellationToken: cancellationToken);
+        var blobName         = $"{prefix}{h}";
+        var blobStreamResult = await container.OpenReadAsync(blobName, cancellationToken: cancellationToken);
         if (blobStreamResult.IsFailed)
             return blobStreamResult;
 
@@ -116,13 +116,13 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         // Validate compression settings against content type to prevent double compression or missing compression
         ValidateCompressionSettings(compressionLevel, contentType);
 
-        var blobName = $"{chunksFolderPrefix}{h}";
-        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: !overwrite, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
+        var blobName         = $"{chunksFolderPrefix}{h}";
+        var blobStreamResult = await container.OpenWriteAsync(blobName, throwOnExists: !overwrite, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             return blobStreamResult;
 
-        var blobStream = blobStreamResult.Value;
+        var blobStream   = blobStreamResult.Value;
         var cryptoStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
 
         if (compressionLevel == CompressionLevel.NoCompression)
@@ -154,19 +154,19 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     public async Task<StorageProperties?> GetChunkPropertiesAsync(Hash h, CancellationToken cancellationToken = default)
     {
         var blobName = $"{chunksFolderPrefix}{h}";
-        return await storage.GetPropertiesAsync(blobName, cancellationToken);
+        return await container.GetPropertiesAsync(blobName, cancellationToken);
     }
 
     public async Task DeleteChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
         var blobName = $"{chunksFolderPrefix}{h}";
-        await storage.DeleteBlobAsync(blobName, cancellationToken);
+        await container.DeleteBlobAsync(blobName, cancellationToken);
     }
 
     public async Task SetChunkMetadataAsync(Hash h, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
     {
         var blobName = $"{chunksFolderPrefix}{h}";
-        await storage.SetMetadataAsync(blobName, metadata, cancellationToken);
+        await container.SetMetadataAsync(blobName, metadata, cancellationToken);
     }
 
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)
@@ -174,7 +174,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var actualTier = GetActualStorageTier(targetTier, length);
         var blobName   = $"{chunksFolderPrefix}{h}";
 
-        await storage.SetAccessTierAsync(blobName, actualTier.ToAccessTier());
+        await container.SetAccessTierAsync(blobName, actualTier.ToAccessTier());
 
         return actualTier;
 
@@ -194,6 +194,6 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var source = $"{chunksFolderPrefix}{hash}";
         var target = $"{rehydratedChunksFolderPrefix}{hash}";
 
-        await storage.StartHydrationAsync(source, target, priority);
+        await container.StartHydrationAsync(source, target, priority);
     }
 }

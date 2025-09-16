@@ -10,15 +10,15 @@ using System.Net;
 namespace Arius.Core.Shared.Storage;
 
 /// <summary>
-/// Azure Blob Storage implementation of the IStorage interface, providing blob storage operations
+/// Azure Blob Storage implementation of the IRemoteStorageContainer interface, providing blob storage operations
 /// for managing containers and binary data in Microsoft Azure Storage accounts.
 /// </summary>
-internal class AzureBlobStorage : IStorage
+internal class AzureBlobStorageContainer : IRemoteStorageContainer
 {
-    private readonly ILogger<AzureBlobStorage> logger;
+    private readonly ILogger<AzureBlobStorageContainer> logger;
     private readonly BlobContainerClient       blobContainerClient;
 
-    public AzureBlobStorage(string accountName, string accountKey, string containerName, bool useRetryPolicy, ILogger<AzureBlobStorage> logger)
+    public AzureBlobStorageContainer(string accountName, string accountKey, string containerName, bool useRetryPolicy, ILogger<AzureBlobStorageContainer> logger)
     {
         this.logger = logger;
         try

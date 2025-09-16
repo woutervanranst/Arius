@@ -16,7 +16,7 @@ internal record StorageProperties(
 /// <summary>
 /// Provides low-level blob storage operations for managing containers and binary data streams.
 /// </summary>
-internal interface IStorage
+internal interface IRemoteStorageContainer
 {
     Task<bool>               CreateContainerIfNotExistsAsync();
     Task<bool>               ContainerExistsAsync();

@@ -7,21 +7,21 @@ using Shouldly;
 
 namespace Arius.Core.Tests.Shared.Storage;
 
-public class AzureBlobStorageTests : IClassFixture<Fixture>
+public class AzureBlobStorageContainerTests : IClassFixture<Fixture>
 {
     private readonly BlobContainerClient containerClient;
-    private readonly AzureBlobStorage azureBlobStorage;
+    private readonly AzureBlobStorageContainer azureBlobStorageContainer;
 
-    public AzureBlobStorageTests(Fixture fixture)
+    public AzureBlobStorageContainerTests(Fixture fixture)
     {
         var blobServiceClient = new BlobServiceClient(new Uri($"https://{fixture.RepositoryOptions.AccountName}.blob.core.windows.net"), new Azure.Storage.StorageSharedKeyCredential(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey));
 
         containerClient = blobServiceClient.GetBlobContainerClient(fixture.RepositoryOptions.ContainerName);
         containerClient.CreateIfNotExists();
 
-        // Create AzureBlobStorage instance
-        var logger = new FakeLoggerFactory().CreateLogger<AzureBlobStorage>();
-        azureBlobStorage = new AzureBlobStorage(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey, fixture.RepositoryOptions.ContainerName, false, logger);
+        // Create AzureBlobStorageContainer instance
+        var logger = new FakeLoggerFactory().CreateLogger<AzureBlobStorageContainer>();
+        azureBlobStorageContainer = new AzureBlobStorageContainer(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey, fixture.RepositoryOptions.ContainerName, false, logger);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class AzureBlobStorageTests : IClassFixture<Fixture>
         await blobClient.UploadAsync(BinaryData.FromString(testContent), overwrite: true);
 
         // Act
-        var result = await azureBlobStorage.OpenReadAsync(blobName);
+        var result = await azureBlobStorageContainer.OpenReadAsync(blobName);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -55,7 +55,7 @@ public class AzureBlobStorageTests : IClassFixture<Fixture>
         var blobName = "blob2";
 
         // Act
-        var result = await azureBlobStorage.OpenReadAsync(blobName);
+        var result = await azureBlobStorageContainer.OpenReadAsync(blobName);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -79,7 +79,7 @@ public class AzureBlobStorageTests : IClassFixture<Fixture>
         //await Task.Delay(3000);
 
         // Act
-        var result = await azureBlobStorage.OpenReadAsync(blobName);
+        var result = await azureBlobStorageContainer.OpenReadAsync(blobName);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -106,7 +106,7 @@ public class AzureBlobStorageTests : IClassFixture<Fixture>
 
 
         // Act - Immediately try to read while rehydrating
-        var result = await azureBlobStorage.OpenReadAsync(blobName);
+        var result = await azureBlobStorageContainer.OpenReadAsync(blobName);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
