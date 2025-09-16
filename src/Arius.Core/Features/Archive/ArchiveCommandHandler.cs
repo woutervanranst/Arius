@@ -273,20 +273,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
-    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(
-        HandlerContext handlerContext,
-        Hash hash,
-        Stream sourceStream,
-        CompressionLevel compressionLevel,
-        string expectedContentType,
-        CancellationToken cancellationToken)
+    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string expectedContentType, CancellationToken cancellationToken)
     {
         logger.LogDebug("Attempting to upload chunk with hash {Hash} using content type {ContentType}", hash.ToShortString(), expectedContentType);
 
         // Try to open write with throwOnExists = true (no metadata initially)
-        var writeResult = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(
-            hash, compressionLevel, expectedContentType, metadata: null,
-            progress: null, throwOnExists: true, cancellationToken);
+        var writeResult = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(hash, compressionLevel, progress: null, throwOnExists: true, cancellationToken: cancellationToken);
 
         if (writeResult.IsSuccess)
         {
@@ -294,14 +286,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
             // New upload - perform the upload
             await using var targetStream = writeResult.Value;
-            await sourceStream.CopyToAsync(targetStream, bufferSize: 81920, cancellationToken);
+            await sourceStream.CopyToAsync(targetStream, bufferSize: 81920 /* todo optimize */, cancellationToken);
             await targetStream.FlushAsync(cancellationToken);
 
             var originalSize = sourceStream.Position;
             var archivedSize = targetStream.Position;
 
-            logger.LogDebug("Upload completed for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}",
-                hash.ToShortString(), originalSize, archivedSize);
+            logger.LogDebug("Upload completed for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, archivedSize);
 
             return (originalSize, archivedSize);
         }

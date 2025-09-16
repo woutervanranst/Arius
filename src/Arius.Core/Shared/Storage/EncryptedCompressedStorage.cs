@@ -3,6 +3,7 @@ using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using FluentResults;
 using System.IO.Compression;
+using Arius.Core.Features.Archive;
 using Zio;
 
 namespace Arius.Core.Shared.Storage;
@@ -70,7 +71,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
         var blobName = $"{statesFolderPrefix}{stateName}";
-        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip", cancellationToken: cancellationToken);
+        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip" /* TODO refactor me */, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
@@ -111,7 +112,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         return Result.Ok<Stream>(new StreamWrapper(gzipStream, decryptedStream, blobStream));
     }
 
-    public async Task<Result<Stream>> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, bool throwOnExists = false, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string? contentType = null, IDictionary<string, string> metadata = default, IProgress<long> progress = default, bool throwOnExists = false, CancellationToken cancellationToken = default)
     {
         // Validate compression settings against content type to prevent double compression or missing compression
         ValidateCompressionSettings(compressionLevel, contentType);

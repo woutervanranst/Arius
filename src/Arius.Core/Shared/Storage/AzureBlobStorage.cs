@@ -153,7 +153,7 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public async Task<Result<Stream>> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = null, string? contentType = null, IProgress<long>? progress = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Opening blob '{BlobName}' for writing in container '{ContainerName}', throwOnExists: {ThrowOnExists}", blobName, blobContainerClient.Name, throwOnExists);
 
@@ -182,7 +182,7 @@ internal class AzureBlobStorage : IStorage
         }
         catch (RequestFailedException e) when (e is { Status: 409, ErrorCode: "BlobAlreadyExists" } or {Status: 409, ErrorCode: "BlobArchived" }) //icw ThrowOnExistOptions: throws this error when the blob already exists. In case of hot/cool, throws a 409+BlobAlreadyExists. In case of archive, throws a 409+BlobArchived
         {
-            logger.LogWarning("Blob '{BlobName}' already exists", blobName);
+            logger.LogInformation("Blob '{BlobName}' already exists", blobName);
             return Result.Fail(new BlobAlreadyExistsError(blobName));
         }
         catch (RequestFailedException e)
