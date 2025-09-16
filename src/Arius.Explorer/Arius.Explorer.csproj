@@ -37,6 +37,7 @@
 		<PackageReference Include="Serilog.Enrichers.Thread" />
 		<PackageReference Include="CommunityToolkit.Mvvm" />
 		<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" />
+		<PackageReference Include="System.Reactive" />
 	</ItemGroup>
 
 	<ItemGroup>

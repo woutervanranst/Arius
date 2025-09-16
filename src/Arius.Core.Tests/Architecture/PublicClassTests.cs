@@ -28,7 +28,8 @@ public class PublicClassTests
             typeof(Core.Bootstrapper).FullName,
             typeof(Core.AriusConfiguration).FullName,
 
-            typeof(Core.Features.RepositoryCommand<>).FullName,
+            typeof(Core.Features.StorageAccountCommandProperties).FullName,
+            typeof(Core.Features.RepositoryCommandProperties).FullName,
 
             typeof(Core.Features.Commands.Archive.ArchiveCommand).FullName,
             typeof(Core.Features.Commands.Archive.ProgressUpdate).FullName,
@@ -38,10 +39,11 @@ public class PublicClassTests
             typeof(Core.Features.Commands.Restore.RestoreCommand).FullName,
             typeof(Core.Features.Commands.Restore.RestoreCommandResult).FullName,
             typeof(Core.Features.Commands.Restore.RehydrationDetail).FullName,
-            
             typeof(Core.Features.Commands.Restore.ProgressUpdate).FullName,
             typeof(Core.Features.Commands.Restore.TaskProgressUpdate).FullName,
             typeof(Core.Features.Commands.Restore.FileProgressUpdate).FullName,
+            
+            typeof(Core.Features.Queries.ContainerNames.ContainerNamesQuery).FullName,
         ], ignoreOrder: true);
     }
 
