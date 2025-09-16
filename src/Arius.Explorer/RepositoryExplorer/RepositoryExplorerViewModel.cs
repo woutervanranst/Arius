@@ -1,6 +1,6 @@
 using Arius.Explorer.Models;
-using Arius.Explorer.Services;
 using Arius.Explorer.Settings;
+using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;

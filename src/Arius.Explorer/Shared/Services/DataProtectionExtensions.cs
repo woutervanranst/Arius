@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Arius.Explorer.Services;
+namespace Arius.Explorer.Shared.Services;
 
 public static class DataProtectionExtensions
 {

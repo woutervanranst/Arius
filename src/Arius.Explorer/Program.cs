@@ -1,4 +1,5 @@
 using Arius.Core;
+using Arius.Explorer.Shared.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -69,7 +70,7 @@ internal static class Program
                 services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
 
                 // Register dialog service
-                services.AddTransient<Services.IDialogService, Services.DialogService>();
+                services.AddTransient<IDialogService, DialogService>();
 
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();

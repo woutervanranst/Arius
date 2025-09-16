@@ -1,7 +1,7 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Arius.Explorer.Services;
+namespace Arius.Explorer.Shared.Services;
 
 public interface IDialogService
 {
