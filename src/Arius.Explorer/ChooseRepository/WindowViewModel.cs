@@ -1,8 +1,12 @@
 using Arius.Core.Features.Queries.ContainerNames;
+using Arius.Explorer.Models;
+using Arius.Explorer.Services;
+using Arius.Explorer.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mediator;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Unit = System.Reactive.Unit;
@@ -11,9 +15,10 @@ namespace Arius.Explorer.ChooseRepository;
 
 public partial class WindowViewModel : ObservableObject, IDisposable
 {
-    private readonly IMediator     mediator;
+    private readonly IMediator mediator;
+    private readonly IApplicationSettings settings;
     private readonly Subject<Unit> credentialsChangedSubject = new();
-    private readonly IDisposable   debounceSubscription;
+    private readonly IDisposable debounceSubscription;
 
     [ObservableProperty]
     private string windowName = "Choose Repository";
@@ -37,9 +42,12 @@ public partial class WindowViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool storageAccountError;
 
-    public WindowViewModel(IMediator mediator)
+
+    public WindowViewModel(IMediator mediator, IApplicationSettings settings)
     {
         this.mediator = mediator;
+        this.settings = settings;
+
         // Initialize with sample data for development
         LocalDirectoryPath = @"C:\SampleRepository";
         AccountName = "samplestorageaccount";
@@ -121,11 +129,47 @@ public partial class WindowViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenRepository()
     {
-        // TODO: Validate inputs and open repository
-        // For now just close the dialog
-        IsLoading = true;
-        // Simulate some work
-        IsLoading = false;
+        try
+        {
+            IsLoading = true;
+
+            // Create repository options from current form data
+            var repositoryOptions = new RepositoryOptions
+            {
+                LocalDirectoryPath = LocalDirectoryPath,
+                AccountName = AccountName ?? "",
+                AccountKeyProtected = string.IsNullOrEmpty(AccountKey) ? "" : AccountKey.Protect(),
+                ContainerName = ContainerName ?? "",
+                PassphraseProtected = string.IsNullOrEmpty(Passphrase) ? "" : Passphrase.Protect(),
+                LastOpened = DateTime.Now
+            };
+
+            // Set as last opened repository
+            settings.SetLastOpenedRepository(repositoryOptions);
+
+            // TODO: Actually open the repository
+            // For now just close the dialog
+        }
+        catch (Exception)
+        {
+            // TODO: Handle error - show message to user
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    public void LoadRepository(RepositoryOptions? repository)
+    {
+        if (repository != null)
+        {
+            LocalDirectoryPath = repository.LocalDirectoryPath;
+            AccountName = repository.AccountName;
+            AccountKey = repository.AccountKey; // This will decrypt the protected value
+            ContainerName = repository.ContainerName;
+            Passphrase = repository.Passphrase; // This will decrypt the protected value
+        }
     }
 
     // -- DISPOSE

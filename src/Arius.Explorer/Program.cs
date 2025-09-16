@@ -65,6 +65,9 @@ internal static class Program
             })
             .ConfigureServices((context, services) =>
             {
+                // Register application settings
+                services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
+
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
                 services.AddTransient<RepositoryExplorer.RepositoryExplorerViewModel>();
