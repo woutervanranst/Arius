@@ -9,16 +9,38 @@ using Shouldly;
 
 namespace Arius.Core.Tests.Features.Restore;
 
-public class RestoreCommandHandlerInMemoryTests : IClassFixture<FixtureWithFileSystem>
+public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 {
     private readonly FixtureWithFileSystem fixture;
     private readonly FakeLoggerFactory     fakeLoggerFactory = new();
     private readonly RestoreCommandHandler handler;
 
-    public RestoreCommandHandlerInMemoryTests(FixtureWithFileSystem fixture)
+    public RestoreCommandHandlerTests(FixtureWithFileSystem fixture)
     {
         this.fixture  = fixture;
         handler       = new RestoreCommandHandler(fakeLoggerFactory.CreateLogger<RestoreCommandHandler>(), fakeLoggerFactory, fixture.AriusConfiguration);
+    }
+
+    [Fact]
+    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI
+    {
+        // Arrange
+        var command = new RestoreCommandBuilder(fixture)
+            .WithLocalRoot(fixture.TestRunSourceFolder)
+            .WithContainerName("test")
+            //.WithTargets("./IMG20250126195020.jpg", "./Sam/")
+            .WithTargets("./invoice.pdf")
+            .WithIncludePointers(true)
+            .Build();
+
+        // TODO directory without trailing /
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        // Should create or overwrite the pointer file on disk
+        //true.ShouldBe(false, "Test not implemented");
     }
 
     [Fact]
