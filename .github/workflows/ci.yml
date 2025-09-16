@@ -25,7 +25,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        name: [Linux, Windows]
     defaults:
       run:
         working-directory: src
@@ -112,9 +111,11 @@ jobs:
 
       - name: "🐳 Build and Push Docker Image"
         run: |
-          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:${VERSION}"
-          docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
-          docker push $IMAGE_NAME
+            IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:${VERSION}"
+            LATEST_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:latest"
+            docker build -t $IMAGE_NAME -t $LATEST_NAME -f Arius.Cli/Dockerfile .
+            docker push $IMAGE_NAME
+            docker push $LATEST_NAME
 
       - name: "📝 Build Changelog"
         id: build_changelog
