@@ -273,21 +273,36 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
-    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string expectedContentType, CancellationToken cancellationToken)
+    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string contentType, CancellationToken cancellationToken)
     {
-        logger.LogDebug("Attempting to upload chunk with hash {Hash} using content type {ContentType}", hash.ToShortString(), expectedContentType);
+        logger.LogDebug("Attempting to upload chunk with hash {Hash} using content type {ContentType}", hash.ToShortString(), contentType);
 
-        // Try to open write with throwOnExists = true (no metadata initially)
-        var writeResult = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(hash, compressionLevel, progress: null, throwOnExists: true, cancellationToken: cancellationToken);
+        // Try to open the blob for writing WITHOUT overwriting it
+        var targetStreamResult = await handlerContext.ArchiveStorage.OpenWriteChunkAsync(hash, compressionLevel, contentType, progress: null, overwrite: false, cancellationToken: cancellationToken);
 
-        if (writeResult.IsSuccess)
+        if (targetStreamResult.IsSuccess)
         {
             logger.LogDebug("Chunk does not exist, performing new upload for hash {Hash}", hash.ToShortString());
 
             // New upload - perform the upload
-            await using var targetStream = writeResult.Value;
-            await sourceStream.CopyToAsync(targetStream, bufferSize: 81920 /* todo optimize */, cancellationToken);
-            await targetStream.FlushAsync(cancellationToken);
+            long originalSize, archivedSize;
+            await using (var targetStream = targetStreamResult.Value)
+            {
+                await sourceStream.CopyToAsync(targetStream, bufferSize: 81920 /* todo optimize */, cancellationToken);
+                await targetStream.FlushAsync(cancellationToken);
+
+                originalSize = sourceStream.Position;
+                archivedSize = targetStream.Position;
+            }
+
+            // Write Metadata
+                ["OriginalSize"] = originalSize.ToString(),
+                ["ArchivedSize"] = archivedSize.ToString()
+            };
+            await handlerContext.ArchiveStorage.SetChunkMetadataAsync(hash, metadata);
+
+            // Ensure correct storage tier
+            await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, archivedSize, handlerContext.Request.Tier);
 
             var originalSize = sourceStream.Position;
             var archivedSize = targetStream.Position;
@@ -296,62 +311,37 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
             return (originalSize, archivedSize);
         }
-        else if (writeResult.HasError<BlobAlreadyExistsError>())
+        else if (targetStreamResult.HasError<BlobAlreadyExistsError>())
         {
             logger.LogDebug("Chunk already exists for hash {Hash}, checking content type", hash.ToShortString());
 
             // Blob exists - check content type
             var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
-            if (properties?.ContentType == expectedContentType)
+            if (properties?.ContentType == contentType)
             {
                 logger.LogDebug("Chunk has correct content type for hash {Hash}, checking if we can determine size", hash.ToShortString());
 
-                // Correct content type - try to get size from database
-                var existingBinaryProperties = handlerContext.StateRepository.GetBinaryProperty(hash);
-                if (existingBinaryProperties != null)
-                {
-                    logger.LogDebug("Found existing binary properties for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}",
-                        hash.ToShortString(), existingBinaryProperties.OriginalSize, existingBinaryProperties.ArchivedSize);
 
-                    return (existingBinaryProperties.OriginalSize, existingBinaryProperties.ArchivedSize);
-                }
-                else
-                {
-                    logger.LogDebug("Chunk exists with correct content type but no binary properties found for hash {Hash}, will calculate from source", hash.ToShortString());
-
-                    // File exists but we don't have size info - use source stream position
-                    var originalSize = sourceStream.Length;
-
-                    // For archived size, we can't determine it without downloading, so we'll estimate or use a placeholder
-                    // In practice, this should rarely happen since we store BinaryProperties when uploading
-                    var archivedSize = originalSize; // Conservative estimate
-
-                    logger.LogDebug("Using estimated sizes for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}",
-                        hash.ToShortString(), originalSize, archivedSize);
-
-                    return (originalSize, archivedSize);
-                }
+                // Correct content type: file was already uploaded previous time --> read from metadata
+                throw new NotImplementedException();
+                //    logger.LogDebug("Found existing binary properties for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}",
+                //        hash.ToShortString(), existingBinaryProperties.OriginalSize, existingBinaryProperties.ArchivedSize);
             }
             else
             {
-                logger.LogWarning("Chunk exists with incorrect content type '{ActualContentType}' (expected '{ExpectedContentType}') for hash {Hash}, deleting and re-uploading",
-                    properties?.ContentType, expectedContentType, hash.ToShortString());
+                // Incorrect content type: file was not properly uploaded last time --> delete and re-upload
+                logger.LogWarning("Chunk exists with incorrect content type '{ActualContentType}' (expected '{ExpectedContentType}') for hash {Hash}, deleting and re-uploading", properties?.ContentType, contentType, hash.ToShortString());
+
+                await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
+
+                // Recursive call to upload
+                return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, contentType, cancellationToken);
             }
-
-            // Wrong content type or missing metadata - delete and re-upload
-            await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
-
-            // Reset source stream position for retry
-            sourceStream.Seek(0, SeekOrigin.Begin);
-
-            // Recursive call to upload
-            return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream,
-                compressionLevel, expectedContentType, cancellationToken);
         }
         else
         {
-            var error = writeResult.Errors.First();
+            var error = targetStreamResult.Errors.First();
             logger.LogError("Unexpected error during upload attempt for hash {Hash}: {Error}", hash.ToShortString(), error);
             throw new InvalidOperationException($"Unexpected error during upload: {error}");
         }
@@ -376,8 +366,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(
                 handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, cancellationToken);
 
-            // Update tier
-            var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, targetStreamPosition, handlerContext.Request.Tier);
+            // Get the current tier (tier was already set in UploadIfNotExistsAsync)
+            var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
+            var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
 
             // Add to db
             handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
@@ -503,8 +494,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(
             handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, cancellationToken);
 
-        // Update tier
-        var actualTier = await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(parentHash, finalArchivedSize, handlerContext.Request.Tier);
+        // Get the current tier (tier was already set in UploadIfNotExistsAsync)
+        var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(parentHash, cancellationToken);
+        var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
         var compressionRatio = totalOriginalSize > 0 ? (double)finalArchivedSize / totalOriginalSize : 1.0;
         
         logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})", 

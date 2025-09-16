@@ -161,9 +161,9 @@ internal class AzureBlobStorage : IStorage
 
         var options = new BlockBlobOpenWriteOptions();
 
-        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround, as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
         if (throwOnExists)
-            options.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+            options.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") };
 
         if (metadata is not null)
             options.Metadata = metadata;
@@ -176,7 +176,7 @@ internal class AzureBlobStorage : IStorage
 
         try
         {
-            var stream = await blobClient.OpenWriteAsync(overwrite: !throwOnExists, options: options, cancellationToken: cancellationToken);
+            var stream = await blobClient.OpenWriteAsync(overwrite: true, options: options, cancellationToken: cancellationToken);
             logger.LogDebug("Successfully opened blob '{BlobName}' for writing", blobName);
             return Result.Ok(stream);
         }
@@ -259,6 +259,22 @@ internal class AzureBlobStorage : IStorage
         catch (RequestFailedException e)
         {
             logger.LogError(e, "Failed to set access tier for blob '{BlobName}' to '{AccessTier}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, tier, e.Status, e.ErrorCode);
+            throw;
+        }
+    }
+
+    public async Task SetMetadataAsync(string blobName, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug("Setting metadata for blob '{BlobName}'", blobName);
+        var blobClient = blobContainerClient.GetBlobClient(blobName);
+        try
+        {
+            await blobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            logger.LogDebug("Successfully set metadata for blob '{BlobName}'", blobName);
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to set metadata for blob '{BlobName}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
             throw;
         }
     }

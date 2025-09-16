@@ -112,13 +112,13 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         return Result.Ok<Stream>(new StreamWrapper(gzipStream, decryptedStream, blobStream));
     }
 
-    public async Task<Result<Stream>> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string? contentType = null, IDictionary<string, string> metadata = default, IProgress<long> progress = default, bool throwOnExists = false, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string>? metadata = null, IProgress<long>? progress = null, bool overwrite = false, CancellationToken cancellationToken = default)
     {
         // Validate compression settings against content type to prevent double compression or missing compression
         ValidateCompressionSettings(compressionLevel, contentType);
 
         var blobName = $"{chunksFolderPrefix}{h}";
-        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: throwOnExists, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
+        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: !overwrite, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             return Result.Fail(blobStreamResult.Errors);
@@ -162,6 +162,12 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     {
         var blobName = $"{chunksFolderPrefix}{h}";
         await storage.DeleteBlobAsync(blobName, cancellationToken);
+    }
+
+    public async Task SetChunkMetadataAsync(Hash h, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
+    {
+        var blobName = $"{chunksFolderPrefix}{h}";
+        await storage.SetMetadataAsync(blobName, metadata, cancellationToken);
     }
 
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)

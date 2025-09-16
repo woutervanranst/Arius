@@ -1,17 +1,16 @@
 using Arius.Core.Features.Archive;
+using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fixtures;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
-using System.Runtime.InteropServices;
-using Arius.Core.Shared.Hashing;
-using System.IO.Compression;
-using System.Text;
 using Shouldly;
-using Azure.Storage.Blobs;
-using Arius.Core.Shared.StateRepositories;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Arius.Core.Tests.Features.Archive;
 
@@ -71,10 +70,21 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         result.OriginalSize.ShouldBeGreaterThan(0);
         result.ArchivedSize.ShouldBeGreaterThan(0);
 
-        // Verify the blob was actually created
+        // Verify the blob was actually created with correct properties and metadata
         var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
         properties.ShouldNotBeNull();
         properties.ContentType.ShouldBe(expectedContentType);
+
+        // Verify metadata was set
+        properties.Metadata.ShouldNotBeNull();
+        properties.Metadata.ShouldContainKey("OriginalSize");
+        properties.Metadata.ShouldContainKey("ArchivedSize");
+        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
+        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+        
+        
+        // Verify Storage Tier
+        properties.StorageTier.ShouldBe(StorageTier.Cool);
     }
 
     [Fact]
@@ -104,10 +114,17 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         result.OriginalSize.ShouldBeGreaterThan(0);
         result.ArchivedSize.ShouldBeGreaterThan(0);
 
-        // Verify properties are still correct
+        // Verify properties are still correct and metadata is read from storage
         var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
         properties.ShouldNotBeNull();
         properties.ContentType.ShouldBe(expectedContentType);
+
+        // Verify metadata is read from storage and matches returned values
+        properties.Metadata.ShouldNotBeNull();
+        properties.Metadata.ShouldContainKey("OriginalSize");
+        properties.Metadata.ShouldContainKey("ArchivedSize");
+        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
+        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
     }
 
     [Fact]
@@ -158,10 +175,17 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         result.OriginalSize.ShouldBeGreaterThan(0);
         result.ArchivedSize.ShouldBeGreaterThan(0);
 
-        // Verify the blob now has correct content type
+        // Verify the blob now has correct content type and metadata
         var finalProperties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
         finalProperties.ShouldNotBeNull();
         finalProperties.ContentType.ShouldBe(correctContentType);
+
+        // Verify metadata was set correctly after re-upload
+        finalProperties.Metadata.ShouldNotBeNull();
+        finalProperties.Metadata.ShouldContainKey("OriginalSize");
+        finalProperties.Metadata.ShouldContainKey("ArchivedSize");
+        finalProperties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
+        finalProperties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
     }
 
     private async Task<HandlerContext> CreateHandlerContextAsync()
@@ -177,9 +201,12 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     private static Hash CreateTestHash(int seed)
     {
         var bytes = new byte[32];
+        var timestamp = DateTimeOffset.UtcNow.Ticks;
+        var random = Random.Shared.Next();
+
         for (int i = 0; i < 32; i++)
         {
-            bytes[i] = (byte)(seed + i);
+            bytes[i] = (byte)(seed + i + (timestamp >> (i % 8)) + (random >> (i % 4)));
         }
         return Hash.FromBytes(bytes);
     }

@@ -82,7 +82,7 @@ internal sealed class Sha256Hasher : IDisposable
     /// <summary>
     /// Read the file stream in chunks and compute a salted SHA-256. Salt is prepended.
     /// </summary>
-    private async Task<Hash> ComputeSaltedHashAsync(Stream fileStream)
+    private async Task<Hash> ComputeSaltedHashAsync(Stream stream)
     {
         var localSha = sha256.Value;
         localSha.Initialize();
@@ -95,7 +95,7 @@ internal sealed class Sha256Hasher : IDisposable
         try
         {
             int bytesRead;
-            while ((bytesRead = await fileStream.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false)) > 0)
+            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false)) > 0)
             {
                 localSha.TransformBlock(buffer, 0, bytesRead, null, 0);
             }
@@ -125,7 +125,7 @@ internal sealed class Sha256Hasher : IDisposable
         localSha.TransformBlock(data, 0, data.Length, null, 0);
 
         // 3) Final
-        localSha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        localSha.TransformFinalBlock([], 0, 0);
         return localSha.Hash!;
     }
 }

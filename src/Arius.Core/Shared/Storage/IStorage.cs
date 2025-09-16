@@ -25,5 +25,6 @@ internal interface IStorage
     Task<StorageProperties?> GetPropertiesAsync(string blobName, CancellationToken cancellationToken = default);
     Task                     DeleteBlobAsync(string blobName, CancellationToken cancellationToken = default);
     Task                     SetAccessTierAsync(string blobName, AccessTier tier);
+    Task                     SetMetadataAsync(string blobName, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
     Task                     StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority);
 }
