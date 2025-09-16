@@ -29,7 +29,7 @@ jobs:
       #   submodules: true # Check out WouterVanRanst.Utils - here we DO need it since we don't have nuget packages yet
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.x
 
@@ -70,7 +70,7 @@ jobs:
       #   submodules: true # Check out WouterVanRanst.Utils
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 8.x
 
