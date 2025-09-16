@@ -209,7 +209,8 @@ internal class AzureBlobStorage : IStorage
             return new StorageProperties(
                 ContentType: properties.Value.ContentType,
                 Metadata: properties.Value.Metadata,
-                StorageTier: properties.Value.AccessTier.ToStorageTier()
+                StorageTier: properties.Value.AccessTier.ToStorageTier(),
+                ContentLength: properties.Value.ContentLength
             );
         }
         catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })

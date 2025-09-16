@@ -13,7 +13,7 @@ public class Fixture
     public TestRemoteRepositoryOptions? RepositoryOptions   { get; } // can be null when no appsettings etc
     public IOptions<AriusConfiguration> AriusConfiguration  { get; }
 
-    public Fixture()
+    public Fixture() // NOTE: if you're injecting the Fixture via IClassFixture<FixtureWithFileSystem>, this is executed once for that test class
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())

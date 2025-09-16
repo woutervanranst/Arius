@@ -9,7 +9,8 @@ namespace Arius.Core.Shared.Storage;
 internal record StorageProperties(
     string? ContentType,
     IDictionary<string, string>? Metadata,
-    StorageTier? StorageTier
+    StorageTier? StorageTier,
+    long ContentLength
 );
 
 /// <summary>

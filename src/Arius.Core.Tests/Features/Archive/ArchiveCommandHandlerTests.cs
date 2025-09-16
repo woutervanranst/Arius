@@ -72,12 +72,13 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         properties.ShouldNotBeNull();
         properties.ContentType.ShouldBe(expectedContentType);
 
-        // Verify metadata was set
+        // Verify metadata is read from storage and matches returned values
         properties.Metadata.ShouldNotBeNull();
-        properties.Metadata.ShouldContainKey("OriginalSize");
-        properties.Metadata.ShouldContainKey("ArchivedSize");
-        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
-        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+        properties.Metadata.ShouldContainKey("OriginalContentLength");
+        properties.Metadata["OriginalContentLength"].ShouldBe(result.OriginalSize.ToString());
+
+        // Verify correct contentlength
+        properties.ContentLength.ShouldBe(result.ArchivedSize);
 
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
@@ -120,10 +121,11 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         // Verify metadata is read from storage and matches returned values
         properties.Metadata.ShouldNotBeNull();
-        properties.Metadata.ShouldContainKey("OriginalSize");
-        properties.Metadata.ShouldContainKey("ArchivedSize");
-        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
-        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+        properties.Metadata.ShouldContainKey("OriginalContentLength");
+        properties.Metadata["OriginalContentLength"].ShouldBe(result.OriginalSize.ToString());
+
+        // Verify correct contentlength
+        properties.ContentLength.ShouldBe(result.ArchivedSize);
 
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
@@ -169,12 +171,13 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         properties.ShouldNotBeNull();
         properties.ContentType.ShouldBe(correctContentType);
 
-        // Verify metadata was set correctly after re-upload
+        // Verify metadata is read from storage and matches returned values
         properties.Metadata.ShouldNotBeNull();
-        properties.Metadata.ShouldContainKey("OriginalSize");
-        properties.Metadata.ShouldContainKey("ArchivedSize");
-        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
-        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+        properties.Metadata.ShouldContainKey("OriginalContentLength");
+        properties.Metadata["OriginalContentLength"].ShouldBe(result.OriginalSize.ToString());
+
+        // Verify correct contentlength
+        properties.ContentLength.ShouldBe(result.ArchivedSize);
 
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);

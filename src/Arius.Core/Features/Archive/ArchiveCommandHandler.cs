@@ -285,30 +285,31 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             logger.LogDebug("Chunk does not exist, performing new upload for hash {Hash}", hash.ToShortString());
 
             // New upload - perform the upload
-            long originalSize, archivedSize;
+            long originalSize;
             await using (var targetStream = targetStreamResult.Value)
             {
                 await sourceStream.CopyToAsync(targetStream, bufferSize: 81920 /* todo optimize */, cancellationToken);
                 await targetStream.FlushAsync(cancellationToken);
 
                 originalSize = sourceStream.Position;
-                archivedSize = targetStream.Position;
+                // note targetStream.Position is off by a few bytes and does not accurately reflect the size in blob storage
             }
+
+            var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
             // Write Metadata
             var metadata = new Dictionary<string, string>
             {
-                ["OriginalSize"] = originalSize.ToString(),
-                ["ArchivedSize"] = archivedSize.ToString()
+                ["OriginalContentLength"] = originalSize.ToString(),
             };
             await handlerContext.ArchiveStorage.SetChunkMetadataAsync(hash, metadata);
 
             // Ensure correct storage tier
-            await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, archivedSize, handlerContext.Request.Tier);
+            await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, properties.ContentLength, handlerContext.Request.Tier);
 
-            logger.LogDebug("Upload completed for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, archivedSize);
+            logger.LogDebug("Upload completed for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, properties.ContentLength);
 
-            return (originalSize, archivedSize);
+            return (originalSize, properties.ContentLength);
         }
         else if (targetStreamResult.HasError<BlobAlreadyExistsError>())
         {
@@ -318,18 +319,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
             if (properties?.ContentType == contentType && (properties.Metadata != null &&
-                                                           properties.Metadata.TryGetValue("OriginalSize", out var originalSizeStr) &&
-                                                           properties.Metadata.TryGetValue("ArchivedSize", out var archivedSizeStr) &&
-                                                           long.TryParse(originalSizeStr, out var originalSize) &&
-                                                           long.TryParse(archivedSizeStr, out var archivedSize)))
+                                                           properties.Metadata.TryGetValue("OriginalContentLength", out var originalSizeStr) &&
+                                                           long.TryParse(originalSizeStr, out var originalSize)))
             {
                 // Correct content type: file was already uploaded previous time --> read from metadata
-                logger.LogInformation("Using existing metadata for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, archivedSize);
+                logger.LogInformation("Using existing metadata for hash {Hash}: original={OriginalSize}, archived={ArchivedSize}", hash.ToShortString(), originalSize, properties.ContentLength);
 
                 // Ensure correct storage tier
-                await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, archivedSize, handlerContext.Request.Tier);
+                await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, properties.ContentLength, handlerContext.Request.Tier);
 
-                return (originalSize, archivedSize);
+                return (originalSize, properties.ContentLength);
             }
 
             // Incorrect content type or metadata not set: file was not properly uploaded last time --> delete and re-upload
