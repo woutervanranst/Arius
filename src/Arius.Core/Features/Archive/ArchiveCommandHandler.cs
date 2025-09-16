@@ -421,10 +421,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         
         logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {TotalSize})", fileCount, totalOriginalSize.Bytes().Humanize());
         
-        await using var archiveStream = tarWriter.GetCompletedArchive();
+        await using var sourceStream = tarWriter.GetCompletedArchive();
 
-        var parentHash = await handlerContext.Hasher.GetHashAsync(archiveStream);
-        archiveStream.Seek(0, SeekOrigin.Begin);
+        var parentHash = await handlerContext.Hasher.GetHashAsync(sourceStream);
+        sourceStream.Seek(0, SeekOrigin.Begin);
         
         logger.LogDebug("TAR archive hashed to {ParentHash}, uploading to storage", parentHash.ToShortString());
 
@@ -438,7 +438,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             metadata: null,
             progress: null,
             cancellationToken: cancellationToken);
-        await archiveStream.CopyToAsync(encryptedStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
+        await sourceStream.CopyToAsync(encryptedStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
 
         // Flush all buffers
         await encryptedStream.FlushAsync(cancellationToken);
