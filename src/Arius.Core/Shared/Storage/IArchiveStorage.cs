@@ -12,18 +12,20 @@ namespace Arius.Core.Shared.Storage;
 internal interface IArchiveStorage
 {
     // Container
-    Task<bool>               CreateContainerIfNotExistsAsync();
-    Task<bool>               ContainerExistsAsync();
-    
+    Task<bool> CreateContainerIfNotExistsAsync();
+    Task<bool> ContainerExistsAsync();
+
     // States
     IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default);
     Task                     DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default);
     Task                     UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default);
-    
+
     // Chunks
-    Task<Result<Stream>> OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
-    Task<Result<Stream>> OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default);
-    Task<Stream>         OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default);
-    Task<StorageTier>    SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
-    Task                 StartHydrationAsync(Hash hash, RehydratePriority priority);
+    Task<Result<Stream>>     OpenReadChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>     OpenReadHydratedChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>     OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, bool throwOnExists = false, CancellationToken cancellationToken = default);
+    Task<StorageProperties?> GetChunkPropertiesAsync(Hash h, CancellationToken cancellationToken = default);
+    Task                     DeleteChunkAsync(Hash h, CancellationToken cancellationToken = default);
+    Task<StorageTier>        SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
+    Task                     StartHydrationAsync(Hash hash, RehydratePriority priority);
 }

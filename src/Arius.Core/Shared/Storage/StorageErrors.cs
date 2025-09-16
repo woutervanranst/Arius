@@ -30,3 +30,12 @@ internal sealed class BlobRehydratingError : StorageError
 
     public string BlobName { get; }
 }
+
+internal sealed class BlobAlreadyExistsError : StorageError
+{
+    public BlobAlreadyExistsError(string blobName)
+        : base($"Blob '{blobName}' already exists")
+        => BlobName = blobName;
+
+    public string BlobName { get; }
+}

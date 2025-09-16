@@ -25,15 +25,29 @@ internal static class StorageTierExtensions
 
         throw new ArgumentException("Unknown AccessTier");
     }
+
+    public static StorageTier ToStorageTier(this string accessTier)
+    {
+        return accessTier.ToLowerInvariant() switch
+        {
+            "hot"     => StorageTier.Hot,
+            "cool"    => StorageTier.Cool,
+            "cold"    => StorageTier.Cold,
+            "archive" => StorageTier.Archive,
+            _         => throw new ArgumentException($"Unknown access tier: {accessTier}")
+        };
+    }
+
+
     public static AccessTier ToAccessTier(this StorageTier storageTier)
     {
         return storageTier switch
         {
-            StorageTier.Hot => AccessTier.Hot,
-            StorageTier.Cool => AccessTier.Cool,
-            StorageTier.Cold => AccessTier.Cold,
+            StorageTier.Hot     => AccessTier.Hot,
+            StorageTier.Cool    => AccessTier.Cool,
+            StorageTier.Cold    => AccessTier.Cold,
             StorageTier.Archive => AccessTier.Archive,
-            _ => throw new ArgumentException("Unknown StorageTier")
+            _                   => throw new ArgumentException("Unknown StorageTier")
         };
     }
 

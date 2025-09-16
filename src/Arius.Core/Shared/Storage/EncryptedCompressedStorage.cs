@@ -69,11 +69,16 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
-        var             blobName         = $"{statesFolderPrefix}{stateName}";
-        await using var blobStream       = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip", cancellationToken: cancellationToken);
-        await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
+        var blobName = $"{statesFolderPrefix}{stateName}";
+        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip", cancellationToken: cancellationToken);
+
+        if (blobStreamResult.IsFailed)
+            throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
+
+        await using var blobStream = blobStreamResult.Value;
+        await using var encryptedStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
         await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.Optimal);
-        await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+        await using var fileStream = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
         await fileStream.CopyToAsync(compressedStream, cancellationToken);
     }
@@ -106,23 +111,28 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         return Result.Ok<Stream>(new StreamWrapper(gzipStream, decryptedStream, blobStream));
     }
 
-    public async Task<Stream> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenWriteChunkAsync(Hash h, CompressionLevel compressionLevel, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, bool throwOnExists = false, CancellationToken cancellationToken = default)
     {
         // Validate compression settings against content type to prevent double compression or missing compression
         ValidateCompressionSettings(compressionLevel, contentType);
 
-        var blobName     = $"{chunksFolderPrefix}{h}";
-        var blobStream   = await storage.OpenWriteAsync(blobName, throwOnExists: false, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
+        var blobName = $"{chunksFolderPrefix}{h}";
+        var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: throwOnExists, metadata: metadata, contentType: contentType, progress: progress, cancellationToken: cancellationToken);
+
+        if (blobStreamResult.IsFailed)
+            return Result.Fail(blobStreamResult.Errors);
+
+        var blobStream = blobStreamResult.Value;
         var cryptoStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
 
         if (compressionLevel == CompressionLevel.NoCompression)
         {
-            return new StreamWrapper(innerStream: cryptoStream, positionStream: blobStream, disposables: [cryptoStream, blobStream]);
+            return Result.Ok<Stream>(new StreamWrapper(innerStream: cryptoStream, positionStream: blobStream, disposables: [cryptoStream, blobStream]));
         }
         else
         {
             var gzipStream = new GZipStream(cryptoStream, compressionLevel);
-            return new StreamWrapper(innerStream: gzipStream, positionStream: blobStream, disposables: [gzipStream, cryptoStream, blobStream]);
+            return Result.Ok<Stream>(new StreamWrapper(innerStream: gzipStream, positionStream: blobStream, disposables: [gzipStream, cryptoStream, blobStream]));
         }
 
         static void ValidateCompressionSettings(CompressionLevel compressionLevel, string contentType)
@@ -139,6 +149,18 @@ internal class EncryptedCompressedStorage : IArchiveStorage
                 throw new InvalidOperationException($"Content type '{contentType}' indicates uncompressed data, but compression level is set to '{compressionLevel}'. Consider using CompressionLevel.Optimal for better storage efficiency.");
             }
         }
+    }
+
+    public async Task<StorageProperties?> GetChunkPropertiesAsync(Hash h, CancellationToken cancellationToken = default)
+    {
+        var blobName = $"{chunksFolderPrefix}{h}";
+        return await storage.GetPropertiesAsync(blobName, cancellationToken);
+    }
+
+    public async Task DeleteChunkAsync(Hash h, CancellationToken cancellationToken = default)
+    {
+        var blobName = $"{chunksFolderPrefix}{h}";
+        await storage.DeleteBlobAsync(blobName, cancellationToken);
     }
 
     public async Task<StorageTier> SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier)

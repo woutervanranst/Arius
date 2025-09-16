@@ -153,10 +153,10 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public async Task<Stream> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
+    public async Task<Result<Stream>> OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = default, string? contentType = default, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Opening blob '{BlobName}' for writing in container '{ContainerName}', throwOnExists: {ThrowOnExists}", blobName, blobContainerClient.Name, throwOnExists);
-        
+
         var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
 
         var options = new BlockBlobOpenWriteOptions();
@@ -178,11 +178,71 @@ internal class AzureBlobStorage : IStorage
         {
             var stream = await blobClient.OpenWriteAsync(overwrite: !throwOnExists, options: options, cancellationToken: cancellationToken);
             logger.LogDebug("Successfully opened blob '{BlobName}' for writing", blobName);
-            return stream;
+            return Result.Ok(stream);
+        }
+        catch (RequestFailedException e) when (e is { Status: 409, ErrorCode: "BlobAlreadyExists" } or {Status: 409, ErrorCode: "BlobArchived" }) //icw ThrowOnExistOptions: throws this error when the blob already exists. In case of hot/cool, throws a 409+BlobAlreadyExists. In case of archive, throws a 409+BlobArchived
+        {
+            logger.LogWarning("Blob '{BlobName}' already exists", blobName);
+            return Result.Fail(new BlobAlreadyExistsError(blobName));
         }
         catch (RequestFailedException e)
         {
             logger.LogError(e, "Failed to open blob '{BlobName}' for writing. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
+            return Result.Fail(new Error($"Azure storage operation failed: {e.Message}")
+                .WithMetadata("StatusCode", e.Status)
+                .WithMetadata("ErrorCode", e.ErrorCode ?? "Unknown")
+                .CausedBy(e));
+        }
+    }
+
+    public async Task<StorageProperties?> GetPropertiesAsync(string blobName, CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug("Getting properties for blob '{BlobName}' from container '{ContainerName}'", blobName, blobContainerClient.Name);
+
+        var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
+
+        try
+        {
+            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            logger.LogDebug("Successfully retrieved properties for blob '{BlobName}'", blobName);
+
+            return new StorageProperties(
+                ContentType: properties.Value.ContentType,
+                Metadata: properties.Value.Metadata,
+                StorageTier: properties.Value.AccessTier.ToStorageTier()
+            );
+        }
+        catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
+        {
+            logger.LogDebug("Blob '{BlobName}' not found", blobName);
+            return null;
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to get properties for blob '{BlobName}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
+            throw;
+        }
+    }
+
+    public async Task DeleteBlobAsync(string blobName, CancellationToken cancellationToken = default)
+    {
+        logger.LogDebug("Deleting blob '{BlobName}' from container '{ContainerName}'", blobName, blobContainerClient.Name);
+
+        var blobClient = blobContainerClient.GetBlockBlobClient(blobName);
+
+        try
+        {
+            await blobClient.DeleteAsync(cancellationToken: cancellationToken);
+            logger.LogDebug("Successfully deleted blob '{BlobName}'", blobName);
+        }
+        catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
+        {
+            logger.LogDebug("Blob '{BlobName}' not found, nothing to delete", blobName);
+            // Don't throw for not found - idempotent delete
+        }
+        catch (RequestFailedException e)
+        {
+            logger.LogError(e, "Failed to delete blob '{BlobName}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);
             throw;
         }
     }
