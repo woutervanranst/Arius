@@ -1,5 +1,4 @@
 using FluentValidation;
-using Mediator;
 
 namespace Arius.Core.Features.Commands.Archive;
 

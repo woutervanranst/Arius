@@ -1,16 +1,22 @@
+using Arius.Core.Shared.Storage;
+using FluentValidation;
 using Mediator;
+using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace Arius.Core.Features.Queries.ContainerNames;
 
-public sealed record ContainerNamesQuery : StorageAccountCommandProperties, IStreamCommand<string>
+public sealed record ContainerNamesQuery : StorageAccountCommandProperties, IStreamQuery<string>
 {
 }
 
-internal class ContainerNamesQueryHandler : IStreamCommandHandler<ContainerNamesQuery, string>
+internal class ContainerNamesQueryHandler : IStreamQueryHandler<ContainerNamesQuery, string>
 {
-    public ContainerNamesQueryHandler()
+    private readonly ILoggerFactory loggerFactory;
+
+    public ContainerNamesQueryHandler(ILoggerFactory loggerFactory)
     {
+        this.loggerFactory = loggerFactory;
     }
     public async IAsyncEnumerable<string> Handle(ContainerNamesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -21,7 +27,13 @@ internal class ContainerNamesQueryHandler : IStreamCommandHandler<ContainerNames
         //    yield return name;
         //}
 
-        yield return "a";
-        yield return "b";
+        await new StorageAccountValidator().ValidateAndThrowAsync(request, cancellationToken);
+
+        var storage = new AzureBlobStorageAccount(request.AccountName, request.AccountKey, false, loggerFactory.CreateLogger<AzureBlobStorageAccount>());
+
+        await foreach (var containerName in storage.GetContainerNames().WithCancellation(cancellationToken))
+        {
+            yield return containerName;
+        }
     }
 }

@@ -1,10 +1,10 @@
+using Arius.Core.Features.Queries.ContainerNames;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Mediator;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using Arius.Core.Features.Queries.ContainerNames;
-using Mediator;
 using Unit = System.Reactive.Unit;
 
 namespace Arius.Explorer.ChooseRepository;
