@@ -51,6 +51,9 @@ public class Utils : IClassFixture<Fixture>
             var containerClient = blobServiceClient.GetBlobContainerClient(container.Name);
             var properties      = (BlobContainerProperties)await containerClient.GetPropertiesAsync();
 
+            if (containerClient.Name == "books") // h4x0r for testing
+                continue; 
+
             // Check if the container was last modified more than 24 hours ago
             if (properties.LastModified < DateTimeOffset.UtcNow.AddHours(-24))
             {

@@ -1,5 +1,4 @@
 using Arius.Core.Features.Archive;
-using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fixtures;
@@ -11,6 +10,7 @@ using Shouldly;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
+using Arius.Core.Tests.Helpers.Fakes;
 
 namespace Arius.Core.Tests.Features.Archive;
 
@@ -29,7 +29,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
 
     [Fact]
-    public async Task RunArchiveCommandTEMP() // NOTE this one is skipped in CI
+    public async Task RunArchiveCommandTEMP() // NOTE TEMP this one is skipped in CI
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
 
@@ -41,24 +41,22 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
                 new DirectoryInfo("/mnt/c/Users/WouterVanRanst/Downloads/Photos-001 (1)"))
             .Build();
         await handler.Handle(c, CancellationToken.None);
-
     }
 
     [Fact(Skip = "TODO")]
     public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
     {
-
     }
 
     [Fact]
     public async Task UploadIfNotExistsAsync_WhenChunkDoesNotExist_ShouldUpload()
     {
         // Arrange
-        var testContent = "test content for new upload";
-        var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
-        var hash = CreateTestHash(1);
+        var testContent         = "test content for new upload";
+        var sourceStream        = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
+        var hash                = FakeHashBuilder.GenerateValidHash(1);
         var expectedContentType = "application/x-arius-chunk+gzip";
-        var compressionLevel = CompressionLevel.Optimal;
+        var compressionLevel    = CompressionLevel.Optimal;
 
         var handlerContext = await CreateHandlerContextAsync();
 
@@ -80,7 +78,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         properties.Metadata.ShouldContainKey("ArchivedSize");
         properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
         properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
-        
+
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
 
@@ -92,11 +90,11 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     public async Task UploadIfNotExistsAsync_WhenValidChunkExists_ShouldNotUploadAgain()
     {
         // Arrange
-        var testContent = "test content for existing blob";
-        var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
-        var hash = CreateTestHash(2);
+        var testContent         = "test content for existing blob";
+        var sourceStream        = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
+        var hash                = FakeHashBuilder.GenerateValidHash(2);
         var expectedContentType = "application/x-arius-chunk+gzip";
-        var compressionLevel = CompressionLevel.Optimal;
+        var compressionLevel    = CompressionLevel.Optimal;
 
         var handlerContext = await CreateHandlerContextAsync();
 
@@ -138,11 +136,11 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     public async Task UploadIfNotExistsAsync_WhenInvalidChunk_ShouldDeleteAndReUpload()
     {
         // Arrange
-        var testContent = "test content for corrupted blob";
-        var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
-        var hash = CreateTestHash(3);
+        var testContent        = "test content for corrupted blob";
+        var sourceStream       = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
+        var hash               = FakeHashBuilder.GenerateValidHash(3);
         var correctContentType = "application/x-arius-chunk+gzip";
-        var compressionLevel = CompressionLevel.Optimal;
+        var compressionLevel   = CompressionLevel.Optimal;
 
         var handlerContext = await CreateHandlerContextAsync();
 
@@ -150,7 +148,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         var blobServiceClient = new BlobServiceClient(new Uri($"https://{fixture.RepositoryOptions.AccountName}.blob.core.windows.net"), new Azure.Storage.StorageSharedKeyCredential(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey));
 
         var containerClient = blobServiceClient.GetBlobContainerClient(fixture.RepositoryOptions.ContainerName);
-        var blobClient = containerClient.GetBlobClient($"chunks/{hash}");
+        var blobClient      = containerClient.GetBlobClient($"chunks/{hash}");
 
         // Upload blob without metadata
         var uploadOptions = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = correctContentType } };
@@ -193,18 +191,5 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         var handlerContextBuilder = new HandlerContextBuilder(command, NullLoggerFactory.Instance);
         return await handlerContextBuilder.BuildAsync();
-    }
-
-    private static Hash CreateTestHash(int seed)
-    {
-        var bytes = new byte[32];
-        var timestamp = DateTimeOffset.UtcNow.Ticks;
-        var random = Random.Shared.Next();
-
-        for (int i = 0; i < 32; i++)
-        {
-            bytes[i] = (byte)(seed + i + (timestamp >> (i % 8)) + (random >> (i % 4)));
-        }
-        return Hash.FromBytes(bytes);
     }
 }

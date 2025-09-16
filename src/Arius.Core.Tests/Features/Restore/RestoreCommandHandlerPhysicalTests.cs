@@ -22,13 +22,6 @@ public class RestoreCommandHandlerPhysicalTests : IClassFixture<FixtureWithFileS
         handler      = new RestoreCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
 
-    private static Hash GenerateValidHash(string seed)
-    {
-        var seedBytes = Encoding.UTF8.GetBytes(seed);
-        var hashBytes = SHA256.HashData(seedBytes);
-        return Hash.FromBytes(hashBytes);
-    }
-
     [Fact]
     public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI
     {
