@@ -105,7 +105,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                         else if (u is FileProgressUpdate fpu)
                         {
                             var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[cyan3]{fileName}[/]"));
-                            task.Description = $"[cyan3]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Description = $"[cyan3]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
                             task.Value       = fpu.Percentage;
                             if (fpu.Percentage >= 100)
                                 task.StopTask();

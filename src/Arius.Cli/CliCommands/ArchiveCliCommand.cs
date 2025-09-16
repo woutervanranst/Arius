@@ -103,7 +103,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                         else if (u is FileProgressUpdate fpu)
                         {
                             var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
-                            task.Description = $"[blue]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Description = $"[blue]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
                             task.Value       = fpu.Percentage;
                             if (fpu.Percentage >= 100)
                                 task.StopTask();
