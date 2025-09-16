@@ -8,6 +8,7 @@ using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Arius.Cli.CliCommands;
@@ -65,7 +66,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                     new TaskDescriptionColumn { Alignment = Justify.Right })
                 .StartAsync(async ctx =>
                 {
-                    var progressUpdates = new ConcurrentQueue<ProgressUpdate>();
+                    var progressUpdates = Channel.CreateUnbounded<ProgressUpdate>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false, AllowSynchronousContinuations = false });
 
                     // Create the Mediator command from the CLI arguments
                     var command = new RestoreCommand
@@ -78,44 +79,41 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                         Targets         = Targets,
                         Download        = Download,
                         IncludePointers = IncludePointers,
-                        ProgressReporter = new Progress<ProgressUpdate>(u => progressUpdates.Enqueue(u))
+                        ProgressReporter = new Progress<ProgressUpdate>(u => progressUpdates.Writer.TryWrite(u))
                     };
 
                     // Start the restore command in the background
                     var cancellationToken = console.RegisterCancellationHandler();
-                    var commandTask       = mediator.Send(command, cancellationToken);
+                    var commandTask       = mediator.Send(command, cancellationToken).AsTask();
+                    commandTask.ContinueWith(_ => progressUpdates.Writer.Complete());
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                    while (!commandTask.IsCompleted && !progressUpdates.IsEmpty)
+                    // Process progress updates as they arrive
+                    await foreach (var u in progressUpdates.Reader.ReadAllAsync(cancellationToken))
                     {
-                        while (progressUpdates.TryDequeue(out var u))
+                        // Handle different types of progress updates
+                        if (u is TaskProgressUpdate tpu)
                         {
-                            // Handle different types of progress updates
-                            if (u is TaskProgressUpdate tpu)
-                            {
-                                var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[cyan1]{taskName}[/]").IsIndeterminate());
-                                if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                                    task.Description = $"[cyan1]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                                task.Value = tpu.Percentage;
-                                if (tpu.Percentage >= 100)
-                                    task.StopTask();
-                            }
-                            else if (u is FileProgressUpdate fpu)
-                            {
-                                var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[cyan3]{fileName}[/]"));
-                                task.Description = $"[cyan3]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
-                                task.Value       = fpu.Percentage;
-                                if (fpu.Percentage >= 100)
-                                    task.StopTask();
-                            }
-                            else
-                            {
-                                AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {u.GetType().Name}[/]");
-                            }
+                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[cyan1]{taskName}[/]").IsIndeterminate());
+                            if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                                task.Description = $"[cyan1]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                            task.Value = tpu.Percentage;
+                            if (tpu.Percentage >= 100)
+                                task.StopTask();
                         }
-                        
-                        await Task.Delay(100); // Prevent a tight loop from consuming 100% CPU
+                        else if (u is FileProgressUpdate fpu)
+                        {
+                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[cyan3]{fileName}[/]"));
+                            task.Description = $"[cyan3]{fpu.FileName.TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Value       = fpu.Percentage;
+                            if (fpu.Percentage >= 100)
+                                task.StopTask();
+                        }
+                        else
+                        {
+                            AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {u.GetType().Name}[/]");
+                        }
                     }
 
                     await commandTask; // Propagate any exceptions from the command handler
