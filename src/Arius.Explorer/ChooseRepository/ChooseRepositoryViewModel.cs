@@ -1,12 +1,10 @@
 using Arius.Core.Features.Queries.ContainerNames;
-using Arius.Explorer.Models;
 using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mediator;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using Unit = System.Reactive.Unit;

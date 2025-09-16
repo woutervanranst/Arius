@@ -1,5 +1,5 @@
-using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 
 namespace Arius.Explorer.Shared.Services;
 

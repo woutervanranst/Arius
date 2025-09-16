@@ -2,7 +2,7 @@ using Arius.Explorer.Shared.Services;
 using System.IO;
 using System.Text.Json.Serialization;
 
-namespace Arius.Explorer.Models;
+namespace Arius.Explorer.Settings;
 
 public record RepositoryOptions
 {

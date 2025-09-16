@@ -1,4 +1,3 @@
-using Arius.Explorer.Models;
 using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
