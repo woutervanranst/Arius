@@ -332,7 +332,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             }
 
             // Incorrect content type or metadata not set: file was not properly uploaded last time --> delete and re-upload
-            logger.LogWarning("Chunk exists with incorrect content type '{ActualContentType}' (expected '{ExpectedContentType}') for hash {Hash}, deleting and re-uploading", properties?.ContentType, contentType, hash.ToShortString());
+            logger.LogWarning("Chunk exists with incorrect metadata format for hash {Hash}, deleting and re-uploading", hash.ToShortString());
 
             await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
 
