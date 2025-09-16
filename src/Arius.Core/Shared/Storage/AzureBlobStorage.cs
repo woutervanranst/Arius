@@ -235,11 +235,11 @@ internal class AzureBlobStorage : IStorage
             await blobClient.DeleteAsync(cancellationToken: cancellationToken);
             logger.LogDebug("Successfully deleted blob '{BlobName}'", blobName);
         }
-        catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
-        {
-            logger.LogDebug("Blob '{BlobName}' not found, nothing to delete", blobName);
-            // Don't throw for not found - idempotent delete
-        }
+        //catch (RequestFailedException e) when (e is { Status: 404, ErrorCode: "BlobNotFound" })
+        //{
+        //    logger.LogDebug("Blob '{BlobName}' not found, nothing to delete", blobName);
+        //    // Don't throw for not found - idempotent delete
+        //}
         catch (RequestFailedException e)
         {
             logger.LogError(e, "Failed to delete blob '{BlobName}'. Status: {Status}, ErrorCode: {ErrorCode}", blobName, e.Status, e.ErrorCode);

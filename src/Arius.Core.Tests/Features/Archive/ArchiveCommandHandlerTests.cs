@@ -83,6 +83,9 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
+
+        // Verify the stream was read to the end (ie the binary was uploaded)
+        sourceStream.Position.ShouldBe(sourceStream.Length);
     }
 
     [Fact]
@@ -126,67 +129,60 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         // Verify Storage Tier
         properties.StorageTier.ShouldBe(StorageTier.Cool);
+
+        // Verify the stream was NOT read (ie the binary was NOT uploaded again)
+        sourceStream.Position.ShouldBe(0);
     }
 
     [Fact]
     public async Task UploadIfNotExistsAsync_WhenFileExistsWithWrongContentType_ShouldDeleteAndReUpload()
     {
         // Arrange
-        if (fixture.RepositoryOptions == null)
-            return; // Skip if no Azure configuration
-
         var testContent = "test content for corrupted blob";
         var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
         var hash = CreateTestHash(3);
-        var wrongContentType = "text/plain";
         var correctContentType = "application/x-arius-chunk+gzip";
         var compressionLevel = CompressionLevel.Optimal;
 
         var handlerContext = await CreateHandlerContextAsync();
 
         // Create a blob with wrong content type using BlobClient directly (simulating corruption)
-        var blobServiceClient = new BlobServiceClient(
-            new Uri($"https://{fixture.RepositoryOptions.AccountName}.blob.core.windows.net"),
-            new Azure.Storage.StorageSharedKeyCredential(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey));
+        var blobServiceClient = new BlobServiceClient(new Uri($"https://{fixture.RepositoryOptions.AccountName}.blob.core.windows.net"), new Azure.Storage.StorageSharedKeyCredential(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.AccountKey));
 
         var containerClient = blobServiceClient.GetBlobContainerClient(fixture.RepositoryOptions.ContainerName);
-        await containerClient.CreateIfNotExistsAsync();
+        var blobClient = containerClient.GetBlobClient($"chunks/{hash}");
 
-        var blobClient = containerClient.GetBlobClient(hash.ToString());
-
-        // Upload blob with wrong content type
-        var uploadOptions = new BlobUploadOptions
-        {
-            HttpHeaders = new BlobHttpHeaders { ContentType = wrongContentType }
-        };
-        await blobClient.UploadAsync(new MemoryStream(Encoding.UTF8.GetBytes("corrupted content")), uploadOptions, CancellationToken.None);
-
-        // Verify wrong content type was set
-        var initialProperties = await blobClient.GetPropertiesAsync();
-        initialProperties.Value.ContentType.ShouldBe(wrongContentType);
+        // Upload blob without metadata
+        var uploadOptions = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentType = correctContentType } };
+        await blobClient.UploadAsync(new MemoryStream("corrupted content"u8.ToArray()), uploadOptions, CancellationToken.None);
 
         // Reset source stream
         sourceStream.Seek(0, SeekOrigin.Begin);
 
         // Act - Should detect wrong content type, delete, and re-upload
-        var result = await handler.UploadIfNotExistsAsync(
-            handlerContext, hash, sourceStream, compressionLevel, correctContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, correctContentType, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
         result.ArchivedSize.ShouldBeGreaterThan(0);
 
         // Verify the blob now has correct content type and metadata
-        var finalProperties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
-        finalProperties.ShouldNotBeNull();
-        finalProperties.ContentType.ShouldBe(correctContentType);
+        var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
+        properties.ShouldNotBeNull();
+        properties.ContentType.ShouldBe(correctContentType);
 
         // Verify metadata was set correctly after re-upload
-        finalProperties.Metadata.ShouldNotBeNull();
-        finalProperties.Metadata.ShouldContainKey("OriginalSize");
-        finalProperties.Metadata.ShouldContainKey("ArchivedSize");
-        finalProperties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
-        finalProperties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+        properties.Metadata.ShouldNotBeNull();
+        properties.Metadata.ShouldContainKey("OriginalSize");
+        properties.Metadata.ShouldContainKey("ArchivedSize");
+        properties.Metadata["OriginalSize"].ShouldBe(result.OriginalSize.ToString());
+        properties.Metadata["ArchivedSize"].ShouldBe(result.ArchivedSize.ToString());
+
+        // Verify Storage Tier
+        properties.StorageTier.ShouldBe(StorageTier.Cool);
+
+        // Verify the stream was read to the end (ie the binary was uploaded again)
+        sourceStream.Position.ShouldBe(sourceStream.Length);
     }
 
     private async Task<HandlerContext> CreateHandlerContextAsync()
