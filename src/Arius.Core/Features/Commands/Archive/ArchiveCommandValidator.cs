@@ -7,7 +7,7 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 {
     public ArchiveCommandValidator()
     {
-        Include(new RepositoryCommandValidator<Unit>());
+        Include(new RepositoryCommandValidator());
 
         RuleFor(x => x.LocalRoot)
             .NotNull()

@@ -3,7 +3,7 @@ using Mediator;
 
 namespace Arius.Core.Features.Commands.Archive;
 
-public sealed record ArchiveCommand : RepositoryCommand<Unit>
+public sealed record ArchiveCommand : RepositoryCommandProperties, ICommand<Unit>
 {
     public required bool          RemoveLocal { get; init; }
     public required StorageTier   Tier        { get; init; }

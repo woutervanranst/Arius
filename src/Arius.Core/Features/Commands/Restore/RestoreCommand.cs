@@ -1,6 +1,8 @@
+using Mediator;
+
 namespace Arius.Core.Features.Commands.Restore;
 
-public sealed record RestoreCommand : RepositoryCommand<RestoreCommandResult>
+public sealed record RestoreCommand : RepositoryCommandProperties, ICommand<RestoreCommandResult>
 {
     public required DirectoryInfo LocalRoot       { get; init; }
     public required string[]      Targets         { get; init; }
