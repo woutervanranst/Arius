@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
-public partial class WindowViewModel : ObservableObject
+public partial class RepositoryExplorerViewModel : ObservableObject
 {
     [ObservableProperty]
     private string windowName = "Arius Explorer";
@@ -28,7 +28,7 @@ public partial class WindowViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<string> recentRepositories = [];
 
-    public WindowViewModel()
+    public RepositoryExplorerViewModel()
     {
         // Initialize with sample data for development
         RootNode = [

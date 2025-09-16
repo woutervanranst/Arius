@@ -67,7 +67,7 @@ internal static class Program
             {
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
-                services.AddTransient<RepositoryExplorer.WindowViewModel>();
+                services.AddTransient<RepositoryExplorer.RepositoryExplorerViewModel>();
                 services.AddTransient<ChooseRepository.Window>();
                 services.AddTransient<ChooseRepository.WindowViewModel>();
 

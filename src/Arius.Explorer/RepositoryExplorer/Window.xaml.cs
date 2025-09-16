@@ -8,9 +8,9 @@ namespace Arius.Explorer.RepositoryExplorer;
 public partial class Window
 {
     private readonly ILogger<Window> logger;
-    private readonly WindowViewModel viewModel;
+    private readonly RepositoryExplorerViewModel viewModel;
 
-    public Window(ILogger<Window> logger, WindowViewModel viewModel)
+    public Window(ILogger<Window> logger, RepositoryExplorerViewModel viewModel)
     {
         this.logger = logger;
         this.viewModel = viewModel;
