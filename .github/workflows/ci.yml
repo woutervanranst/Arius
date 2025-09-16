@@ -48,7 +48,7 @@ jobs:
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
         run: |
           dotnet test Arius.Cli.Tests/Arius.Cli.Tests.csproj --configuration Release --logger "trx;LogFileName=cli-test-results.trx" --collect:"XPlat Code Coverage"
-          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.ArchiveCommandHandlerTests.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.RestoreCommandHandlerTests.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: "📄 Publish Test Report"
         if: always()
@@ -159,7 +159,7 @@ jobs:
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
         run: |
           dotnet test Arius.Explorer.Tests/Arius.Explorer.Tests.csproj --configuration Release --logger "trx;LogFileName=explorer-test-results.trx" --collect:"XPlat Code Coverage"
-          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.ArchiveCommandHandlerTests.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.RestoreCommandHandlerTests.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: "📄 Publish Test Report"
         if: always()
