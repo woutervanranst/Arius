@@ -30,7 +30,7 @@ public class RestoreCommandHandlerPhysicalTests : IClassFixture<FixtureWithFileS
     }
 
     [Fact]
-    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP()
+    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI
     {
         // Arrange
         var command = new RestoreCommandBuilder(fixture)
