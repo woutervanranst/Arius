@@ -68,6 +68,9 @@ internal static class Program
                 // Register application settings
                 services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
 
+                // Register dialog service
+                services.AddTransient<Services.IDialogService, Services.DialogService>();
+
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
                 services.AddTransient<RepositoryExplorer.RepositoryExplorerViewModel>();

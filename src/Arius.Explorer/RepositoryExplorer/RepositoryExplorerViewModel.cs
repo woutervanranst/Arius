@@ -1,4 +1,5 @@
 using Arius.Explorer.Models;
+using Arius.Explorer.Services;
 using Arius.Explorer.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,34 +11,14 @@ namespace Arius.Explorer.RepositoryExplorer;
 public partial class RepositoryExplorerViewModel : ObservableObject
 {
     private readonly IApplicationSettings settings;
+    private readonly IDialogService dialogService;
 
-    [ObservableProperty]
-    private string windowName = "Arius Explorer";
-    
-    [ObservableProperty]
-    private bool isLoading;
-    
-    [ObservableProperty]
-    private string selectedItemsText = "";
-    
-    [ObservableProperty]
-    private string archiveStatistics = "";
-    
-    [ObservableProperty]
-    private ObservableCollection<TreeNodeViewModel> rootNode = [];
-    
-    [ObservableProperty]
-    private FolderViewModel? selectedFolder;
-    
-    [ObservableProperty]
-    private ObservableCollection<RepositoryOptions> recentRepositories = [];
+    // -- INITIALIZATION & GENERAL WINDOW
 
-    [ObservableProperty]
-    private RepositoryOptions? currentRepository;
-
-    public RepositoryExplorerViewModel(IApplicationSettings settings)
+    public RepositoryExplorerViewModel(IApplicationSettings settings, IDialogService dialogService)
     {
         this.settings = settings;
+        this.dialogService = dialogService;
 
         // Load recent repositories from settings
         LoadRecentRepositories();
@@ -69,6 +50,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
+    private void LoadRecentRepositories()
+    {
+        var recent = settings.RecentRepositories;
+        RecentRepositories = new ObservableCollection<RepositoryOptions>(recent);
+    }
+
+    [ObservableProperty]
+    private string windowName = "Arius Explorer";
+
     [RelayCommand]
     private void ViewLoaded()
     {
@@ -76,32 +66,40 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         WindowName = "Arius Explorer - Repository Browser";
     }
 
-    [RelayCommand]
+    [ObservableProperty]
+    private bool isLoading;
+
+    [ObservableProperty]
+    private string archiveStatistics = "";
+
+    [ObservableProperty]
+    private ObservableCollection<RepositoryOptions> recentRepositories = [];
+
+    [ObservableProperty]
+    private RepositoryOptions? currentRepository;
+
+    // MENUS
+
+    [RelayCommand] // File > Open...
     private void ChooseRepository()
     {
-        OpenChooseRepositoryWindow(CurrentRepository ?? settings.LastOpenedRepository);
+        var viewModel = dialogService.ShowDialog<ChooseRepository.Window, ChooseRepository.WindowViewModel>(vm =>
+        {
+            if (CurrentRepository != null)
+            {
+                vm.LocalDirectoryPath = CurrentRepository.LocalDirectoryPath;
+                vm.AccountName        = CurrentRepository.AccountName;
+                vm.AccountKey         = CurrentRepository.AccountKey; // This will decrypt the protected value
+                vm.ContainerName      = CurrentRepository.ContainerName;
+                vm.Passphrase         = CurrentRepository.Passphrase; // This will decrypt the protected value
+            }
+        });
+
+        // TODO: Process the returned viewModel if needed
     }
 
-    [RelayCommand]
-    private void ChooseNewRepository()
-    {
-        OpenChooseRepositoryWindow(null);
-    }
 
-    private void OpenChooseRepositoryWindow(RepositoryOptions? repositoryToLoad)
-    {
-        if (App.ServiceProvider == null) return;
-
-        var chooseRepositoryWindow = App.ServiceProvider.GetRequiredService<ChooseRepository.Window>();
-        var chooseRepositoryViewModel = App.ServiceProvider.GetRequiredService<ChooseRepository.WindowViewModel>();
-
-        // Load the specified repository or leave empty for new repository
-        chooseRepositoryViewModel.LoadRepository(repositoryToLoad);
-
-        chooseRepositoryWindow.ShowDialog();
-    }
-
-    [RelayCommand]
+    [RelayCommand] // File > Recent > [list]
     private void OpenRecentRepository(RepositoryOptions repository)
     {
         CurrentRepository = repository;
@@ -111,16 +109,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         repository.LastOpened = DateTime.Now;
         settings.AddRecentRepository(repository);
 
-        WindowName = $"Arius Explorer - {repository.LocalDirectory.Name}";
+        WindowName        = $"Arius Explorer - {repository.LocalDirectory.Name}";
         ArchiveStatistics = $"Repository: {repository.LocalDirectoryPath}";
 
         // TODO: Actually load the repository data
-    }
-
-    [RelayCommand]
-    private void Restore()
-    {
-        // TODO: Implement restore functionality
     }
 
     [RelayCommand]
@@ -129,9 +121,25 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // TODO: Show about dialog
     }
 
-    private void LoadRecentRepositories()
+
+
+    // TREEVIEW
+
+    [ObservableProperty]
+    private ObservableCollection<TreeNodeViewModel> rootNode = [];
+
+    [ObservableProperty]
+    private FolderViewModel? selectedFolder;
+
+    
+    // LISTVIEW
+
+    [ObservableProperty]
+    private string selectedItemsText = "";
+
+    [RelayCommand]
+    private void Restore()
     {
-        var recent = settings.RecentRepositories;
-        RecentRepositories = new ObservableCollection<RepositoryOptions>(recent);
+        // TODO: Implement restore functionality
     }
 }

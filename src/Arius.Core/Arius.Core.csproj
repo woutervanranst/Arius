@@ -21,6 +21,8 @@
 		<PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
 		<PackageReference Include="System.Linq.Async" />
 		<PackageReference Include="Zio" />
+			<!--<PrivateAssets>compile;build;buildTransitive;contentFiles;analyzers;native</PrivateAssets>-->
+		
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

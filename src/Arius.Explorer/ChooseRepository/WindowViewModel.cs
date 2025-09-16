@@ -93,7 +93,7 @@ public partial class WindowViewModel : ObservableObject, IDisposable
                 AccountKey  = AccountKey
             };
 
-            var r = await mediator.CreateStream(query).ToListAsync();
+            //var r = await mediator.CreateStream(query).ToListAsync();
 
 
 
@@ -102,8 +102,8 @@ public partial class WindowViewModel : ObservableObject, IDisposable
             //var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
             //ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
 
-            if (ContainerName is null && ContainerNames.Count > 0)
-                ContainerName = ContainerNames[0];
+            //if (ContainerName is null && ContainerNames.Count > 0)
+            //    ContainerName = ContainerNames[0];
 
             StorageAccountError = false;
         }
@@ -160,17 +160,6 @@ public partial class WindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    public void LoadRepository(RepositoryOptions? repository)
-    {
-        if (repository != null)
-        {
-            LocalDirectoryPath = repository.LocalDirectoryPath;
-            AccountName = repository.AccountName;
-            AccountKey = repository.AccountKey; // This will decrypt the protected value
-            ContainerName = repository.ContainerName;
-            Passphrase = repository.Passphrase; // This will decrypt the protected value
-        }
-    }
 
     // -- DISPOSE
 
