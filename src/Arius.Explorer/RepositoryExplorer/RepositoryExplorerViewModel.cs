@@ -3,7 +3,6 @@ using Arius.Explorer.Services;
 using Arius.Explorer.Settings;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 
 namespace Arius.Explorer.RepositoryExplorer;
