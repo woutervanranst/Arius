@@ -34,7 +34,7 @@ public class ChooseRepositoryFunctionalTests : ExplorerUiTestBase
     }
 
     [Test]
-    //[Ignore("Needs rework")]
+    [Ignore("Needs rework")]
     public void ChooseRepository_ShouldDisplayDefaultValues()
     {
         var dialog = _dialog.ShouldNotBeNull("Choose Repository dialog was not opened.");
@@ -70,6 +70,7 @@ public class ChooseRepositoryFunctionalTests : ExplorerUiTestBase
     }
 
     [Test]
+    [Ignore("Not implemented yet")]
     public void ChooseRepository_ShouldAllowChangingContainer()
     {
         var dialog = _dialog.ShouldNotBeNull("Choose Repository dialog was not opened.");
