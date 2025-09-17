@@ -26,7 +26,7 @@ public abstract class ExplorerUiTestBase
     [OneTimeSetUp]
     public void BaseOneTimeSetUp()
     {
-        if (!OperatingSystem.IsWindows())
+        if (!System.OperatingSystem.IsWindows())
         {
             Assert.Ignore("Arius Explorer UI automation tests can only run on Windows.");
         }
@@ -96,7 +96,7 @@ public abstract class ExplorerUiTestBase
             if (_application is { HasExited: false })
             {
                 _application.Close();
-                _application.WaitForExit(TimeSpan.FromSeconds(10));
+                WaitForCondition(() => _application.HasExited, TimeSpan.FromSeconds(10), "the Arius Explorer process to exit");
             }
         }
         finally
@@ -134,10 +134,11 @@ public abstract class ExplorerUiTestBase
         var fileMenu = fileMenuElement.AsMenuItem();
         fileMenu.Expand();
 
-        var openMenuItem = WaitForElement(
-            () => fileMenu.SubMenu?.Items.FirstOrDefault(item => item.AutomationId == "OpenMenuItem"),
+        var openMenuItemElement = WaitForElement(
+            () => fileMenu.FindFirstDescendant(cf => cf.ByAutomationId("OpenMenuItem")),
             TimeSpan.FromSeconds(5),
             "the Open menu item");
+        var openMenuItem = openMenuItemElement.AsMenuItem();
         openMenuItem.Invoke();
 
         return WaitForElement(
