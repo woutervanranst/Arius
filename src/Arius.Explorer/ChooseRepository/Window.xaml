@@ -48,14 +48,16 @@
                        FontSize="20">Local</Label>
 
                 <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
-                <TextBox Grid.Row="1" Grid.Column="1" 
-                         HorizontalAlignment="Stretch" 
-                         Margin="1" 
-                         Text="{Binding LocalDirectoryPath, Mode=OneWay}" 
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         HorizontalAlignment="Stretch"
+                         Margin="1"
+                         AutomationProperties.AutomationId="LocalPathTextBox"
+                         Text="{Binding LocalDirectoryPath, Mode=OneWay}"
                          IsReadOnly="True" />
-                <Button Grid.Row="1" Grid.Column="2" 
-                        Margin="1" 
-                        Width="35" 
+                <Button Grid.Row="1" Grid.Column="2"
+                        Margin="1"
+                        Width="35"
+                        AutomationProperties.AutomationId="BrowseLocalPathButton"
                         Command="{Binding SelectLocalDirectoryCommand}">...</Button>
             </Grid>
 
@@ -82,9 +84,10 @@
                 <Label Grid.Row="1" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Storage Account Name:"/>
-                <TextBox Grid.Row="1" Grid.Column="1" 
-                         HorizontalAlignment="Stretch" 
-                         Margin="1" 
+                <TextBox Grid.Row="1" Grid.Column="1"
+                         HorizontalAlignment="Stretch"
+                         Margin="1"
+                         AutomationProperties.AutomationId="AccountNameTextBox"
                          Text="{Binding AccountName}">
                     <TextBox.Style>
                         <Style TargetType="TextBox">
@@ -101,9 +104,10 @@
                 <Label Grid.Row="2" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Storage Account Key:"/>
-                <TextBox Grid.Row="2" Grid.Column="1" 
-                         HorizontalAlignment="Stretch" 
-                         Margin="1" 
+                <TextBox Grid.Row="2" Grid.Column="1"
+                         HorizontalAlignment="Stretch"
+                         Margin="1"
+                         AutomationProperties.AutomationId="AccountKeyTextBox"
                          Text="{Binding AccountKey}">
                     <TextBox.Style>
                         <Style TargetType="TextBox">
@@ -120,25 +124,28 @@
                 <Label Grid.Row="3" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Container:"/>
-                <ComboBox Grid.Row="3" Grid.Column="1" 
-                          HorizontalAlignment="Stretch" 
-                          Margin="1" 
-                          ItemsSource="{Binding ContainerNames}" 
+                <ComboBox Grid.Row="3" Grid.Column="1"
+                          HorizontalAlignment="Stretch"
+                          Margin="1"
+                          AutomationProperties.AutomationId="ContainerComboBox"
+                          ItemsSource="{Binding ContainerNames}"
                           SelectedItem="{Binding ContainerName}" />
 
                 <Label Grid.Row="4" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Passphrase:"/>
-                <PasswordBox Grid.Row="4" Grid.Column="1" 
-                            HorizontalAlignment="Stretch" 
-                            Margin="1" />
+                <PasswordBox Grid.Row="4" Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            Margin="1"
+                            AutomationProperties.AutomationId="PassphrasePasswordBox" />
             </Grid>
         </Grid>
 
-        <Button HorizontalAlignment="Right" 
-                Width="100" 
-                Height="30" 
-                Margin="0,0,11,10" 
+        <Button HorizontalAlignment="Right"
+                Width="100"
+                Height="30"
+                Margin="0,0,11,10"
+                AutomationProperties.AutomationId="OpenRepositoryButton"
                 Command="{Binding OpenRepositoryCommand}">Open</Button>
     </StackPanel>
 

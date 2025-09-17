@@ -41,8 +41,8 @@
     <DockPanel LastChildFill="True">
 
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="File">
-                <MenuItem Header="Open..." Command="{Binding ChooseRepositoryCommand}"/>
+            <MenuItem Header="File" AutomationProperties.AutomationId="FileMenu">
+                <MenuItem Header="Open..." AutomationProperties.AutomationId="OpenMenuItem" Command="{Binding ChooseRepositoryCommand}"/>
                 <MenuItem Header="Open recent" ItemsSource="{Binding RecentRepositories}">
                     <MenuItem.ItemContainerStyle>
                         <Style TargetType="MenuItem">
@@ -66,10 +66,10 @@
 
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
-                <TextBlock Text="{Binding SelectedItemsText}" />
+                <TextBlock Text="{Binding SelectedItemsText}" AutomationProperties.AutomationId="SelectedItemsStatus" />
             </StatusBarItem>
             <StatusBarItem HorizontalAlignment="Right">
-                <TextBlock Text="{Binding ArchiveStatistics}" />
+                <TextBlock Text="{Binding ArchiveStatistics}" AutomationProperties.AutomationId="ArchiveStatisticsStatus" />
             </StatusBarItem>
         </StatusBar>
 
@@ -82,7 +82,7 @@
             </Grid.ColumnDefinitions>
 
             <!--Folder explorer-->
-            <TreeView Grid.Column="0" ItemsSource="{Binding RootNode}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
+            <TreeView Grid.Column="0" ItemsSource="{Binding RootNode}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" AutomationProperties.AutomationId="RepositoryTree">
 
                 <TreeView.ItemsPanel>
                     <ItemsPanelTemplate>
