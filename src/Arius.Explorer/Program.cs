@@ -1,4 +1,5 @@
 using Arius.Core;
+using Arius.Explorer.Shared.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -65,6 +66,10 @@ internal static class Program
             })
             .ConfigureServices((context, services) =>
             {
+                // Register infrastructure services
+                services.AddSingleton<IFolderDialogService, DesignTimeFolderDialogService>();
+                services.AddSingleton<IRepositoryConnectionService, DesignTimeRepositoryConnectionService>();
+
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
                 services.AddTransient<RepositoryExplorer.WindowViewModel>();
