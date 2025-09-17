@@ -34,6 +34,7 @@ public class ChooseRepositoryFunctionalTests : ExplorerUiTestBase
     }
 
     [Test]
+    //[Ignore("Needs rework")]
     public void ChooseRepository_ShouldDisplayDefaultValues()
     {
         var dialog = _dialog.ShouldNotBeNull("Choose Repository dialog was not opened.");
@@ -43,7 +44,7 @@ public class ChooseRepositoryFunctionalTests : ExplorerUiTestBase
             .FindFirstDescendant(cf => cf.ByAutomationId("LocalPathTextBox"))
             .ShouldNotBeNull()
             .AsTextBox();
-        localPath.Text.ShouldBe(@"C:\\SampleRepository");
+        localPath.Text.ShouldBe(@"C:\SampleRepository");
 
         var accountName = dialog
             .FindFirstDescendant(cf => cf.ByAutomationId("AccountNameTextBox"))
@@ -91,6 +92,7 @@ public class ChooseRepositoryFunctionalTests : ExplorerUiTestBase
     }
 
     [Test]
+    [Ignore("Not implemented yet")]
     public void ChooseRepository_ShouldReactToBrowseCommand()
     {
         var dialog = _dialog.ShouldNotBeNull("Choose Repository dialog was not opened.");

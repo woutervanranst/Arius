@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
@@ -66,6 +67,15 @@ public partial class WindowViewModel : ObservableObject
         if (App.ServiceProvider == null) return;
         
         var chooseRepositoryWindow = App.ServiceProvider.GetRequiredService<ChooseRepository.Window>();
+
+        var owner = Application.Current?.MainWindow ?? Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+        if (owner != null)
+        {
+            chooseRepositoryWindow.Owner                 = owner;
+            chooseRepositoryWindow.ShowInTaskbar         = false; // optional, typical for dialogs
+            chooseRepositoryWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner; // optional
+        }
+
         chooseRepositoryWindow.ShowDialog();
     }
 
