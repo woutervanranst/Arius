@@ -1,4 +1,3 @@
-using Azure.Storage.Blobs.Models;
 using FluentResults;
 
 namespace Arius.Core.Shared.Storage;
@@ -9,8 +8,8 @@ namespace Arius.Core.Shared.Storage;
 internal record StorageProperties(
     string Name,
     string? ContentType,
-    IDictionary<string, string>? Metadata,
-    StorageTier? StorageTier,
+    IDictionary<string, string>? Metadata, // TODO when null?
+    StorageTier? StorageTier, // TODO when null?
     long ContentLength
 );
 
@@ -26,7 +25,7 @@ internal interface IStorage
     Task<Result<Stream>>                OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = null, string? contentType = null, IProgress<long>? progress = null, CancellationToken cancellationToken = default);
     Task<StorageProperties?>            GetPropertiesAsync(string blobName, CancellationToken cancellationToken = default);
     Task                                DeleteAsync(string blobName, CancellationToken cancellationToken = default);
-    Task                                SetAccessTierAsync(string blobName, AccessTier tier);
+    Task                                SetAccessTierAsync(string blobName, StorageTier tier);
     Task                                SetMetadataAsync(string blobName, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
     Task                                StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority);
 }

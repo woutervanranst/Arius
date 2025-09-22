@@ -45,10 +45,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     {
         return storage.GetAllAsync(statesFolderPrefix, cancellationToken)
             .OrderBy(sp => sp.Name)
-            .Where(sp =>
-            {
-                return sp.Metadata.TryGetValue("DatabaseVersion", out var version) && version == "5";
-            })
+            .Where(sp => sp.Metadata != null && sp.Metadata.TryGetValue("DatabaseVersion", out var version) && version == "5") // Get all v5 states
             .Select(sp => sp.Name[statesFolderPrefix.Length..]); // remove the "states/" prefix
     }
 
@@ -79,14 +76,18 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         if (blobStreamResult.IsFailed)
             throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
 
-        await using var blobStream       = blobStreamResult.Value;
-        await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
-        await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.SmallestSize);
-        await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+        await using (var blobStream = blobStreamResult.Value)
+        {
+            await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
+            await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.SmallestSize);
+            await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
-        await fileStream.CopyToAsync(compressedStream, cancellationToken);
+            await fileStream.CopyToAsync(compressedStream, cancellationToken);
+        }
+
+        await storage.SetAccessTierAsync(blobName, StorageTier.Cold);
+        await storage.SetMetadataAsync(blobName, new Dictionary<string, string> { { "DatabaseVersion", "5" } });
     }
-
 
     // -- CHUNKS
 
@@ -178,7 +179,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var actualTier = GetActualStorageTier(targetTier, length);
         var blobName   = $"{chunksFolderPrefix}{h}";
 
-        await storage.SetAccessTierAsync(blobName, actualTier.ToAccessTier());
+        await storage.SetAccessTierAsync(blobName, actualTier);
 
         return actualTier;
 

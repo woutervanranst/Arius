@@ -102,7 +102,7 @@ internal class AzureBlobStorage : IStorage
     public IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
-        return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
+        return blobContainerClient.GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken)
             .Select(blob => new StorageProperties(
                 Name: blob.Name,
                 ContentType: blob.Properties.ContentType,
@@ -255,13 +255,13 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public async Task SetAccessTierAsync(string blobName, AccessTier tier)
+    public async Task SetAccessTierAsync(string blobName, StorageTier tier)
     {
         logger.LogInformation("Setting access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
         var blobClient = blobContainerClient.GetBlobClient(blobName);
         try
         {
-            await blobClient.SetAccessTierAsync(tier);
+            await blobClient.SetAccessTierAsync(tier.ToAccessTier());
             logger.LogInformation("Successfully set access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
         }
         catch (RequestFailedException e)
