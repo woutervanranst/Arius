@@ -21,6 +21,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="9.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.Testing" Version="9.9.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
