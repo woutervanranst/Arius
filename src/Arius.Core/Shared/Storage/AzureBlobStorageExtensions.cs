@@ -2,7 +2,7 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Shared.Storage;
 
-public static class AzureBlobStorageExtensions
+internal static class AzureBlobStorageExtensions
 {
     public static StorageTier ToStorageTier(this AccessTier? tier)
     {

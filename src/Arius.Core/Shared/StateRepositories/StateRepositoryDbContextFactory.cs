@@ -37,14 +37,12 @@ internal class StateRepositoryDbContextPool
 
         factory = new PooledDbContextFactory<StateRepositoryDbContext>(options, poolSize: 32);
 
-        //context.Database.Migrate();
-
         if (ensureCreated)
         {
             lock (ensureCreatedLock)
             {
                 using var context = CreateContext();
-                context.Database.EnsureCreated();
+                context.Database.Migrate();
             }
         }
     }
