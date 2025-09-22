@@ -1,14 +1,15 @@
 ﻿using Arius.Core.DbMigrationV3V5.v3;
 using Arius.Core.Shared.Crypto;
 using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.IO.Compression;
-using Arius.Core.Shared.Storage;
-using Microsoft.EntityFrameworkCore;
+using PointerFileEntryV5 = Arius.Core.Shared.StateRepositories.PointerFileEntry;
 
 namespace Arius.Core.DbMigrationV3V5
 {
@@ -84,13 +85,13 @@ namespace Arius.Core.DbMigrationV3V5
                         if (ce.IncrementalLength != ce.ArchivedLength)
                             throw new InvalidOperationException("Cannot migrate ChunkEntry with IncrementalLength != ArchivedLength to BinaryProperties");
 
+                        //var chunks = await container.GetBlobsAsync(prefix: $"{BlobContainer.CHUNKS_FOLDER_NAME}/").ToDictionaryAsync(bi => Path.GetFileName(bi.Name), bi => bi);
 
-                        var bp = new BinaryProperties()
+                        var bp = new BinaryProperties
                         {
                             Hash         = ce.Hash,
                             ParentHash   = null,
-                            OriginalSize = ce.OriginalLength,
-                            ArchivedSize = ce.ArchivedLength,
+                            OriginalSize = ce.OriginalLength, ArchivedSize = ce.ArchivedLength,
                             StorageTier  = ToStorageTier(ce.AccessTier)
                         };
 
@@ -100,80 +101,60 @@ namespace Arius.Core.DbMigrationV3V5
                     v5db.SaveChanges();
                 }
 
-                //    if (v3db.BinaryProperties.Count() != v5db.ChunkEntries.Count())
-                //    {
-                //        v5db.ChunkEntries.RemoveRange(v5db.ChunkEntries);
-                //        await v5db.SaveChangesAsync();
 
-                //        var chunks = await container.GetBlobsAsync(prefix: $"{BlobContainer.CHUNKS_FOLDER_NAME}/").ToDictionaryAsync(bi => Path.GetFileName(bi.Name), bi => bi);
+                // Migrate PointerFileEntries
+                var v3PointerFileEntries = v3db.PointerFileEntries
+                    .Where(pfe => pfe.VersionUtc <= DateTime.UtcNow)
+                    .GroupBy(pfe => pfe.RelativeName)
+                    .Select(g => g.OrderByDescending(pfe => pfe.VersionUtc).FirstOrDefault()).ToArray();
 
-                //        foreach (var bp in v3db.BinaryProperties)
-                //        {
-                //            var ce = new ChunkEntry
-                //            {
-                //                Hash = bp.Hash.HexStringToBytes(),
-                //                OriginalLength = bp.OriginalLength,
-                //                ArchivedLength = bp.ArchivedLength,
-                //                IncrementalLength = bp.IncrementalLength,
-                //                ChunkCount = bp.ChunkCount,
-                //                AccessTier = chunks[bp.Hash].Properties.AccessTier
-                //            };
+                var v3ExistingPointerFileEntries = v3PointerFileEntries.Where(pfe => !pfe.IsDeleted).ToArray();
+                
+                if (v3ExistingPointerFileEntries.Count() != v5db.PointerFileEntries.Count())
+                {
+                    v5db.PointerFileEntries.RemoveRange(v5db.PointerFileEntries);
+                    v5db.SaveChanges();
 
-                //            if (ce.AccessTier == AccessTier.Cool)
-                //            {
-                //                // Also update the Tier
-                //                var blobClient = container.GetBlobClient($"{BlobContainer.CHUNKS_FOLDER_NAME}/{bp.Hash}");
-                //                blobClient.SetAccessTierAsync(AccessTier.Cold);
-                //            }
+                    foreach (var v3pfe in v3ExistingPointerFileEntries)
+                    {
+                        if (v3pfe.IsDeleted)
+                            continue;
 
-                //            v5db.ChunkEntries.Add(ce);
-                //        }
+                        var v5pfe = new PointerFileEntryV5
+                        {
+                            Hash             = v3pfe.BinaryHashValue,
+                            RelativeName     = v3pfe.RelativeName.ToPlatformNeutralPath(),
+                            CreationTimeUtc  = v3pfe.CreationTimeUtc,
+                            LastWriteTimeUtc = v3pfe.LastWriteTimeUtc
+                        };
 
-                //        await v5db.SaveChangesAsync();
-                //    }
+                        v5db.PointerFileEntries.Add(v5pfe);
+                    }
 
-                //    // Migrate PointerFileEnties
-                //    if (v3db.PointerFileEntries.Count() != v5db.PointerFileEntries.Count())
-                //    {
-                //        v5db.PointerFileEntries.RemoveRange(v5db.PointerFileEntries);
-                //        await v5db.SaveChangesAsync();
+                    v5db.SaveChanges();
+                }
 
-                //        foreach (var v2pfe in v3db.PointerFileEntries)
-                //        {
-                //            var v3pfe = new PointerFileEntry
-                //            {
-                //                BinaryHashValue = v2pfe.BinaryHash.HexStringToBytes(),
-                //                RelativeName = v2pfe.RelativeName,
-                //                VersionUtc = v2pfe.VersionUtc,
-                //                IsDeleted = v2pfe.IsDeleted,
-                //                CreationTimeUtc = v2pfe.CreationTimeUtc,
-                //                LastWriteTimeUtc = v2pfe.LastWriteTimeUtc
-                //            };
 
-                //            v5db.PointerFileEntries.Add(v3pfe);
-                //        }
-
-                //        await v5db.SaveChangesAsync();
-                //    }
-
-                //    //await v3db.DisposeAsync();
-
-                //    await v5db.Database.ExecuteSqlRawAsync("VACUUM;");
-                //    //await v3db.Database.CloseConnectionAsync(); 
+                v5db.Database.ExecuteSqlRaw("VACUUM;");
             }
 
             SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
 
+            // Upload
+            var v5BlobClient = container.GetBlobClient($"states/{DateTime.UtcNow:s}");
+            await using (var ssv5 = File.OpenRead(v5LocalDbPath))
+            {
+                await using var tsv5 = await v5BlobClient.OpenWriteAsync(overwrite: true);
 
-            //// Upload
-            //var v5BlobClient = container.GetBlobClient($"{BlobContainer.STATE_DBS_FOLDER_NAME}/{DateTime.UtcNow:s}");
-            //await using var ssv3 = File.OpenRead(v5LocalDbPath);
-            //await using var tsv3 = await v5BlobClient.OpenWriteAsync(overwrite: true);
-            //await CryptoService.CompressAndEncryptAsync(ssv3, tsv3, passphrase);
+                await using var encryptedStream  = await tsv5.GetEncryptionStreamAsync(passphrase);
+                await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.SmallestSize);
 
-            //await v5BlobClient.SetAccessTierAsync(AccessTier.Cold);
-            //await v5BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
-            //await v5BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "3" } });
+                await ssv5.CopyToAsync(compressedStream);
+            }
+
+            await v5BlobClient.SetAccessTierAsync(AccessTier.Cold);
+            await v5BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes256cbc+gzip" });
+            await v5BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "5" } });
         }
 
         private static StorageTier ToStorageTier(AccessTier? tier)

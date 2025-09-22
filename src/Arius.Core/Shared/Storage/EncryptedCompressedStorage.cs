@@ -77,7 +77,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
         await using var blobStream = blobStreamResult.Value;
         await using var encryptedStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
-        await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.Optimal);
+        await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.SmallestSize);
         await using var fileStream = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
         await fileStream.CopyToAsync(compressedStream, cancellationToken);
