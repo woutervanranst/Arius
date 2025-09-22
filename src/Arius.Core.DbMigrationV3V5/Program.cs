@@ -7,6 +7,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using System.IO.Compression;
+using Arius.Core.Shared.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.DbMigrationV3V5
@@ -22,10 +23,10 @@ namespace Arius.Core.DbMigrationV3V5
                 .Build();
 
             var repositoryOptions = configuration.GetSection("RepositoryOptions");
-            var accountName   = repositoryOptions["AccountName"] ?? throw new InvalidOperationException("AccountName is required");
-            var accountKey    = repositoryOptions["AccountKey"] ?? throw new InvalidOperationException("AccountKey is required");
+            var accountName       = repositoryOptions["AccountName"] ?? throw new InvalidOperationException("AccountName is required");
+            var accountKey        = repositoryOptions["AccountKey"] ?? throw new InvalidOperationException("AccountKey is required");
             //var containerName = repositoryOptions["ContainerName"] ?? throw new InvalidOperationException("ContainerName is required");
-            var passphrase    = repositoryOptions["Passphrase"] ?? throw new InvalidOperationException("Passphrase is required");
+            var passphrase = repositoryOptions["Passphrase"] ?? throw new InvalidOperationException("Passphrase is required");
 
             var bsc = new BlobServiceClient(new Uri($"https://{accountName}.blob.core.windows.net/"), new StorageSharedKeyCredential(accountName, accountKey));
 
@@ -64,11 +65,41 @@ namespace Arius.Core.DbMigrationV3V5
             }
 
             await using var v3db = new StateDbContextV3(v3LocalDbPath);
-            await using (var v5db = new StateRepositoryDbContext())
+            await using (var v5db = new StateRepositoryDbContext(new DbContextOptionsBuilder<StateRepositoryDbContext>()
+                             .UseSqlite($"Data Source={v5LocalDbPath}")
+                             .Options))
             {
-                //    await v5db.Database.EnsureCreatedAsync();
+                await v5db.Database.EnsureCreatedAsync();
 
-                //    // Migrate BinaryProperties to ChunkEntries
+                // Migrate ChunkEntries to BinaryProperties
+                if (v3db.ChunkEntries.Count() != v5db.BinaryProperties.Count())
+                {
+                    v5db.BinaryProperties.RemoveRange(v5db.BinaryProperties);
+                    v5db.SaveChanges();
+
+                    foreach (var ce in v3db.ChunkEntries)
+                    {
+                        if (ce.ChunkCount > 1)
+                            throw new InvalidOperationException("Cannot migrate ChunkEntry with ChunkCount > 1 to BinaryProperties");
+                        if (ce.IncrementalLength != ce.ArchivedLength)
+                            throw new InvalidOperationException("Cannot migrate ChunkEntry with IncrementalLength != ArchivedLength to BinaryProperties");
+
+
+                        var bp = new BinaryProperties()
+                        {
+                            Hash         = ce.Hash,
+                            ParentHash   = null,
+                            OriginalSize = ce.OriginalLength,
+                            ArchivedSize = ce.ArchivedLength,
+                            StorageTier  = ToStorageTier(ce.AccessTier)
+                        };
+
+                        v5db.BinaryProperties.Add(bp);
+                    }
+
+                    v5db.SaveChanges();
+                }
+
                 //    if (v3db.BinaryProperties.Count() != v5db.ChunkEntries.Count())
                 //    {
                 //        v5db.ChunkEntries.RemoveRange(v5db.ChunkEntries);
@@ -129,21 +160,40 @@ namespace Arius.Core.DbMigrationV3V5
 
                 //    await v5db.Database.ExecuteSqlRawAsync("VACUUM;");
                 //    //await v3db.Database.CloseConnectionAsync(); 
-                //}
-
-                //SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
-
-
-                //// Upload
-                //var v5BlobClient = container.GetBlobClient($"{BlobContainer.STATE_DBS_FOLDER_NAME}/{DateTime.UtcNow:s}");
-                //await using var ssv3 = File.OpenRead(v5LocalDbPath);
-                //await using var tsv3 = await v5BlobClient.OpenWriteAsync(overwrite: true);
-                //await CryptoService.CompressAndEncryptAsync(ssv3, tsv3, passphrase);
-
-                //await v5BlobClient.SetAccessTierAsync(AccessTier.Cold);
-                //await v5BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
-                //await v5BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "3" } });
             }
-    }
 
+            SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
+
+
+            //// Upload
+            //var v5BlobClient = container.GetBlobClient($"{BlobContainer.STATE_DBS_FOLDER_NAME}/{DateTime.UtcNow:s}");
+            //await using var ssv3 = File.OpenRead(v5LocalDbPath);
+            //await using var tsv3 = await v5BlobClient.OpenWriteAsync(overwrite: true);
+            //await CryptoService.CompressAndEncryptAsync(ssv3, tsv3, passphrase);
+
+            //await v5BlobClient.SetAccessTierAsync(AccessTier.Cold);
+            //await v5BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
+            //await v5BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "3" } });
+        }
+
+        private static StorageTier ToStorageTier(AccessTier? tier)
+        {
+            if (tier == null)
+                throw new ArgumentOutOfRangeException();
+
+            if (tier == AccessTier.Hot)
+                return StorageTier.Hot;
+
+            if (tier == AccessTier.Cool)
+                return StorageTier.Cool;
+
+            if (tier == AccessTier.Cold)
+                return StorageTier.Cold;
+
+            if (tier == AccessTier.Archive)
+                return StorageTier.Archive;
+
+            else throw new ArgumentOutOfRangeException();
+        }
+    }
 }
