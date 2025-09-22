@@ -207,6 +207,7 @@ internal class AzureBlobStorage : IStorage
             logger.LogDebug("Successfully retrieved properties for blob '{BlobName}'", blobName);
 
             return new StorageProperties(
+                Name: blobName,
                 ContentType: properties.Value.ContentType,
                 Metadata: properties.Value.Metadata,
                 StorageTier: properties.Value.AccessTier.ToStorageTier(),
@@ -225,7 +226,7 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public async Task DeleteBlobAsync(string blobName, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Deleting blob '{BlobName}' from container '{ContainerName}'", blobName, blobContainerClient.Name);
 

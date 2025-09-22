@@ -160,7 +160,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     public async Task DeleteChunkAsync(Hash h, CancellationToken cancellationToken = default)
     {
         var blobName = $"{chunksFolderPrefix}{h}";
-        await storage.DeleteBlobAsync(blobName, cancellationToken);
+        await storage.DeleteAsync(blobName, cancellationToken);
     }
 
     public async Task SetChunkMetadataAsync(Hash h, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
