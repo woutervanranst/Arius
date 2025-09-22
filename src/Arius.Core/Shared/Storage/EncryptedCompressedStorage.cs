@@ -43,9 +43,13 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
     {
-        return storage.GetNamesAsync(statesFolderPrefix, cancellationToken)
-            .OrderBy(blobName => blobName)
-            .Select(blobName => blobName[statesFolderPrefix.Length..]); // remove the "states/" prefix
+        return storage.GetAllAsync(statesFolderPrefix, cancellationToken)
+            .OrderBy(sp => sp.Name)
+            .Where(sp =>
+            {
+                return sp.Metadata.TryGetValue("DatabaseVersion", out var version) && version == "5";
+            })
+            .Select(sp => sp.Name[statesFolderPrefix.Length..]); // remove the "states/" prefix
     }
 
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)
@@ -69,16 +73,16 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
-        var blobName = $"{statesFolderPrefix}{stateName}";
+        var blobName         = $"{statesFolderPrefix}{stateName}";
         var blobStreamResult = await storage.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip" /* TODO refactor me */, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
 
-        await using var blobStream = blobStreamResult.Value;
-        await using var encryptedStream = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
+        await using var blobStream       = blobStreamResult.Value;
+        await using var encryptedStream  = await blobStream.GetEncryptionStreamAsync(passphrase, cancellationToken);
         await using var compressedStream = new GZipStream(encryptedStream, CompressionLevel.SmallestSize);
-        await using var fileStream = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+        await using var fileStream       = sourceFile.Open(FileMode.Open, FileAccess.Read, FileShare.None);
 
         await fileStream.CopyToAsync(compressedStream, cancellationToken);
     }

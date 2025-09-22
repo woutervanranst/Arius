@@ -99,11 +99,17 @@ internal class AzureBlobStorage : IStorage
         }
     }
 
-    public IAsyncEnumerable<string> GetNamesAsync(string prefix, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
         return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
-            .Select(blob => blob.Name);
+            .Select(blob => new StorageProperties(
+                Name: blob.Name,
+                ContentType: blob.Properties.ContentType,
+                Metadata: blob.Metadata,
+                StorageTier: blob.Properties.AccessTier.ToStorageTier(),
+                ContentLength: blob.Properties.ContentLength ?? -1
+            ));
     }
 
     public async Task<Result<Stream>> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)

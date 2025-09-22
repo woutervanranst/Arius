@@ -92,7 +92,7 @@ namespace Arius.Core.DbMigrationV3V5
                             Hash         = ce.Hash,
                             ParentHash   = null,
                             OriginalSize = ce.OriginalLength, ArchivedSize = ce.ArchivedLength,
-                            StorageTier  = ToStorageTier(ce.AccessTier)
+                            StorageTier  = ce.AccessTier.ToStorageTier()
                         };
 
                         v5db.BinaryProperties.Add(bp);
@@ -155,26 +155,6 @@ namespace Arius.Core.DbMigrationV3V5
             await v5BlobClient.SetAccessTierAsync(AccessTier.Cold);
             await v5BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes256cbc+gzip" });
             await v5BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "5" } });
-        }
-
-        private static StorageTier ToStorageTier(AccessTier? tier)
-        {
-            if (tier == null)
-                throw new ArgumentOutOfRangeException();
-
-            if (tier == AccessTier.Hot)
-                return StorageTier.Hot;
-
-            if (tier == AccessTier.Cool)
-                return StorageTier.Cool;
-
-            if (tier == AccessTier.Cold)
-                return StorageTier.Cold;
-
-            if (tier == AccessTier.Archive)
-                return StorageTier.Archive;
-
-            else throw new ArgumentOutOfRangeException();
         }
     }
 }
