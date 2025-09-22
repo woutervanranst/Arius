@@ -1,14 +1,11 @@
-﻿using Arius.Core.DbMigrationV3V5.v3;
-using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WouterVanRanst.Utils.Extensions;
 
-namespace Arius.Core.Repositories.StateDb;
+namespace Arius.Core.DbMigrationV3V5.v3;
 
-internal class StateDbContext : DbContext
+internal class StateDbContextV3 : DbContext
 {
     public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
     public virtual DbSet<ChunkEntry>    ChunkEntries   { get; set; }
@@ -16,10 +13,10 @@ internal class StateDbContext : DbContext
     private readonly string dbPath;
     private readonly Action<int> hasChanges;
 
-    internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
+    internal StateDbContextV3(string dbPath) : this(dbPath, new Action<int>(_ => { }))
     {
     }
-    internal StateDbContext(string dbPath, Action<int> hasChanges)
+    internal StateDbContextV3(string dbPath, Action<int> hasChanges)
     {
         this.dbPath = dbPath;
         this.hasChanges = hasChanges;

@@ -1,5 +1,4 @@
-﻿using Arius.Core.Models;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Arius.Core.DbMigrationV3V5.v3;
 

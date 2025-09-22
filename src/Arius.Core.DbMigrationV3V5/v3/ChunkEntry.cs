@@ -1,7 +1,6 @@
-﻿using Arius.Core.DbMigrationV3V5.v3;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.Models;
+namespace Arius.Core.DbMigrationV3V5.v3;
 
 internal record ChunkEntry
 {

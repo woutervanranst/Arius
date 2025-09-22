@@ -1,6 +1,4 @@
-﻿using Arius.Core.Models;
-
-namespace Arius.Core.Extensions;
+﻿namespace Arius.Core.DbMigrationV3V5.v3;
 
 internal static class FileInfoExtensions
 {

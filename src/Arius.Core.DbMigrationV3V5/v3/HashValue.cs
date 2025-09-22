@@ -1,4 +1,6 @@
-﻿namespace Arius.Core.Models;
+﻿using WouterVanRanst.Utils.Extensions;
+
+namespace Arius.Core.DbMigrationV3V5.v3;
 
 internal abstract record Hash
 {
