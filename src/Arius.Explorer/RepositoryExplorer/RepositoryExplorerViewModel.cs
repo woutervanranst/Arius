@@ -74,10 +74,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     }
 
 
-
-
-
-
     // MENUS
 
     //      File > Open...
