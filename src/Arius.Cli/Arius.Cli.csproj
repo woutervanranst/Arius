@@ -3,16 +3,9 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
 		<UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
 		<AssemblyName>arius</AssemblyName>
 		
-		<RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
-		<Authors>Wouter Van Ranst</Authors>
-		<Company>Blue Software</Company>
-		<Copyright>Blue Software</Copyright>
-
 		<TieredCompilation>true</TieredCompilation>
 	</PropertyGroup>
 
