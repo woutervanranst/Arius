@@ -20,9 +20,10 @@ public partial class Window : IRecipient<CloseChooseRepositoryDialogMessage>
     public void Receive(CloseChooseRepositoryDialogMessage message)
     {
         // Set dialog result and close
-        DialogResult = message.Success;
+        DialogResult = true;
         Close();
     }
+
 
     protected override void OnClosed(EventArgs e)
     {

@@ -39,10 +39,11 @@ public partial class Window : IRecipient<OpenChooseRepositoryDialogMessage>
         }
 
         chooseDialog.Owner = this;
-        chooseDialog.ShowDialog();
+        var dialogResult = chooseDialog.ShowDialog();
 
-        // Handle the result if dialog was successful
-        if (chooseDialog.DataContext is ChooseRepository.ChooseRepositoryViewModel resultViewModel &&
+        // Handle the result if dialog was successful (OK button clicked)
+        if (dialogResult == true &&
+            chooseDialog.DataContext is ChooseRepository.ChooseRepositoryViewModel resultViewModel &&
             resultViewModel.Repository != null)
         {
             viewModel.HandleRepositorySelected(resultViewModel.Repository);

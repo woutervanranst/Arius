@@ -164,8 +164,8 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             // Set the repository for return to parent ViewModel
             Repository = repositoryOptions;
 
-            // Send message to close the dialog with success
-            WeakReferenceMessenger.Default.Send(new CloseChooseRepositoryDialogMessage(repositoryOptions, Success: true));
+            // Send message to close the dialog
+            WeakReferenceMessenger.Default.Send(new CloseChooseRepositoryDialogMessage(repositoryOptions));
         }
         catch (Exception)
         {
@@ -176,6 +176,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             IsLoading = false;
         }
     }
+
 
 
     // -- DISPOSE
