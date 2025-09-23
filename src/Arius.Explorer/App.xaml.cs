@@ -22,7 +22,7 @@ public partial class App : Application
             logger.LogInformation("Application starting up");
             
             // Get the repository explorer window from DI
-            var repositoryWindow = ServiceProvider.GetRequiredService<RepositoryExplorer.Window>();
+            var repositoryWindow = ServiceProvider.GetRequiredService<RepositoryExplorer.RepositoryExplorerWindow>();
             MainWindow = repositoryWindow;
             repositoryWindow.Show();
             

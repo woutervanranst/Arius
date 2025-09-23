@@ -1,4 +1,8 @@
 using Arius.Core;
+using Arius.Explorer.ChooseRepository;
+using Arius.Explorer.RepositoryExplorer;
+using Arius.Explorer.Settings;
+using Arius.Explorer.Shared.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -66,17 +70,17 @@ internal static class Program
             .ConfigureServices((context, services) =>
             {
                 // Register application settings
-                services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
-                services.AddSingleton<Settings.IRecentRepositoryManager, Settings.RecentRepositoryManager>();
+                services.AddSingleton<IApplicationSettings>(provider => ApplicationSettings.Default);
+                services.AddSingleton<IRecentRepositoryManager, RecentRepositoryManager>();
 
                 // Register services
-                services.AddTransient<Shared.Services.IDialogService, Shared.Services.DialogService>();
+                services.AddTransient<IDialogService, DialogService>();
 
                 // Register windows and viewmodels
-                services.AddTransient<RepositoryExplorer.Window>();
-                services.AddTransient<RepositoryExplorer.RepositoryExplorerViewModel>();
-                services.AddTransient<ChooseRepository.Window>();
-                services.AddTransient<ChooseRepository.ChooseRepositoryViewModel>();
+                services.AddTransient<RepositoryExplorerWindow>();
+                services.AddTransient<RepositoryExplorerViewModel>();
+                services.AddTransient<ChooseRepositoryWindow>();
+                services.AddTransient<ChooseRepositoryViewModel>();
 
                 // Register Arius Core services
                 services.AddArius(c =>

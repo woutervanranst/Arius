@@ -16,7 +16,7 @@ public class DialogService : IDialogService
 
     public RepositoryOptions? ShowChooseRepositoryDialog(RepositoryOptions? initialRepository = null)
     {
-        var dialog = serviceProvider.GetRequiredService<ChooseRepository.Window>();
+        var dialog = serviceProvider.GetRequiredService<ChooseRepository.ChooseRepositoryWindow>();
 
         // Set the initial repository if provided
         if (dialog.DataContext is ChooseRepositoryViewModel viewModel && initialRepository != null)

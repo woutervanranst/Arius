@@ -188,7 +188,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             Repository = repositoryOptions;
 
             var window = Application.Current?.Windows
-                .OfType<Window>()
+                .OfType<ChooseRepositoryWindow>()
                 .FirstOrDefault(w => Equals(w.DataContext, this));
 
             if (window != null)

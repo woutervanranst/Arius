@@ -3,19 +3,19 @@ using Microsoft.Extensions.Logging;
 namespace Arius.Explorer.ChooseRepository;
 
 /// <summary>
-/// Interaction logic for Window.xaml
+/// Interaction logic for ChooseRepositoryWindow.xaml
 /// </summary>
-public partial class Window
+public partial class ChooseRepositoryWindow
 {
-    private readonly ILogger<Window> logger;
+    private readonly ILogger<ChooseRepositoryWindow> logger;
 
-    public Window(ILogger<Window> logger, ChooseRepositoryViewModel viewModel)
+    public ChooseRepositoryWindow(ILogger<ChooseRepositoryWindow> logger, ChooseRepositoryViewModel viewModel)
     {
         this.logger = logger;
 
         InitializeComponent();
         DataContext = viewModel;
 
-        logger.LogInformation("Choose Repository Window initialized");
+        logger.LogInformation("Choose Repository ChooseRepositoryWindow initialized");
     }
 }
