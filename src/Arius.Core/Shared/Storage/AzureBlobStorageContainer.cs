@@ -77,11 +77,17 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         }
     }
 
-    public IAsyncEnumerable<string> GetNamesAsync(string prefix, CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
-        return blobContainerClient.GetBlobsAsync(prefix: prefix, cancellationToken: cancellationToken)
-            .Select(blob => blob.Name);
+        return blobContainerClient.GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken)
+            .Select(blob => new StorageProperties(
+                Name: blob.Name,
+                ContentType: blob.Properties.ContentType,
+                Metadata: blob.Metadata,
+                StorageTier: blob.Properties.AccessTier.ToStorageTier(),
+                ContentLength: blob.Properties.ContentLength ?? -1
+            ));
     }
 
     public async Task<Result<Stream>> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
@@ -185,6 +191,7 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
             logger.LogDebug("Successfully retrieved properties for blob '{BlobName}'", blobName);
 
             return new StorageProperties(
+                Name: blobName,
                 ContentType: properties.Value.ContentType,
                 Metadata: properties.Value.Metadata,
                 StorageTier: properties.Value.AccessTier.ToStorageTier(),
@@ -203,7 +210,7 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         }
     }
 
-    public async Task DeleteBlobAsync(string blobName, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(string blobName, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Deleting blob '{BlobName}' from container '{ContainerName}'", blobName, blobContainerClient.Name);
 
@@ -226,13 +233,13 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         }
     }
 
-    public async Task SetAccessTierAsync(string blobName, AccessTier tier)
+    public async Task SetAccessTierAsync(string blobName, StorageTier tier)
     {
         logger.LogInformation("Setting access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
         var blobClient = blobContainerClient.GetBlobClient(blobName);
         try
         {
-            await blobClient.SetAccessTierAsync(tier);
+            await blobClient.SetAccessTierAsync(tier.ToAccessTier());
             logger.LogInformation("Successfully set access tier for blob '{BlobName}' to '{AccessTier}'", blobName, tier);
         }
         catch (RequestFailedException e)

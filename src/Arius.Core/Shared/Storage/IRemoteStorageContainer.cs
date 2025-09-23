@@ -1,4 +1,3 @@
-using Azure.Storage.Blobs.Models;
 using FluentResults;
 
 namespace Arius.Core.Shared.Storage;
@@ -7,9 +6,10 @@ namespace Arius.Core.Shared.Storage;
 /// Storage metadata containing essential blob properties.
 /// </summary>
 internal record StorageProperties(
+    string Name,
     string? ContentType,
-    IDictionary<string, string>? Metadata,
-    StorageTier? StorageTier,
+    IDictionary<string, string>? Metadata, // TODO when null?
+    StorageTier? StorageTier, // TODO when null?
     long ContentLength
 );
 
@@ -18,14 +18,14 @@ internal record StorageProperties(
 /// </summary>
 internal interface IRemoteStorageContainer
 {
-    Task<bool>               CreateContainerIfNotExistsAsync();
-    Task<bool>               ContainerExistsAsync();
-    IAsyncEnumerable<string> GetNamesAsync(string prefix, CancellationToken cancellationToken = default);
-    Task<Result<Stream>>     OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default);
-    Task<Result<Stream>>     OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = null, string? contentType = null, IProgress<long>? progress = null, CancellationToken cancellationToken = default);
-    Task<StorageProperties?> GetPropertiesAsync(string blobName, CancellationToken cancellationToken = default);
-    Task                     DeleteBlobAsync(string blobName, CancellationToken cancellationToken = default);
-    Task                     SetAccessTierAsync(string blobName, AccessTier tier);
-    Task                     SetMetadataAsync(string blobName, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
-    Task                     StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority);
+    Task<bool>                          CreateContainerIfNotExistsAsync();
+    Task<bool>                          ContainerExistsAsync();
+    IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>                OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default);
+    Task<Result<Stream>>                OpenWriteAsync(string blobName, bool throwOnExists = false, IDictionary<string, string>? metadata = null, string? contentType = null, IProgress<long>? progress = null, CancellationToken cancellationToken = default);
+    Task<StorageProperties?>            GetPropertiesAsync(string blobName, CancellationToken cancellationToken = default);
+    Task                                DeleteAsync(string blobName, CancellationToken cancellationToken = default);
+    Task                                SetAccessTierAsync(string blobName, StorageTier tier);
+    Task                                SetMetadataAsync(string blobName, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
+    Task                                StartHydrationAsync(string sourceBlobName, string targetBlobName, RehydratePriority priority);
 }

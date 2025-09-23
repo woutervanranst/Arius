@@ -1,7 +1,6 @@
 using Arius.Core.Tests.Helpers.Fixtures;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Xunit.Abstractions;
 
 namespace Arius.Core.Tests;
 

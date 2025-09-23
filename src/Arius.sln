@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Explorer", "Arius.Exp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Explorer.Tests", "Arius.Explorer.Tests\Arius.Explorer.Tests.csproj", "{309DEAD4-C6E8-4823-89BD-7127D638E017}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.DbMigrationV3V5", "Arius.Core.DbMigrationV3V5\Arius.Core.DbMigrationV3V5.csproj", "{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{309DEAD4-C6E8-4823-89BD-7127D638E017}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{309DEAD4-C6E8-4823-89BD-7127D638E017}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{309DEAD4-C6E8-4823-89BD-7127D638E017}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -71,6 +77,7 @@ Global
 		{346428E0-B77B-4740-AC6A-045BA5F89693} = {90176667-BEC9-4821-8F4D-410DDE06C0F1}
 		{D6463B00-C060-4AA1-968A-59572249DD4B} = {20AE55BC-EE0B-4D61-BF1B-432122413305}
 		{309DEAD4-C6E8-4823-89BD-7127D638E017} = {20AE55BC-EE0B-4D61-BF1B-432122413305}
+		{EC43C3F1-2AAD-4B0E-8A02-ECF0D77D862D} = {90176667-BEC9-4821-8F4D-410DDE06C0F1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EDD22CDF-D822-4016-8F26-09CD861F234D}
