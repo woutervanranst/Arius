@@ -130,6 +130,9 @@ internal class StateRepository : IStateRepository
 
     public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
+        if (!relativeNamePrefix.StartsWith('/'))
+            throw new ArgumentException("The relativeNamePrefix must start with a '/' character.", nameof(relativeNamePrefix));
+
         using var context = contextPool.CreateContext();
 
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
@@ -143,6 +146,23 @@ internal class StateRepository : IStateRepository
         {
             yield return pfe;
         }
+    }
+
+    public PointerFileEntry? GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false)
+    {
+        if (!relativeName.StartsWith('/'))
+            throw new ArgumentException("The relativeName must start with a '/' character.", nameof(relativeName));
+
+        using var context = contextPool.CreateContext();
+
+        // Convert the relative name to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
+        var dbRelativeName = relativeName.RemovePrefix('/');
+        
+        var query = includeBinaryProperties 
+            ? findPointerFileEntriesWithBinaryProperties(context, dbRelativeName)
+            : findPointerFileEntries(context, dbRelativeName);
+
+        return query.FirstOrDefault(pfe => pfe.RelativeName == dbRelativeName);
     }
 
     //public IEnumerable<PointerFileEntryDto> GetPointerFileEntries()

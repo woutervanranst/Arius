@@ -69,8 +69,9 @@ internal class InMemoryStateRepository : IStateRepository
 
     public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
     {
-        //var dbRelativeNamePrefix = relativeNamePrefix.TrimStart('/');
-        
+        if (!relativeNamePrefix.StartsWith('/'))
+            throw new ArgumentException("The relativeNamePrefix must start with a '/' character.", nameof(relativeNamePrefix));
+
         foreach (var kvp in pointerFileEntries)
         {
             if (kvp.Key.RelativeName.StartsWith(relativeNamePrefix))
@@ -86,6 +87,29 @@ internal class InMemoryStateRepository : IStateRepository
                 }
             }
         }
+    }
+
+    public PointerFileEntry? GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false)
+    {
+        if (!relativeName.StartsWith('/'))
+            throw new ArgumentException("The relativeName must start with a '/' character.", nameof(relativeName));
+
+        foreach (var kvp in pointerFileEntries)
+        {
+            if (kvp.Key.RelativeName == relativeName)
+            {
+                var pfe = kvp.Value;
+                if (includeBinaryProperties && binaryProperties.TryGetValue(pfe.Hash, out var bp))
+                {
+                    return pfe with { BinaryProperties = bp };
+                }
+                else
+                {
+                    return pfe;
+                }
+            }
+        }
+        return null;
     }
 
     public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)

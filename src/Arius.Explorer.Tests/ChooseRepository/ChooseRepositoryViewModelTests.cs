@@ -120,7 +120,6 @@ public class ChooseRepositoryViewModelTests
         viewModel.LocalDirectoryPath = "C:/data";
         viewModel.AccountName        = "account";
         viewModel.AccountKey         = "secret-key";
-
         await WaitForDebouncerAsync(() => !viewModel.IsLoading); // Wait for the OnStorageAccountCredentialsChanged to complete
         viewModel.ContainerName      = "container";
         viewModel.Passphrase         = "secret-pass";

@@ -15,5 +15,7 @@ internal interface IStateRepository
     void                          AddBinaryProperties(params BinaryProperties[] bps);
     void                          UpsertPointerFileEntries(params PointerFileEntry[] pfes);
     IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false);
+    PointerFileEntry?             GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false);
+
     void                          DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted);
 }
