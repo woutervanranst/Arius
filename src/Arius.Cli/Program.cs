@@ -16,7 +16,7 @@ internal static class Program
     {
         // --- Serilog Configuration ---
         var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-        var logDirectory         = isRunningInContainer ? "/logs" : "logs";
+        var logDirectory         = isRunningInContainer ? "/logs" : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "logs");
         var logPath              = Path.Combine(logDirectory, $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
         // Configure the static logger instance
@@ -27,7 +27,7 @@ internal static class Program
             .Enrich.With<ShortSourceContextEnricher>()
             .WriteTo.File(logPath,
                 //rollingInterval: RollingInterval.Day, // Not strictly needed for unique files, but good practice
-                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{ShortSourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         try
@@ -140,7 +140,7 @@ internal static class Program
                 scalarValue.Value is string fullName)
             {
                 var shortName = fullName.Split('.').LastOrDefault() ?? fullName;
-                var property  = propertyFactory.CreateProperty("SourceContext", shortName);
+                var property  = propertyFactory.CreateProperty("ShortSourceContext", shortName);
                 logEvent.AddPropertyIfAbsent(property);
             }
         }
