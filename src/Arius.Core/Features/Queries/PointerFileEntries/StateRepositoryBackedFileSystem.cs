@@ -22,7 +22,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
     protected override bool FileExistsImpl(UPath path)
     {
         if (!path.IsAbsolute)
-            return false;
+            throw new ArgumentException("The path must start with a '/' character.", nameof(path));
 
         var entry = stateRepository.GetPointerFileEntry(path.FullName, false);
         return entry != null;
@@ -32,7 +32,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
     protected override long GetFileLengthImpl(UPath path)
     {
         if (!path.IsAbsolute)
-            throw new FileNotFoundException();
+            throw new ArgumentException("The path must start with a '/' character.", nameof(path));
 
         var entry = stateRepository.GetPointerFileEntry(path.FullName, true);
 
@@ -61,7 +61,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
             throw new NotSupportedException("Only '*' search pattern is supported");
 
         if (!path.IsAbsolute)
-            throw new ArgumentException("Path must be absolute");
+            throw new ArgumentException("The path must start with a '/' character.", nameof(path));
 
         var entries = stateRepository.GetPointerFileEntries(path.FullName, false);
 

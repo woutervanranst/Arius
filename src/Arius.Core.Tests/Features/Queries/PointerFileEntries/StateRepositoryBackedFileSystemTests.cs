@@ -49,7 +49,8 @@ public class StateRepositoryBackedFileSystemTests
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
-        Should.Throw<ArgumentException>(() => fileSystem.FileExists("relative/path.txt"));
+        var ex = Should.Throw<ArgumentException>(() => fileSystem.FileExists("relative/path.txt"));
+        ex.Message.ShouldContain("must be absolute");
     }
 
     [Fact]
@@ -91,7 +92,8 @@ public class StateRepositoryBackedFileSystemTests
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
-        Should.Throw<ArgumentException>(() => fileSystem.GetFileLength("relative/path.txt"));
+        var ex = Should.Throw<ArgumentException>(() => fileSystem.GetFileLength("relative/path.txt"));
+        ex.Message.ShouldContain("must be absolute");
     }
 
     [Fact]
@@ -190,6 +192,19 @@ public class StateRepositoryBackedFileSystemTests
         // Act & Assert
         Should.Throw<NotSupportedException>(() =>
             fileSystem.EnumeratePaths("/", "*.txt", SearchOption.AllDirectories, SearchTarget.File).ToList());
+    }
+
+    [Fact]
+    public void EnumeratePaths_WithRelativePath_ThrowsArgumentException()
+    {
+        // Arrange
+        var repository = new StateRepositoryBuilder().BuildFake();
+        var fileSystem = new StateRepositoryBackedFileSystem(repository);
+
+        // Act & Assert
+        var ex = Should.Throw<ArgumentException>(() =>
+            fileSystem.EnumeratePaths("relative/path", "*", SearchOption.AllDirectories, SearchTarget.File).ToList());
+        ex.Message.ShouldContain("must be absolute");
     }
 
     [Fact]
