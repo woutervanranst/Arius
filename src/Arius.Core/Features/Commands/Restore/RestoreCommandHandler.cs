@@ -126,7 +126,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 {
                     var targetPath = handlerContext.Targets[i];
                     var binaryFileTargetPath = targetPath.IsPointerFilePath() ? targetPath.GetBinaryFilePath() : targetPath; // trim the pointerfile extension if present
-                    var pfes = handlerContext.StateRepository.GetPointerFileEntries(binaryFileTargetPath.FullName, true).ToArray();
+                    var pfes = handlerContext.StateRepository.GetPointerFileEntries(binaryFileTargetPath.FullName, false, true).ToArray();
 
                     if (!pfes.Any())
                     {

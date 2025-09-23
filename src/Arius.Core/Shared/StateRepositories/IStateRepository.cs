@@ -14,7 +14,7 @@ internal interface IStateRepository
     void                          SetBinaryPropertyArchiveTier(Hash h, StorageTier tier);
     void                          AddBinaryProperties(params BinaryProperties[] bps);
     void                          UpsertPointerFileEntries(params PointerFileEntry[] pfes);
-    IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false);
+    IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool topDirectoryOnly, bool includeBinaryProperties = false);
     PointerFileEntry?             GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false);
 
     void                          DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted);

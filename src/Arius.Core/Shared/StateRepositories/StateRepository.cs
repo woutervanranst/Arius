@@ -128,7 +128,7 @@ internal class StateRepository : IStateRepository
                 .Where(x => x.RelativeName.StartsWith(relativeNamePrefix))
                 .Include(x => x.BinaryProperties));
 
-    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool topDirectoryOnly, bool includeBinaryProperties = false)
     {
         if (!relativeNamePrefix.StartsWith('/'))
             throw new ArgumentException("The relativeNamePrefix must start with a '/' character.", nameof(relativeNamePrefix));

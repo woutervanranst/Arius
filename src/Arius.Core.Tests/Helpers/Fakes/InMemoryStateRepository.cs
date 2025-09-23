@@ -67,8 +67,11 @@ internal class InMemoryStateRepository : IStateRepository
         SetHasChanges();
     }
 
-    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool includeBinaryProperties = false)
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool topDirectoryOnly, bool includeBinaryProperties = false)
     {
+        if (topDirectoryOnly)
+            throw new NotImplementedException();
+
         if (!relativeNamePrefix.StartsWith('/'))
             throw new ArgumentException("The relativeNamePrefix must start with a '/' character.", nameof(relativeNamePrefix));
 
