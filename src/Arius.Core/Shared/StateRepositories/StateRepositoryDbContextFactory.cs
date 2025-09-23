@@ -1,4 +1,5 @@
-﻿using Arius.Core.Shared.FileSystem;
+﻿using System.Diagnostics;
+using Arius.Core.Shared.FileSystem;
 using Humanizer;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,11 @@ internal class StateRepositoryDbContextPool
         var internalName = stateDatabaseFile.ConvertPathToInternal();
         var options = new DbContextOptionsBuilder<StateRepositoryDbContext>()
             .UseSqlite($"Data Source={internalName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+#if DEBUG
+            // NOTE: see https://dev.to/karenpayneoregon/ef-core-log-to-file-benefits-13jp, https://x.com/KarenPayneMVP/status/1933533899864617284, https://github.com/karenpayneoregon/working-with-ai/blob/master/EntityFramworkHelpers/ContextOptions.cs
+            .LogTo(m => Debug.WriteLine(m))
+            .EnableSensitiveDataLogging()
+#endif
             .AddInterceptors(interceptor)
             .Options;
 
