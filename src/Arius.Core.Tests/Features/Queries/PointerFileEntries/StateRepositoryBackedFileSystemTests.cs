@@ -1,22 +1,42 @@
 using Arius.Core.Features.Queries.PointerFileEntries;
+using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.Fakes;
+using Arius.Core.Tests.Helpers.Fixtures;
 using Shouldly;
 using Zio;
 
 namespace Arius.Core.Tests.Features.Queries.PointerFileEntries;
 
-public class StateRepositoryBackedFileSystemTests
+public class StateRepositoryBackedFileSystemTests : IClassFixture<FixtureWithFileSystem>
 {
-    [Fact]
-    public void FileExists_WithExistingPointerFileEntry_ReturnsTrue()
+    private readonly FixtureWithFileSystem fixture;
+    private readonly StateCache?           stateCache;
+
+    public StateRepositoryBackedFileSystemTests(FixtureWithFileSystem fixture)
+    {
+        this.fixture = fixture;
+        stateCache   = new StateCache(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.ContainerName);
+    }
+
+    private IStateRepository CreateRepository(StateRepositoryBuilder builder, bool useFakeRepository)
+    {
+        if (useFakeRepository)
+            return builder.BuildFake();
+        else
+            return builder.Build(stateCache, $"test-state-{Guid.NewGuid()}");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FileExists_WithExistingPointerFileEntry_ReturnsTrue(bool useFakeRepository)
     {
         // Arrange
         var hash = FakeHashBuilder.GenerateValidHash(1);
-        var repository = new StateRepositoryBuilder()
+        var repository = CreateRepository(new StateRepositoryBuilder()
             .WithBinaryProperty(hash, 1024, bp => bp
-                .WithPointerFileEntry("/documents/test.txt"))
-            .BuildFake();
+                .WithPointerFileEntry("/documents/test.txt")), useFakeRepository);
 
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
@@ -27,11 +47,13 @@ public class StateRepositoryBackedFileSystemTests
         exists.ShouldBeTrue();
     }
 
-    [Fact]
-    public void FileExists_WithNonExistingFile_ReturnsFalse()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FileExists_WithNonExistingFile_ReturnsFalse(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act
@@ -41,11 +63,13 @@ public class StateRepositoryBackedFileSystemTests
         exists.ShouldBeFalse();
     }
 
-    [Fact]
-    public void FileExists_WithRelativePath_ThrowsArgumentException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void FileExists_WithRelativePath_ThrowsArgumentException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
@@ -53,16 +77,17 @@ public class StateRepositoryBackedFileSystemTests
         ex.Message.ShouldContain("must be absolute");
     }
 
-    [Fact]
-    public void GetFileLength_WithExistingFile_ReturnsOriginalSize()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetFileLength_WithExistingFile_ReturnsOriginalSize(bool useFakeRepository)
     {
         // Arrange
-        var hash = FakeHashBuilder.GenerateValidHash(1);
+        var hash         = FakeHashBuilder.GenerateValidHash(1);
         var expectedSize = 2048L;
-        var repository = new StateRepositoryBuilder()
+        var repository = CreateRepository(new StateRepositoryBuilder()
             .WithBinaryProperty(hash, expectedSize, bp => bp
-                .WithPointerFileEntry("/documents/large-file.txt"))
-            .BuildFake();
+                .WithPointerFileEntry("/documents/large-file.txt")), useFakeRepository);
 
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
@@ -73,22 +98,26 @@ public class StateRepositoryBackedFileSystemTests
         fileLength.ShouldBe(expectedSize);
     }
 
-    [Fact]
-    public void GetFileLength_WithNonExistingFile_ThrowsFileNotFoundException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetFileLength_WithNonExistingFile_ThrowsFileNotFoundException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
         Should.Throw<FileNotFoundException>(() => fileSystem.GetFileLength("/nonexistent.txt"));
     }
 
-    [Fact]
-    public void GetFileLength_WithRelativePath_ThrowsArgumentException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetFileLength_WithRelativePath_ThrowsArgumentException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
@@ -96,41 +125,46 @@ public class StateRepositoryBackedFileSystemTests
         ex.Message.ShouldContain("must be absolute");
     }
 
-    [Fact]
-    public void GetLastWriteTime_ThrowsNotSupportedException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetLastWriteTime_ThrowsNotSupportedException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
         Should.Throw<NotSupportedException>(() => fileSystem.GetLastWriteTime("/test.txt"));
     }
 
-    [Fact]
-    public void GetCreationTime_ThrowsNotSupportedException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetCreationTime_ThrowsNotSupportedException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
         Should.Throw<NotSupportedException>(() => fileSystem.GetCreationTime("/test.txt"));
     }
 
-    [Fact]
-    public void EnumeratePaths_WithRootDirectory_ReturnsAllFiles()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EnumeratePaths_WithRootDirectory_ReturnsAllFiles(bool useFakeRepository)
     {
         // Arrange
         var hash1 = FakeHashBuilder.GenerateValidHash(1);
         var hash2 = FakeHashBuilder.GenerateValidHash(2);
-        var repository = new StateRepositoryBuilder()
+        var repository = CreateRepository(new StateRepositoryBuilder()
             .WithBinaryProperty(hash1, 1024, bp => bp
                 .WithPointerFileEntry("/documents/file1.txt")
                 .WithPointerFileEntry("/documents/file2.txt"))
             .WithBinaryProperty(hash2, 2048, bp => bp
-                .WithPointerFileEntry("/images/photo.jpg"))
-            .BuildFake();
+                .WithPointerFileEntry("/images/photo.jpg")), useFakeRepository);
 
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
@@ -144,19 +178,20 @@ public class StateRepositoryBackedFileSystemTests
         paths.Count.ShouldBe(3);
     }
 
-    [Fact]
-    public void EnumeratePaths_WithSpecificDirectory_ReturnsMatchingFiles()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EnumeratePaths_WithSpecificDirectory_ReturnsMatchingFiles(bool useFakeRepository)
     {
         // Arrange
         var hash1 = FakeHashBuilder.GenerateValidHash(1);
         var hash2 = FakeHashBuilder.GenerateValidHash(2);
-        var repository = new StateRepositoryBuilder()
+        var repository = CreateRepository(new StateRepositoryBuilder()
             .WithBinaryProperty(hash1, 1024, bp => bp
                 .WithPointerFileEntry("/documents/file1.txt")
                 .WithPointerFileEntry("/documents/subfolder/file2.txt"))
             .WithBinaryProperty(hash2, 2048, bp => bp
-                .WithPointerFileEntry("/images/photo.jpg"))
-            .BuildFake();
+                .WithPointerFileEntry("/images/photo.jpg")), useFakeRepository);
 
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
@@ -170,11 +205,13 @@ public class StateRepositoryBackedFileSystemTests
         paths.Count.ShouldBe(1);
     }
 
-    [Fact]
-    public void EnumeratePaths_WithDirectoryTarget_ThrowsNotSupportedException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EnumeratePaths_WithDirectoryTarget_ThrowsNotSupportedException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
@@ -182,11 +219,13 @@ public class StateRepositoryBackedFileSystemTests
             fileSystem.EnumeratePaths("/", "*", SearchOption.AllDirectories, SearchTarget.Directory).ToList());
     }
 
-    [Fact]
-    public void EnumeratePaths_WithNonWildcardPattern_ThrowsNotSupportedException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EnumeratePaths_WithNonWildcardPattern_ThrowsNotSupportedException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
@@ -194,11 +233,13 @@ public class StateRepositoryBackedFileSystemTests
             fileSystem.EnumeratePaths("/", "*.txt", SearchOption.AllDirectories, SearchTarget.File).ToList());
     }
 
-    [Fact]
-    public void EnumeratePaths_WithRelativePath_ThrowsArgumentException()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EnumeratePaths_WithRelativePath_ThrowsArgumentException(bool useFakeRepository)
     {
         // Arrange
-        var repository = new StateRepositoryBuilder().BuildFake();
+        var repository = CreateRepository(new StateRepositoryBuilder(), useFakeRepository);
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act & Assert
@@ -207,15 +248,16 @@ public class StateRepositoryBackedFileSystemTests
         ex.Message.ShouldContain("must be absolute");
     }
 
-    [Fact]
-    public void GetAttributes_ReturnsReadOnlyAndNormal()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetAttributes_ReturnsReadOnlyAndNormal(bool useFakeRepository)
     {
         // Arrange
         var hash = FakeHashBuilder.GenerateValidHash(1);
-        var repository = new StateRepositoryBuilder()
+        var repository = CreateRepository(new StateRepositoryBuilder()
             .WithBinaryProperty(hash, 1024, bp => bp
-                .WithPointerFileEntry("/test.txt"))
-            .BuildFake();
+                .WithPointerFileEntry("/test.txt")), useFakeRepository);
 
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 

@@ -37,7 +37,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         var entry = stateRepository.GetPointerFileEntry(path.FullName, true);
 
         if (entry?.BinaryProperties == null)
-            throw new FileNotFoundException();
+            throw new FileNotFoundException("The BinaryProperties were not found");
 
         return entry.BinaryProperties.OriginalSize;
     }

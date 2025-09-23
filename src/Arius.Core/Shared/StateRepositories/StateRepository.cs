@@ -155,14 +155,12 @@ internal class StateRepository : IStateRepository
 
         using var context = contextPool.CreateContext();
 
-        // Convert the relative name to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
-        var dbRelativeName = relativeName.RemovePrefix('/');
-        
-        var query = includeBinaryProperties 
-            ? findPointerFileEntriesWithBinaryProperties(context, dbRelativeName)
-            : findPointerFileEntries(context, dbRelativeName);
+        // TODO convert to compiled queries
 
-        return query.FirstOrDefault(pfe => pfe.RelativeName == dbRelativeName);
+        if (includeBinaryProperties)
+            return context.PointerFileEntries.AsNoTracking().Include(x => x.BinaryProperties).SingleOrDefault(pfe => pfe.RelativeName == relativeName);
+        else
+            return context.PointerFileEntries.AsNoTracking().SingleOrDefault(pfe => pfe.RelativeName == relativeName);
     }
 
     //public IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
