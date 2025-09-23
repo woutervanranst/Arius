@@ -21,7 +21,7 @@ public class StateRepositoryBackedFileSystemTests
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act
-        var exists = fileSystem.FileExists("/documents/test.txt");
+        var exists = fileSystem.FileExists("/documents/test.txt.pointer.arius");
 
         // Assert
         exists.ShouldBeTrue();
@@ -66,7 +66,7 @@ public class StateRepositoryBackedFileSystemTests
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act
-        var fileLength = fileSystem.GetFileLength("/documents/large-file.txt");
+        var fileLength = fileSystem.GetFileLength("/documents/large-file.txt.pointer.arius");
 
         // Assert
         fileLength.ShouldBe(expectedSize);
@@ -136,9 +136,9 @@ public class StateRepositoryBackedFileSystemTests
         var paths = fileSystem.EnumeratePaths("/", "*", SearchOption.AllDirectories, SearchTarget.File).ToList();
 
         // Assert
-        paths.ShouldContain("/documents/file1.txt");
-        paths.ShouldContain("/documents/file2.txt");
-        paths.ShouldContain("/images/photo.jpg");
+        paths.ShouldContain("/documents/file1.txt.pointer.arius");
+        paths.ShouldContain("/documents/file2.txt.pointer.arius");
+        paths.ShouldContain("/images/photo.jpg.pointer.arius");
         paths.Count.ShouldBe(3);
     }
 
@@ -162,9 +162,9 @@ public class StateRepositoryBackedFileSystemTests
         var paths = fileSystem.EnumeratePaths("/documents", "*", SearchOption.TopDirectoryOnly, SearchTarget.File).ToList();
 
         // Assert
-        paths.ShouldContain("/documents/file1.txt");
-        paths.ShouldNotContain("/documents/subfolder/file2.txt"); // Should be filtered out by TopDirectoryOnly
-        paths.ShouldNotContain("/images/photo.jpg");
+        paths.ShouldContain("/documents/file1.txt.pointer.arius");
+        paths.ShouldNotContain("/documents/subfolder/file2.txt.pointer.arius"); // Should be filtered out by TopDirectoryOnly
+        paths.ShouldNotContain("/images/photo.jpg.pointer.arius");
         paths.Count.ShouldBe(1);
     }
 
@@ -205,7 +205,7 @@ public class StateRepositoryBackedFileSystemTests
         var fileSystem = new StateRepositoryBackedFileSystem(repository);
 
         // Act
-        var attributes = fileSystem.GetAttributes("/test.txt");
+        var attributes = fileSystem.GetAttributes("/test.txt.pointer.arius");
 
         // Assert
         attributes.ShouldBe(FileAttributes.ReadOnly | FileAttributes.Normal);

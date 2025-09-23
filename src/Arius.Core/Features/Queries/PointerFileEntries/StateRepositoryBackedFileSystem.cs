@@ -24,8 +24,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         if (!path.IsAbsolute)
             return false;
 
-        var relativeName = $"{path}{PointerFile.Extension}";
-        var entry = stateRepository.GetPointerFileEntry(relativeName, false);
+        var entry = stateRepository.GetPointerFileEntry(path.FullName, false);
         return entry != null;
     }
 
@@ -35,8 +34,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         if (!path.IsAbsolute)
             throw new FileNotFoundException();
 
-        var relativeName = $"{path}{PointerFile.Extension}";
-        var entry = stateRepository.GetPointerFileEntry(relativeName, true);
+        var entry = stateRepository.GetPointerFileEntry(path.FullName, true);
 
         if (entry?.BinaryProperties == null)
             throw new FileNotFoundException();
@@ -65,31 +63,22 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         if (!path.IsAbsolute)
             throw new ArgumentException("Path must be absolute");
 
-        var relativeNamePrefix = path.FullName;
-        if (relativeNamePrefix == "/")
-            relativeNamePrefix = "/";
-
-        var entries = stateRepository.GetPointerFileEntries(relativeNamePrefix, false);
+        var entries = stateRepository.GetPointerFileEntries(path.FullName, false);
 
         foreach (var entry in entries)
         {
-            // Convert pointer file name back to binary file path
-            var pointerFileName = entry.RelativeName;
-            if (pointerFileName.EndsWith(PointerFile.Extension))
+            // Return the pointer file path directly
+            var pointerFilePath = new UPath($"/{entry.RelativeName}");
+
+            // Apply search option filtering
+            if (searchOption == SearchOption.TopDirectoryOnly)
             {
-                var binaryFileName = pointerFileName.Substring(0, pointerFileName.Length - PointerFile.Extension.Length);
-                var binaryPath = new UPath($"/{binaryFileName}");
-
-                // Apply search option filtering
-                if (searchOption == SearchOption.TopDirectoryOnly)
-                {
-                    var relativePath = binaryPath.GetDirectory().FullName;
-                    if (relativePath != path.FullName)
-                        continue;
-                }
-
-                yield return binaryPath;
+                var relativePath = pointerFilePath.GetDirectory().FullName;
+                if (relativePath != path.FullName)
+                    continue;
             }
+
+            yield return pointerFilePath;
         }
     }
 
