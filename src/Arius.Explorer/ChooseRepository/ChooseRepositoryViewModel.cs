@@ -1,15 +1,14 @@
 using Arius.Core.Features.Queries.ContainerNames;
 using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Extensions;
-using Arius.Explorer.Shared.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using Mediator;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Windows;
 using Unit = System.Reactive.Unit;
 
 namespace Arius.Explorer.ChooseRepository;
@@ -164,8 +163,13 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             // Set the repository for return to parent ViewModel
             Repository = repositoryOptions;
 
-            // Send message to close the dialog
-            WeakReferenceMessenger.Default.Send(new CloseChooseRepositoryDialogMessage(repositoryOptions));
+            // Close the dialog with OK result
+            var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.DataContext == this);
+            if (window != null)
+            {
+                window.DialogResult = true;
+                window.Close();
+            }
         }
         catch (Exception)
         {

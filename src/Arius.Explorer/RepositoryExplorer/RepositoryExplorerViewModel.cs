@@ -1,8 +1,7 @@
 using Arius.Explorer.Settings;
-using Arius.Explorer.Shared.Messages;
+using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 
 namespace Arius.Explorer.RepositoryExplorer;
@@ -11,13 +10,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 {
     private readonly IApplicationSettings settings;
     private readonly IRecentRepositoryManager recentRepositoryManager;
+    private readonly IDialogService dialogService;
 
     // -- INITIALIZATION & GENERAL WINDOW
 
-    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager)
+    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService)
     {
         this.settings                = settings;
         this.recentRepositoryManager = recentRepositoryManager;
+        this.dialogService           = dialogService;
 
         // Load recent repositories from settings
         RecentRepositories = settings.RecentRepositories;
@@ -79,14 +80,13 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [RelayCommand] // File > Open...
     private void ChooseRepository()
     {
-        // Send message to open the dialog
-        WeakReferenceMessenger.Default.Send(new OpenChooseRepositoryDialogMessage(CurrentRepository));
-    }
-
-    public void HandleRepositorySelected(RepositoryOptions repository)
-    {
-        CurrentRepository = repository;
-        OpenRecentRepository(repository);
+        // Show dialog and handle result
+        var selectedRepository = dialogService.ShowChooseRepositoryDialog(CurrentRepository);
+        if (selectedRepository != null)
+        {
+            CurrentRepository = selectedRepository;
+            OpenRecentRepository(selectedRepository);
+        }
     }
 
 

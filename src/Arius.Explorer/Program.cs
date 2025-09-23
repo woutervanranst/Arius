@@ -69,6 +69,8 @@ internal static class Program
                 services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
                 services.AddSingleton<Settings.IRecentRepositoryManager, Settings.RecentRepositoryManager>();
 
+                // Register services
+                services.AddTransient<Shared.Services.IDialogService, Shared.Services.DialogService>();
 
                 // Register windows and viewmodels
                 services.AddTransient<RepositoryExplorer.Window>();
