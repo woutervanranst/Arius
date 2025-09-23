@@ -82,17 +82,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     {
         var viewModel = dialogService.ShowDialog<ChooseRepository.Window, ChooseRepository.ChooseRepositoryViewModel>(vm =>
         {
-            if (CurrentRepository != null)
-            {
-                vm.LocalDirectoryPath = CurrentRepository.LocalDirectoryPath;
-                vm.AccountName        = CurrentRepository.AccountName;
-                vm.AccountKey         = CurrentRepository.AccountKey;
-                vm.ContainerName      = CurrentRepository.ContainerName;
-                vm.Passphrase         = CurrentRepository.Passphrase;
-            }
+            vm.Repository = CurrentRepository;
         });
 
-        // TODO: Process the returned viewModel if needed
+        // Process the returned repository selection
+        if (viewModel.Repository != null)
+        {
+            CurrentRepository = viewModel.Repository;
+            OpenRecentRepository(viewModel.Repository);
+        }
     }
 
 

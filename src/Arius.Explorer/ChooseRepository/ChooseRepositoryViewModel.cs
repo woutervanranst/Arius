@@ -4,6 +4,7 @@ using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mediator;
+using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -14,60 +15,65 @@ namespace Arius.Explorer.ChooseRepository;
 public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
 {
     private readonly IMediator                mediator;
-    private readonly IApplicationSettings     settings;
-    private readonly IRecentRepositoryManager recentRepositoryManager;
     private readonly Subject<Unit>            credentialsChangedSubject = new();
     private readonly IDisposable              debounceSubscription;
 
     [ObservableProperty]
     private string windowName = "Choose Repository";
-    
-    [ObservableProperty]
-    private bool isLoading;
-    
-    [ObservableProperty]
-    private string localDirectoryPath = "";
-    
-    
-    [ObservableProperty]
-    private string containerName = "";
-    
-    [ObservableProperty]
-    private ObservableCollection<string> containerNames = [];
-    
-    [ObservableProperty]
-    private string passphrase = "";
-    
-    [ObservableProperty]
-    private bool storageAccountError;
-
+   
 
     public ChooseRepositoryViewModel(IMediator mediator, IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager)
     {
         this.mediator = mediator;
-        this.settings = settings;
-        this.recentRepositoryManager = recentRepositoryManager;
-
-        // Initialize with sample data for development
-        LocalDirectoryPath = @"C:\SampleRepository";
-        AccountName = "samplestorageaccount";
-        ContainerNames = [
-            "container1",
-            "container2",
-            "backups",
-            "archives"
-        ];
-        ContainerName = "container1";
 
         // Set up debouncing for Storage Account credential changes
         debounceSubscription = credentialsChangedSubject
             .Throttle(TimeSpan.FromMilliseconds(500))
             .Where(_ => !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey))
-            .Select(_ => Observable.FromAsync(LoadContainersAsync))
-            .Switch() // cancels previous LoadContainersAsync if new values arrive
+            .Select(_ => Observable.FromAsync(OnStorageAccountCredentialsChanged))
+            .Switch() // cancels previous OnStorageAccountCredentialsChanged if new values arrive
             .ObserveOn(SynchronizationContext.Current!) // marshal back to UI thread
             .Subscribe();
     }
+
+    // -- REPOSITORY
+
+    [ObservableProperty]
+    private RepositoryOptions? repository;
+
+    partial void OnRepositoryChanged(RepositoryOptions? value)
+    {
+        if (value != null)
+        {
+            LocalDirectoryPath = value.LocalDirectoryPath;
+            AccountName        = value.AccountName;
+            AccountKey         = value.AccountKey;
+            ContainerName      = value.ContainerName;
+            Passphrase         = value.Passphrase;
+        }
+    }
+
+
+    // -- LOCAL PATH
+
+    [ObservableProperty]
+    private string localDirectoryPath = "";
+
+    [RelayCommand]
+    private void SelectLocalDirectory()
+    {
+        var folderDialog = new OpenFolderDialog
+        {
+            Title            = "Select Folder",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        };
+
+        if (folderDialog.ShowDialog() == true)
+        {
+            LocalDirectoryPath = folderDialog.FolderName;
+        }
+    }
+
 
     // -- ACCOUNT NAME & ACCOUNT KEY
 
@@ -77,12 +83,20 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string accountKey = "";
 
+    [ObservableProperty]
+    private bool isLoading;
+
+    [ObservableProperty]
+    private bool storageAccountError;
+
     partial void OnAccountNameChanged(string value) => credentialsChangedSubject.OnNext(Unit.Default);
 
     partial void OnAccountKeyChanged(string value) => credentialsChangedSubject.OnNext(Unit.Default);
 
-    private async Task LoadContainersAsync()
+    private async Task OnStorageAccountCredentialsChanged(CancellationToken cancellationToken)
     {
+        // The AccountName / AccountKey has changed - load the containers
+
         try
         {
             IsLoading = true;
@@ -94,9 +108,6 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             };
 
             //var r = await mediator.CreateStream(query).ToListAsync();
-
-
-
 
 
             //var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
@@ -117,14 +128,19 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
         }
     }
 
-    // -- OTHER STUFF
+    // -- CONTAINERNAME
 
-    [RelayCommand]
-    private void SelectLocalDirectory()
-    {
-        // TODO: Implement folder browser dialog
-        LocalDirectoryPath = @"C:\Users\Sample\Documents\MyRepository";
-    }
+    [ObservableProperty]
+    private string containerName = "";
+
+    [ObservableProperty]
+    private ObservableCollection<string> containerNames = [];
+
+    // -- PASSPHRASE
+
+    [ObservableProperty]
+    private string passphrase = "";
+    
 
     [RelayCommand]
     private void OpenRepository()
@@ -143,10 +159,10 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
                 PassphraseProtected = string.IsNullOrEmpty(Passphrase) ? "" : Passphrase.Protect(),
             };
 
-            // Set as last opened repository
+            // Set the repository for return to parent ViewModel
+            Repository = repositoryOptions;
 
-            // TODO: Actually open the repository
-            // For now just close the dialog
+            // TODO: Close the dialog
         }
         catch (Exception)
         {
