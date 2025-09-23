@@ -20,6 +20,8 @@ internal class StateRepositoryBuilder
 
         public PointerFileEntryBuilder WithPointerFileEntry(UPath binaryFileRelativeName, DateTime? creationTimeUtc = null, DateTime? writeTimeUtc = null)
         {
+            if (binaryFileRelativeName.IsRelative)
+                throw new ArgumentException($"BinaryFileRelativeName must start with a /");
             if (binaryFileRelativeName.FullName.EndsWith(PointerFile.Extension))
                 throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
 

@@ -1,19 +1,16 @@
 using Arius.Core.Shared.FileSystem;
-using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zio;
-using Zio.FileSystems;
-using FileSystemExtensions = Arius.Core.Shared.FileSystem.FileSystemExtensions;
 
-namespace Arius.Core.Features.Commands.Restore;
+namespace Arius.Core.Features.Queries.PointerFileEntries;
 
 internal class HandlerContextBuilder
 {
-    private readonly RestoreCommand                 request;
+    private readonly PointerFileEntriesQuery        query;
     private readonly ILogger<HandlerContextBuilder> logger;
     private readonly ILoggerFactory                 loggerFactory;
 
@@ -21,9 +18,9 @@ internal class HandlerContextBuilder
     private IStateRepository? stateRepository;
     private IFileSystem?      baseFileSystem;
 
-    public HandlerContextBuilder(RestoreCommand request, ILoggerFactory loggerFactory)
+    public HandlerContextBuilder(PointerFileEntriesQuery query, ILoggerFactory loggerFactory)
     {
-        this.request       = request;
+        this.query         = query;
         this.loggerFactory = loggerFactory;
         this.logger        = loggerFactory.CreateLogger<HandlerContextBuilder>();
     }
@@ -48,39 +45,39 @@ internal class HandlerContextBuilder
 
     public async Task<HandlerContext> BuildAsync()
     {
-        await new RestoreCommandValidator().ValidateAndThrowAsync(request);
+        await new PointerFileEntriesQueryValidator().ValidateAndThrowAsync(query);
 
         // Archive Storage
         if (archiveStorage == null)
         {
-            var blobStorage = new AzureBlobStorageContainer(request.AccountName, request.AccountKey, request.ContainerName, request.UseRetryPolicy, loggerFactory.CreateLogger<AzureBlobStorageContainer>());
-            archiveStorage = new EncryptedCompressedStorage(blobStorage, request.Passphrase);
+            var blobStorage = new AzureBlobStorageContainer(query.AccountName, query.AccountKey, query.ContainerName, query.UseRetryPolicy, loggerFactory.CreateLogger<AzureBlobStorageContainer>());
+            archiveStorage = new EncryptedCompressedStorage(blobStorage, query.Passphrase);
         }
 
         var exists = await archiveStorage.ContainerExistsAsync();
         if (!exists)
         {
-            throw new InvalidOperationException($"The specified container '{request.ContainerName}' does not exist in the storage account.");
+            throw new InvalidOperationException($"The specified container '{query.ContainerName}' does not exist in the storage account.");
         }
 
         var fileSystem = GetFileSystem();
-        
+
         return new HandlerContext
         {
-            Request         = request,
+            Request         = query,
             ArchiveStorage  = archiveStorage,
             StateRepository = stateRepository ?? await BuildStateRepositoryAsync(archiveStorage),
-            Hasher          = new Sha256Hasher(request.Passphrase),
-            Targets         = GetTargets(),
-            FileSystem      = fileSystem,
-            BinaryCache     = FileSystemExtensions.CreateTempSubdirectory("binarycache", false)
+            //Hasher = new Sha256Hasher(query.Passphrase),
+            //Targets = GetTargets(),
+            FileSystem = fileSystem,
+            //BinaryCache = FileSystemExtensions.CreateTempSubdirectory("binarycache", false)
         };
 
 
         async Task<IStateRepository> BuildStateRepositoryAsync(IArchiveStorage archiveStorage)
         {
             // Instantiate StateCache
-            var stateCache = new StateCache(request.AccountName, request.ContainerName);
+            var stateCache = new StateCache(query.AccountName, query.ContainerName);
 
             // Get the latest state from blob storage
             var latestStateName = await archiveStorage.GetStates().LastOrDefaultAsync();
@@ -106,19 +103,21 @@ internal class HandlerContextBuilder
 
         FilePairFileSystem GetFileSystem()
         {
-            if (baseFileSystem == null)
-            {
-                var pfs  = new PhysicalFileSystem();
-                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-                baseFileSystem = new SubFileSystem(pfs, root, true);
-            }
+            return null;
 
-            return new FilePairFileSystem(baseFileSystem, true);
+            //if (baseFileSystem == null)
+            //{
+            //    var pfs = new PhysicalFileSystem();
+            //    var root = pfs.ConvertPathFromInternal(query.LocalRoot.FullName);
+            //    baseFileSystem = new SubFileSystem(pfs, root, true);
+            //}
+
+            //return new FilePairFileSystem(baseFileSystem, true);
         }
 
-        UPath[] GetTargets()
-        {
-            return request.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
-        }
+        //UPath[] GetTargets()
+        //{
+        //    return query.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
+        //}
     }
 }
