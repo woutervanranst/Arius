@@ -4,6 +4,8 @@ using CliFx;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using System.Reflection;
 
 namespace Arius.Cli;
@@ -22,14 +24,16 @@ internal static class Program
             .MinimumLevel.Debug() // Capture all levels of logs
             .Enrich.FromLogContext()
             .Enrich.WithThreadId()
+            .Enrich.With<ShortSourceContextEnricher>()
             .WriteTo.File(logPath,
                 //rollingInterval: RollingInterval.Day, // Not strictly needed for unique files, but good practice
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{SourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         try
         {
             Log.Information("Starting Arius CLI...");
+            Log.Information("Version: {Version}", GetVersion());
 
             var exitCode = await CreateBuilder()
                 .UseTypeActivator(CreateServiceProvider().GetService)
@@ -77,17 +81,6 @@ internal static class Program
 
         return builder;
 
-        static string GetVersion()
-        {
-            //// Prefer informational version so that suffixes like "local" are preserved
-            //var version = typeof(Program).Assembly
-            //    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
-            if (!string.IsNullOrWhiteSpace(version))
-                return version;
-
-            return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
-        }
     }
 
     public static IServiceProvider CreateServiceProvider()
@@ -124,5 +117,32 @@ internal static class Program
         }
 
         return services;
+    }
+
+    private static string GetVersion()
+    {
+        //// Prefer informational version so that suffixes like "local" are preserved
+        //var version = typeof(Program).Assembly
+        //    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+        if (!string.IsNullOrWhiteSpace(version))
+            return version;
+
+        return typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+    }
+
+    private class ShortSourceContextEnricher : ILogEventEnricher
+    {
+        public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+        {
+            if (logEvent.Properties.TryGetValue("SourceContext", out var sourceContextValue) &&
+                sourceContextValue is ScalarValue scalarValue &&
+                scalarValue.Value is string fullName)
+            {
+                var shortName = fullName.Split('.').LastOrDefault() ?? fullName;
+                var property  = propertyFactory.CreateProperty("SourceContext", shortName);
+                logEvent.AddPropertyIfAbsent(property);
+            }
+        }
     }
 }
