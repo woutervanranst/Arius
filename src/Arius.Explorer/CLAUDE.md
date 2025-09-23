@@ -5,9 +5,10 @@ This file contains additional guidance, on top of the CLAUDE.MD in the root of t
 ## Arius.Explorer WPF/MVVM Development Guidelines
 
 ### Project Structure
-- Use **vertical slice architecture** - group files by feature/view rather than by type (no Views/, ViewModels/, Converters/ folders)
-- Each feature should have its own folder containing View, ViewModel, Converters, and related files
-- Example: `RepositoryExplorer/` contains Window.xaml, WindowViewModel.cs, ...
+- Use **vertical slice architecture** - group files by feature/view rather than by type
+- Each feature should have its own folder containing View, ViewModel, and related files
+- Shared components (Converters, Shared) exist at project root for cross-cutting concerns
+- Example: `RepositoryExplorer/` contains RepositoryExplorerWindow.xaml, RepositoryExplorerViewModel.cs, ...
 
 ### MVVM Best Practices
 - Use **CommunityToolkit.Mvvm** for ViewModels (ObservableObject, RelayCommand, etc.)

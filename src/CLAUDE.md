@@ -44,7 +44,7 @@ The solution follows CQRS pattern with Mediator, using Domain-Driven Design prin
 Projects:
 - **Arius.Explorer**: WPF application providing graphical interface for repository exploration and file management
 - **Arius.Cli**: CLI application using CliFx framework with CliCommands that dispatch to Core handlers
-- **Arius.Core**: Core business logic containing Commands (with handlers), Models, Repositories, and Services
+- **Arius.Core**: Core business logic using vertical slice architecture with Features/Commands and Features/Queries, where commands and handlers are co-located by feature
 
 Key architectural decisions:
 - File-level deduplication for storage optimization
@@ -77,8 +77,8 @@ Required environment variables for integration tests:
 ## Code Patterns
 
 When implementing new features:
-1. Create command/query in Arius.Core/Commands
-2. Implement handler using IRequestHandler<TCommand, TResult>
+1. Create command/query in Arius.Core/Features/Commands or Features/Queries
+2. Implement handler using IRequestHandler<TCommand, TResult> in the same feature folder
 3. Add CLI command in Arius.Cli/CliCommands inheriting from ICommand
 4. Use IMediator to dispatch from CLI to Core handler
 5. Write unit tests in corresponding .Tests projects using xUnit, NSubstitute, and Shouldly
@@ -89,15 +89,13 @@ When implementing new features:
 - **CliFx**: Command-line interface framework
 - **Spectre.Console**: Enhanced console output
 
-## Arius.Explorer (WPF)
+### Arius.Explorer (WPF)
 - **CommunityToolkit.Mvvm**: MVVM framework for WPF applications
-- 
 ### Arius.Core
 - **Azure.Storage.Blobs**: Azure Blob Storage integration
 - **Mediator**: CQRS implementation
 - **Zio**: File system abstraction (only used in Arius.Core)
 - **FluentValidation**: Command validation
-- 
 ### All
 - **Serilog**: Structured logging
 - **WouterVanRanst.Utils**: Utility library for common extensions
