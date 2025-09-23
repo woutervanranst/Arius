@@ -23,7 +23,7 @@ internal class FilePairFileSystem : ComposeFileSystem
 
         if (searchPattern != "*")
             throw new NotSupportedException();
-        if (searchOption != SearchOption.AllDirectories)
+        if (searchOption != SearchOption.AllDirectories && searchOption != SearchOption.TopDirectoryOnly)
             throw new NotSupportedException();
         if (searchTarget != SearchTarget.File)
             throw new NotSupportedException();
@@ -32,7 +32,7 @@ internal class FilePairFileSystem : ComposeFileSystem
         if (fsi is not DirectoryEntry d)
             throw new NotSupportedException();
 
-        foreach (var fe in EnumerateFiles(d))
+        foreach (var fe in EnumerateFiles(d, searchOption))
         {
             var p = fe.Path;
             if (p.IsPointerFilePath())
@@ -58,7 +58,7 @@ internal class FilePairFileSystem : ComposeFileSystem
         }
     }
 
-    private static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory)
+    private static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory, SearchOption searchOption)
     {
         if (ShouldSkipDirectory(directory))
         {
@@ -77,11 +77,15 @@ internal class FilePairFileSystem : ComposeFileSystem
             yield return fe;
         }
 
-        foreach (var subDir in directory.EnumerateDirectories())
+        // Only recurse into subdirectories if AllDirectories is specified
+        if (searchOption == SearchOption.AllDirectories)
         {
-            foreach (var file in EnumerateFiles(subDir))
+            foreach (var subDir in directory.EnumerateDirectories())
             {
-                yield return file;
+                foreach (var file in EnumerateFiles(subDir, searchOption))
+                {
+                    yield return file;
+                }
             }
         }
 
