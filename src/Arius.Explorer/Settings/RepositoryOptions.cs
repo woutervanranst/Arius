@@ -24,4 +24,9 @@ public record RepositoryOptions
 
     [JsonIgnore, XmlIgnore]
     public string Passphrase => string.IsNullOrEmpty(PassphraseProtected) ? "" : PassphraseProtected.Unprotect();
+
+    public override string ToString()
+    {
+        return $"{LocalDirectory.FullName} on {AccountName}:{ContainerName}";
+    }
 }

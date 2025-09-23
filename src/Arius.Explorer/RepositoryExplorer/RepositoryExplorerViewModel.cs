@@ -68,7 +68,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     {
         WindowName = value == null
             ? $"{App.Name} - No Repository"
-            : $"{App.Name}: {value.LocalDirectory.FullName} on {value.AccountName}:{value.ContainerName}";
+            : $"{App.Name}: {value}";
     }
 
     // MENUS
