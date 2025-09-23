@@ -1,7 +1,8 @@
 using Arius.Explorer.Settings;
-using Arius.Explorer.Shared.Services;
+using Arius.Explorer.Shared.Messages;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using System.Collections.ObjectModel;
 
 namespace Arius.Explorer.RepositoryExplorer;
@@ -10,15 +11,13 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 {
     private readonly IApplicationSettings settings;
     private readonly IRecentRepositoryManager recentRepositoryManager;
-    private readonly IDialogService dialogService;
 
     // -- INITIALIZATION & GENERAL WINDOW
 
-    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService)
+    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager)
     {
         this.settings                = settings;
         this.recentRepositoryManager = recentRepositoryManager;
-        this.dialogService           = dialogService;
 
         // Load recent repositories from settings
         RecentRepositories = settings.RecentRepositories;
@@ -80,17 +79,14 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [RelayCommand] // File > Open...
     private void ChooseRepository()
     {
-        var viewModel = dialogService.ShowDialog<ChooseRepository.Window, ChooseRepository.ChooseRepositoryViewModel>(vm =>
-        {
-            vm.Repository = CurrentRepository;
-        });
+        // Send message to open the dialog
+        WeakReferenceMessenger.Default.Send(new OpenChooseRepositoryDialogMessage(CurrentRepository));
+    }
 
-        // Process the returned repository selection
-        if (viewModel.Repository != null)
-        {
-            CurrentRepository = viewModel.Repository;
-            OpenRecentRepository(viewModel.Repository);
-        }
+    public void HandleRepositorySelected(RepositoryOptions repository)
+    {
+        CurrentRepository = repository;
+        OpenRecentRepository(repository);
     }
 
 
