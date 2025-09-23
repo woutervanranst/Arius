@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:local="clr-namespace:Arius.Explorer.ChooseRepository"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
         Title="{Binding WindowName}"
@@ -101,12 +102,14 @@
                 <Label Grid.Row="2" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Storage Account Key:"/>
-                <TextBox Grid.Row="2" Grid.Column="1" 
-                         HorizontalAlignment="Stretch" 
-                         Margin="1" 
-                         Text="{Binding AccountKey}">
-                    <TextBox.Style>
-                        <Style TargetType="TextBox">
+                <PasswordBox Grid.Row="2" Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            Margin="1">
+                    <behaviors:Interaction.Behaviors>
+                        <local:PasswordBoxBehavior Password="{Binding AccountKey}" />
+                    </behaviors:Interaction.Behaviors>
+                    <PasswordBox.Style>
+                        <Style TargetType="PasswordBox">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding StorageAccountError}" Value="True">
                                     <Setter Property="BorderBrush" Value="Red"/>
@@ -114,8 +117,8 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </TextBox.Style>
-                </TextBox>
+                    </PasswordBox.Style>
+                </PasswordBox>
 
                 <Label Grid.Row="3" Grid.Column="0" 
                        HorizontalAlignment="Left" 
@@ -129,9 +132,13 @@
                 <Label Grid.Row="4" Grid.Column="0" 
                        HorizontalAlignment="Left" 
                        Content="Passphrase:"/>
-                <PasswordBox Grid.Row="4" Grid.Column="1" 
-                            HorizontalAlignment="Stretch" 
-                            Margin="1" />
+                <PasswordBox Grid.Row="4" Grid.Column="1"
+                            HorizontalAlignment="Stretch"
+                            Margin="1">
+                    <behaviors:Interaction.Behaviors>
+                        <local:PasswordBoxBehavior Password="{Binding Passphrase}" />
+                    </behaviors:Interaction.Behaviors>
+                </PasswordBox>
             </Grid>
         </Grid>
 
