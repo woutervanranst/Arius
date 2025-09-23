@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 using System.Windows;
 
 namespace Arius.Explorer;
@@ -9,6 +10,8 @@ namespace Arius.Explorer;
 /// </summary>
 public partial class App : Application
 {
+    public static string Name => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "PRODUCT_UNKNOWN"; // get the value of the <Product> in csproj
+
     public static IServiceProvider? ServiceProvider { get; set; }
 
     protected override void OnStartup(StartupEventArgs e)
