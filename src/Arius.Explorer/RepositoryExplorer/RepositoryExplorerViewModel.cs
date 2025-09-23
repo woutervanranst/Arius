@@ -3,6 +3,7 @@ using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Windows;
 
 namespace Arius.Explorer.RepositoryExplorer;
@@ -116,8 +117,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [RelayCommand]
     private void About()
     {
-        // TODO: Show about dialog
-        MessageBox.Show("h");
+        var explorerClickOnceVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "unknown"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
+        var explorerVersion          = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "unknown";
+        var x                        = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+        var coreVersion              = typeof(Arius.Core.Bootstrapper).Assembly.GetName().Version;
+
+        MessageBox.Show($"""
+                         Arius Explorer v{explorerVersion}, ClickOnce v{explorerClickOnceVersion}, Assembly v{x}
+                         Arius Core v{coreVersion}
+                         """, App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
 
