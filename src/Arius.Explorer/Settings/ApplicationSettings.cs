@@ -80,13 +80,13 @@ public sealed class RecentRepositoryManager : IRecentRepositoryManager
 
     public void TouchOrAdd(RepositoryOptions repo)
     {
-                    DefaultValue = "",
-                    IsReadOnly = false
-                };
-                property.Attributes.Add(typeof(UserScopedSettingAttribute), new UserScopedSettingAttribute());
-                Properties.Add(property);
-                Reload();
-            }
+        bool EqualRepositoryOptions(RepositoryOptions a, RepositoryOptions b) =>
+            string.Equals(a.LocalDirectoryPath, b.LocalDirectoryPath, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.ContainerName,      b.ContainerName,      StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.AccountName,        b.AccountName,        StringComparison.OrdinalIgnoreCase);
+
+        var existing = settings.RecentRepositories.FirstOrDefault(r => EqualRepositoryOptions(r, repo));
+        var now = DateTime.UtcNow;
 
         if (existing is null)
         {
@@ -95,8 +95,13 @@ public sealed class RecentRepositoryManager : IRecentRepositoryManager
         }
         else
         {
-            // Update mutable fields you want to keep fresh (+ last opened)
             existing.AccountKeyProtected = repo.AccountKeyProtected;
+            existing.PassphraseProtected = repo.PassphraseProtected;
+            existing.LastOpened          = now;
+            // do not update key properties
+            //existing.LocalDirectoryPath  = repo.LocalDirectoryPath;
+            //existing.ContainerName       = repo.ContainerName;
+            //existing.AccountName         = repo.AccountName;
         }
 
         // Reorder + Trim
