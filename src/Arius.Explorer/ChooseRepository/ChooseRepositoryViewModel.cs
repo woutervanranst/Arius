@@ -5,9 +5,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mediator;
 using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using Unit = System.Reactive.Unit;
 
@@ -15,25 +20,29 @@ namespace Arius.Explorer.ChooseRepository;
 
 public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
 {
-    private readonly IMediator                mediator;
-    private readonly Subject<Unit>            credentialsChangedSubject = new();
-    private readonly IDisposable              debounceSubscription;
+    private readonly IMediator              mediator;
+    private readonly Subject<Unit>          credentialsChangedSubject = new();
+    private readonly IDisposable            debounceSubscription;
+    private readonly TimeSpan               credentialsDebounce;
+    private readonly SynchronizationContext synchronizationContext;
 
     [ObservableProperty]
     private string windowName = "Choose Repository";
-
-
-    public ChooseRepositoryViewModel(IMediator mediator, IRecentRepositoryManager recentRepositoryManager)
+    public ChooseRepositoryViewModel(
+        IMediator              mediator,
+        TimeSpan?              credentialsDebounce = null)
     {
-        this.mediator = mediator;
+        this.mediator            = mediator;
+        this.credentialsDebounce = credentialsDebounce ?? TimeSpan.FromMilliseconds(500);
+        synchronizationContext   = SynchronizationContext.Current ?? new SynchronizationContext();
 
         // Set up debouncing for Storage Account credential changes
         debounceSubscription = credentialsChangedSubject
-            .Throttle(TimeSpan.FromMilliseconds(500))
+            .Throttle(this.credentialsDebounce)
             .Where(_ => !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey))
             .Select(_ => Observable.FromAsync(OnStorageAccountCredentialsChanged))
             .Switch() // cancels previous OnStorageAccountCredentialsChanged if new values arrive
-            .ObserveOn(SynchronizationContext.Current!) // marshal back to UI thread
+            .ObserveOn(synchronizationContext) // marshal back to UI thread when available
             .Subscribe();
     }
 
@@ -101,27 +110,42 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
         try
         {
             IsLoading = true;
+            StorageAccountError = false;
 
-            var query = new ContainerNamesQuery()
+            var query = new ContainerNamesQuery
             {
                 AccountName = AccountName,
                 AccountKey  = AccountKey
             };
 
-            //var r = await mediator.CreateStream(query).ToListAsync();
+            var containers = new List<string>();
 
+            await foreach (var container in mediator.CreateStream(query, cancellationToken))
+            {
+                containers.Add(container);
+            }
 
-            //var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
-            //ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
+            var updated = new ObservableCollection<string>(containers);
+            ContainerNames = updated;
 
-            //if (ContainerName is null && ContainerNames.Count > 0)
-            //    ContainerName = ContainerNames[0];
-
-            StorageAccountError = false;
+            if (updated.Count == 0)
+            {
+                ContainerName = string.Empty;
+            }
+            else if (!updated.Contains(ContainerName))
+            {
+                ContainerName = updated.First();
+            }
         }
-        catch (Exception e)
+        catch (OperationCanceledException)
+        {
+            // Cancellation is expected when new credentials are entered; do not flag as error
+        }
+        catch (Exception)
         {
             StorageAccountError = true;
+            ContainerNames      = [];
+            ContainerName       = string.Empty;
         }
         finally
         {
@@ -163,8 +187,10 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             // Set the repository for return to parent ViewModel
             Repository = repositoryOptions;
 
-            // Close the dialog with OK result
-            var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.DataContext == this);
+            var window = Application.Current?.Windows
+                .OfType<Window>()
+                .FirstOrDefault(w => Equals(w.DataContext, this));
+
             if (window != null)
             {
                 window.DialogResult = true;
