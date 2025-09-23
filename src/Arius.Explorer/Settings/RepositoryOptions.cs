@@ -1,6 +1,7 @@
 using Arius.Explorer.Shared.Services;
 using System.IO;
 using System.Text.Json.Serialization;
+using System.Xml.Serialization;
 
 namespace Arius.Explorer.Settings;
 
@@ -15,12 +16,12 @@ public record RepositoryOptions
 
     public DateTime LastOpened { get; set; }
 
-    [JsonIgnore]
+    [JsonIgnore, XmlIgnore]
     public DirectoryInfo LocalDirectory => new(LocalDirectoryPath);
 
-    [JsonIgnore]
+    [JsonIgnore, XmlIgnore]
     public string AccountKey => string.IsNullOrEmpty(AccountKeyProtected) ? "" : AccountKeyProtected.Unprotect();
 
-    [JsonIgnore]
+    [JsonIgnore, XmlIgnore]
     public string Passphrase => string.IsNullOrEmpty(PassphraseProtected) ? "" : PassphraseProtected.Unprotect();
 }

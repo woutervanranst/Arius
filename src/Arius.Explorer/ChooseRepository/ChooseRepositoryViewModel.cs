@@ -11,12 +11,13 @@ using Unit = System.Reactive.Unit;
 
 namespace Arius.Explorer.ChooseRepository;
 
-public partial class WindowViewModel : ObservableObject, IDisposable
+public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
 {
-    private readonly IMediator mediator;
-    private readonly IApplicationSettings settings;
-    private readonly Subject<Unit> credentialsChangedSubject = new();
-    private readonly IDisposable debounceSubscription;
+    private readonly IMediator                mediator;
+    private readonly IApplicationSettings     settings;
+    private readonly IRecentRepositoryManager recentRepositoryManager;
+    private readonly Subject<Unit>            credentialsChangedSubject = new();
+    private readonly IDisposable              debounceSubscription;
 
     [ObservableProperty]
     private string windowName = "Choose Repository";
@@ -41,10 +42,11 @@ public partial class WindowViewModel : ObservableObject, IDisposable
     private bool storageAccountError;
 
 
-    public WindowViewModel(IMediator mediator, IApplicationSettings settings)
+    public ChooseRepositoryViewModel(IMediator mediator, IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager)
     {
         this.mediator = mediator;
         this.settings = settings;
+        this.recentRepositoryManager = recentRepositoryManager;
 
         // Initialize with sample data for development
         LocalDirectoryPath = @"C:\SampleRepository";
@@ -134,16 +136,14 @@ public partial class WindowViewModel : ObservableObject, IDisposable
             // Create repository options from current form data
             var repositoryOptions = new RepositoryOptions
             {
-                LocalDirectoryPath = LocalDirectoryPath,
-                AccountName = AccountName ?? "",
+                LocalDirectoryPath  = LocalDirectoryPath,
+                AccountName         = AccountName ?? "",
                 AccountKeyProtected = string.IsNullOrEmpty(AccountKey) ? "" : AccountKey.Protect(),
-                ContainerName = ContainerName ?? "",
+                ContainerName       = ContainerName ?? "",
                 PassphraseProtected = string.IsNullOrEmpty(Passphrase) ? "" : Passphrase.Protect(),
-                LastOpened = DateTime.Now
             };
 
             // Set as last opened repository
-            settings.SetLastOpenedRepository(repositoryOptions);
 
             // TODO: Actually open the repository
             // For now just close the dialog

@@ -5,7 +5,7 @@ namespace Arius.Explorer.ChooseRepository;
 /// </summary>
 public partial class Window
 {
-    public Window(WindowViewModel viewModel)
+    public Window(ChooseRepositoryViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;

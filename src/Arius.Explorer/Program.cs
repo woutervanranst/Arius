@@ -68,6 +68,7 @@ internal static class Program
             {
                 // Register application settings
                 services.AddSingleton<Settings.IApplicationSettings>(provider => Settings.ApplicationSettings.Default);
+                services.AddSingleton<Settings.IRecentRepositoryManager, Settings.RecentRepositoryManager>();
 
                 // Register dialog service
                 services.AddTransient<IDialogService, DialogService>();
@@ -76,7 +77,7 @@ internal static class Program
                 services.AddTransient<RepositoryExplorer.Window>();
                 services.AddTransient<RepositoryExplorer.RepositoryExplorerViewModel>();
                 services.AddTransient<ChooseRepository.Window>();
-                services.AddTransient<ChooseRepository.WindowViewModel>();
+                services.AddTransient<ChooseRepository.ChooseRepositoryViewModel>();
 
                 // Register Arius Core services
                 services.AddArius(c =>

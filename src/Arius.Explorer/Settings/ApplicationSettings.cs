@@ -1,23 +1,18 @@
+using System.Collections.ObjectModel;
 using System.Configuration;
-using System.Text.Json;
 
 namespace Arius.Explorer.Settings;
 
 public interface IApplicationSettings
 {
-    List<RepositoryOptions> RecentRepositories { get; set; }
-    RepositoryOptions? LastOpenedRepository { get; set; }
-    T? GetSetting<T>(string key);
-    void SaveSetting<T>(string key, T value);
-    void AddRecentRepository(RepositoryOptions repository);
-    void RemoveRecentRepository(RepositoryOptions repository);
-    void SetLastOpenedRepository(RepositoryOptions? repository);
+    ObservableCollection<RepositoryOptions> RecentRepositories { get; }
+    int RecentLimit { get; set; }
+    void Save();
 }
 
 public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
 {
     private static ApplicationSettings? defaultInstance;
-    private const int MaxRecentRepositories = 10;
 
     public static ApplicationSettings Default
     {
@@ -32,119 +27,59 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
     }
 
     [UserScopedSetting]
-    [DefaultSettingValue("")]
-    public string RecentRepositoriesJson
+    [SettingsSerializeAs(SettingsSerializeAs.Xml)]
+    public ObservableCollection<RepositoryOptions> RecentRepositories
     {
-        get => (string)this[nameof(RecentRepositoriesJson)];
-        set => this[nameof(RecentRepositoriesJson)] = value;
+        get => (ObservableCollection<RepositoryOptions>)(this[nameof(RecentRepositories)] 
+               ??= new ObservableCollection<RepositoryOptions>());
+        set => this[nameof(RecentRepositories)] = value;
     }
 
     [UserScopedSetting]
-    [DefaultSettingValue("")]
-    public string LastOpenedRepositoryJson
+    [DefaultSettingValue("10")]
+    public int RecentLimit
     {
-        get => (string)this[nameof(LastOpenedRepositoryJson)];
-        set => this[nameof(LastOpenedRepositoryJson)] = value;
+        get => (int)this[nameof(RecentLimit)];
+        set => this[nameof(RecentLimit)] = value;
+    }
+}
+
+public interface IRecentRepositoryManager
+{
+    /// Full, most-recent-first
+    IReadOnlyList<RepositoryOptions> GetAll();
+
+    /// Null if none
+    RepositoryOptions? GetMostRecent();
+
+    /// Update last-opened and persist; creates or updates existing.
+    void TouchOrAdd(RepositoryOptions repo);
+
+    /// Remove one (optional)
+    void Remove(Func<RepositoryOptions, bool> predicate);
+}
+
+public sealed class RecentRepositoryManager : IRecentRepositoryManager
+{
+    private readonly IApplicationSettings settings;
+
+    public RecentRepositoryManager(IApplicationSettings settings)
+    {
+        this.settings = settings;
     }
 
-    public List<RepositoryOptions> RecentRepositories
+    public IReadOnlyList<RepositoryOptions> GetAll() =>
+        settings.RecentRepositories
+                 .OrderByDescending(r => r.LastOpened)
+                 .ToList();
+
+    public RepositoryOptions? GetMostRecent() =>
+        settings.RecentRepositories
+                 .OrderByDescending(r => r.LastOpened)
+                 .FirstOrDefault();
+
+    public void TouchOrAdd(RepositoryOptions repo)
     {
-        get
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(RecentRepositoriesJson))
-                    return new List<RepositoryOptions>();
-
-                var repositories = JsonSerializer.Deserialize<List<RepositoryOptions>>(RecentRepositoriesJson);
-                return repositories ?? new List<RepositoryOptions>();
-            }
-            catch
-            {
-                return new List<RepositoryOptions>();
-            }
-        }
-        set
-        {
-            try
-            {
-                RecentRepositoriesJson = JsonSerializer.Serialize(value);
-                Save();
-            }
-            catch
-            {
-                // If serialization fails, clear the setting
-                RecentRepositoriesJson = "";
-                Save();
-            }
-        }
-    }
-
-    public RepositoryOptions? LastOpenedRepository
-    {
-        get
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(LastOpenedRepositoryJson))
-                    return null;
-
-                return JsonSerializer.Deserialize<RepositoryOptions>(LastOpenedRepositoryJson);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-        set
-        {
-            try
-            {
-                LastOpenedRepositoryJson = value != null ? JsonSerializer.Serialize(value) : "";
-                Save();
-            }
-            catch
-            {
-                LastOpenedRepositoryJson = "";
-                Save();
-            }
-        }
-    }
-
-    public T? GetSetting<T>(string key)
-    {
-        try
-        {
-            if (Properties[key] == null)
-                return default(T);
-
-            var stringValue = (string)this[key];
-            if (string.IsNullOrEmpty(stringValue))
-                return default(T);
-
-            if (typeof(T) == typeof(string))
-                return (T)(object)stringValue;
-
-            return JsonSerializer.Deserialize<T>(stringValue);
-        }
-        catch
-        {
-            return default(T);
-        }
-    }
-
-    public void SaveSetting<T>(string key, T value)
-    {
-        try
-        {
-            // Ensure the property exists
-            if (Properties[key] == null)
-            {
-                var property = new SettingsProperty(key)
-                {
-                    PropertyType = typeof(string),
-                    Provider = Providers["LocalFileSettingsProvider"],
-                    SerializeAs = SettingsSerializeAs.String,
                     DefaultValue = "",
                     IsReadOnly = false
                 };
@@ -153,44 +88,36 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
                 Reload();
             }
 
-            string stringValue = value is string str ? str : JsonSerializer.Serialize(value);
-            this[key] = stringValue;
-            Save();
-        }
-        catch
+        if (existing is null)
         {
-            // If saving fails, silently ignore
+            repo.LastOpened = now;
+            settings.RecentRepositories.Add(repo);
         }
-    }
-
-    public void AddRecentRepository(RepositoryOptions repository)
-    {
-        var repositories = RecentRepositories;
-
-        // Remove any existing entry for the same local directory
-        repositories.RemoveAll(r => r.LocalDirectoryPath.Equals(repository.LocalDirectoryPath, StringComparison.OrdinalIgnoreCase));
-
-        // Add at the beginning
-        repositories.Insert(0, repository);
-
-        // Keep only the most recent ones
-        if (repositories.Count > MaxRecentRepositories)
+        else
         {
-            repositories = repositories.Take(MaxRecentRepositories).ToList();
+            // Update mutable fields you want to keep fresh (+ last opened)
+            existing.AccountKeyProtected = repo.AccountKeyProtected;
         }
 
-        RecentRepositories = repositories;
+        // Reorder + Trim
+        var ordered = settings.RecentRepositories
+                               .OrderByDescending(r => r.LastOpened)
+                               .ToList();
+
+        while (ordered.Count > settings.RecentLimit)
+            ordered.RemoveAt(ordered.Count - 1);
+
+        // Write back to the observable collection in place (keeps bindings alive)
+        settings.RecentRepositories.Clear();
+        foreach (var r in ordered) settings.RecentRepositories.Add(r);
+
+        settings.Save();
     }
 
-    public void RemoveRecentRepository(RepositoryOptions repository)
+    public void Remove(Func<RepositoryOptions, bool> predicate)
     {
-        var repositories = RecentRepositories;
-        repositories.RemoveAll(r => r.LocalDirectoryPath.Equals(repository.LocalDirectoryPath, StringComparison.OrdinalIgnoreCase));
-        RecentRepositories = repositories;
-    }
-
-    public void SetLastOpenedRepository(RepositoryOptions? repository)
-    {
-        LastOpenedRepository = repository;
+        var toRemove = settings.RecentRepositories.Where(predicate).ToList();
+        foreach (var r in toRemove) settings.RecentRepositories.Remove(r);
+        if (toRemove.Count > 0) settings.Save();
     }
 }
