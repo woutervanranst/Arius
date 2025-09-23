@@ -195,18 +195,33 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 10, $"Hashing {fileSizeFormatted}..."));
 
-                    // 1. Hash the file
-                    var h = await handlerContext.Hasher.GetHashAsync(filePair);
+                    if (filePair.Type == FilePairType.PointerFileOnly)
+                    {
+                        // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
+                        // TODO implement 'var latentPointers = new ConcurrentQueue<PointerFile>();'
 
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, "Waiting for upload..."));
-
-                    var isSmallFile = filePair.BinaryFile.Length <= handlerContext.Request.SmallFileBoundary;
-                    logger.LogDebug("File {FileName} hashed to {Hash}, routing to {FileType} processing (size: {FileSize})", filePair.FullName, h.ToShortString(), isSmallFile ? "small" : "large", fileSizeFormatted);
-
-                    if (isSmallFile)
-                        await hashedSmallFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                        logger.LogWarning("File {FileName} is a pointer file without an associated binary, skipping", filePair.FullName);
+                    }
                     else
-                        await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                    {
+                        // 1. Hash the file
+                        var h = await handlerContext.Hasher.GetHashAsync(filePair);
+
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, "Waiting for upload..."));
+
+                        var isSmallFile = filePair.BinaryFile.Length <= handlerContext.Request.SmallFileBoundary;
+                        logger.LogDebug("File {FileName} hashed to {Hash}, routing to {FileType} processing (size: {FileSize})", filePair.FullName, h.ToShortString(), isSmallFile ? "small" : "large", fileSizeFormatted);
+
+                        if (isSmallFile)
+                            await hashedSmallFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                        else
+                            await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                    }
+                }
+                catch (IOException e)
+                {
+                    logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
+                    // TODO notify of warnings via ArchiveCommandResult and/or progressupdate
                 }
                 catch (OperationCanceledException)
                 {
