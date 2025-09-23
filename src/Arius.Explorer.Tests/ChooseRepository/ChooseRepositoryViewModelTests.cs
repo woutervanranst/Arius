@@ -11,12 +11,15 @@ namespace Arius.Explorer.Tests.ChooseRepository;
 public class ChooseRepositoryViewModelTests
 {
     [Fact]
-    public void InitialState_WhenRepositoryIsNull_HasEmptyFields()
+    public void OpenWithoutRepositorySet_ShouldPopulateDefaultValues()
     {
+        // Arrange
         var mediator = Substitute.For<IMediator>();
 
+        // Act
         using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
 
+        // Assert
         viewModel.Repository.ShouldBeNull();
         viewModel.LocalDirectoryPath.ShouldBe(string.Empty);
         viewModel.AccountName.ShouldBe(string.Empty);
@@ -29,10 +32,10 @@ public class ChooseRepositoryViewModelTests
     }
 
     [Fact]
-    public void SettingRepository_PopulatesFields_UsingUnprotectedValues()
+    public void OpenWithRepositorySet_ShouldPopulateViewModelFields()
     {
+        // Arrange
         var mediator = Substitute.For<IMediator>();
-
         using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
 
         var repository = new RepositoryOptions
@@ -44,8 +47,10 @@ public class ChooseRepositoryViewModelTests
             PassphraseProtected = "passphrase".Protect()
         };
 
+        // Act
         viewModel.Repository = repository;
 
+        // Assert
         viewModel.LocalDirectoryPath.ShouldBe("C:/data");
         viewModel.AccountName.ShouldBe("account");
         viewModel.AccountKey.ShouldBe(repository.AccountKey);
@@ -53,38 +58,10 @@ public class ChooseRepositoryViewModelTests
         viewModel.Passphrase.ShouldBe(repository.Passphrase);
     }
 
-
     [Fact]
-    public void OpenRepositoryCommand_BuildsRepositoryOptions()
+    public async Task AccountCredentials_WhenChangedWithValidCredentials_ShouldLoadContainerNamesAndSelectFirst()
     {
         // Arrange
-        var mediator = Substitute.For<IMediator>();
-
-        // Start from an empty viewmodel
-        using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
-
-        // Act -- Simulate the user choosing a repository
-        viewModel.LocalDirectoryPath = "C:/data";
-        viewModel.AccountName        = "account";
-        viewModel.AccountKey         = "secret-key";
-        viewModel.ContainerName      = "container";
-        viewModel.Passphrase         = "secret-pass";
-
-        viewModel.OpenRepositoryCommand.Execute(null);
-
-        // Assert
-        var repository = viewModel.Repository.ShouldNotBeNull();
-        repository.LocalDirectoryPath.ShouldBe("C:/data");
-        repository.AccountName.ShouldBe("account");
-        repository.ContainerName.ShouldBe("container");
-        repository.AccountKey.ShouldBe("secret-key");
-        repository.Passphrase.ShouldBe("secret-pass");
-
-    }
-
-    [Fact]
-    public async Task AccountCredentialsChange_LoadsContainerNamesOnSuccess()
-    {
         var mediator = Substitute.For<IMediator>();
 
         mediator
@@ -93,11 +70,13 @@ public class ChooseRepositoryViewModelTests
 
         using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
 
+        // Act
         viewModel.AccountName = "account";
         viewModel.AccountKey  = "key";
 
         await WaitForDebouncerAsync(() => viewModel.ContainerNames.Count == 2);
 
+        // Assert
         viewModel.StorageAccountError.ShouldBeFalse();
         viewModel.IsLoading.ShouldBeFalse();
         viewModel.ContainerNames.ShouldBe(new[] { "container-a", "container-b" });
@@ -107,8 +86,9 @@ public class ChooseRepositoryViewModelTests
     }
 
     [Fact]
-    public async Task AccountCredentialsChange_SetsErrorWhenMediatorThrows()
+    public async Task AccountCredentials_WhenMediatorThrowsException_ShouldSetErrorStateAndClearContainerData()
     {
+        // Arrange
         var mediator = Substitute.For<IMediator>();
 
         mediator
@@ -117,15 +97,47 @@ public class ChooseRepositoryViewModelTests
 
         using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
 
+        // Act
         viewModel.AccountName = "account";
         viewModel.AccountKey  = "key";
 
         await WaitForDebouncerAsync(() => viewModel.StorageAccountError);
 
+        // Assert
         viewModel.IsLoading.ShouldBeFalse();
+        viewModel.StorageAccountError.ShouldBeTrue();
         viewModel.ContainerNames.ShouldBeEmpty();
         viewModel.ContainerName.ShouldBe(string.Empty);
     }
+
+    [Fact]
+    public async Task OpenRepositoryCommand_WhenExecutedWithValidInputFields_InitializesRepository()
+    {
+        // Arrange
+        var mediator = Substitute.For<IMediator>();
+        using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
+
+        viewModel.LocalDirectoryPath = "C:/data";
+        viewModel.AccountName        = "account";
+        viewModel.AccountKey         = "secret-key";
+
+        await WaitForDebouncerAsync(() => !viewModel.IsLoading); // Wait for the OnStorageAccountCredentialsChanged to complete
+        viewModel.ContainerName      = "container";
+        viewModel.Passphrase         = "secret-pass";
+
+        // Act
+        viewModel.OpenRepositoryCommand.Execute(null);
+
+        // Assert
+        var repository = viewModel.Repository.ShouldNotBeNull();
+        repository.LocalDirectoryPath.ShouldBe("C:/data");
+        repository.AccountName.ShouldBe("account");
+        repository.ContainerName.ShouldBe("container");
+        repository.AccountKey.ShouldBe("secret-key");
+        repository.Passphrase.ShouldBe("secret-pass");
+    }
+
+    
 
 
     private static async Task WaitForDebouncerAsync(Func<bool> condition, int timeoutMilliseconds = 1000)
@@ -140,7 +152,8 @@ public class ChooseRepositoryViewModelTests
                 throw new TimeoutException("Condition was not met within the allotted time.");
             }
 
-            await Task.Delay(10);
+            await Task.Delay(50);
+            await Task.Yield();
         }
     }
 }
