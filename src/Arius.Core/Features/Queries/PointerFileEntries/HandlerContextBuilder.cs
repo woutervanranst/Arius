@@ -5,6 +5,7 @@ using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Zio;
+using Zio.FileSystems;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
@@ -60,17 +61,16 @@ internal class HandlerContextBuilder
             throw new InvalidOperationException($"The specified container '{query.ContainerName}' does not exist in the storage account.");
         }
 
-        var fileSystem = GetFileSystem();
+        // State Repository
+        stateRepository ??= await BuildStateRepositoryAsync(archiveStorage);
 
         return new HandlerContext
         {
-            Request         = query,
-            ArchiveStorage  = archiveStorage,
-            StateRepository = stateRepository ?? await BuildStateRepositoryAsync(archiveStorage),
-            //Hasher = new Sha256Hasher(query.Passphrase),
-            //Targets = GetTargets(),
-            FileSystem = fileSystem,
-            //BinaryCache = FileSystemExtensions.CreateTempSubdirectory("binarycache", false)
+            Query            = query,
+            //ArchiveStorage   = archiveStorage,
+            StateRepository  = stateRepository,
+            LocalFileSystem  = GetFilePairFileSystem(),
+            RemoteFileSystem = GetStateRepositoryBackedFileSystem()
         };
 
 
@@ -101,23 +101,22 @@ internal class HandlerContextBuilder
             return new StateRepository(contextPool);
         }
 
-        FilePairFileSystem GetFileSystem()
+        FilePairFileSystem GetFilePairFileSystem()
         {
-            return null;
+            if (baseFileSystem == null)
+            {
+                var pfs = new PhysicalFileSystem();
+                var root = pfs.ConvertPathFromInternal(query.LocalPath.FullName);
+                baseFileSystem = new SubFileSystem(pfs, root, true);
+            }
 
-            //if (baseFileSystem == null)
-            //{
-            //    var pfs = new PhysicalFileSystem();
-            //    var root = pfs.ConvertPathFromInternal(query.LocalRoot.FullName);
-            //    baseFileSystem = new SubFileSystem(pfs, root, true);
-            //}
-
-            //return new FilePairFileSystem(baseFileSystem, true);
+            return new FilePairFileSystem(baseFileSystem, true);
         }
 
-        //UPath[] GetTargets()
-        //{
-        //    return query.Targets.Select(target => (UPath)target[1..] /* remove the leading '.' - it must be an absolute path*/).ToArray();
-        //}
+        StateRepositoryBackedFileSystem GetStateRepositoryBackedFileSystem()
+        {
+            return new StateRepositoryBackedFileSystem(stateRepository);
+        }
+
     }
 }

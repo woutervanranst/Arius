@@ -28,33 +28,40 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
 
         // Create actual files on disk using the fixture
         var file1 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/folder/file1.txt")
+            .WithActualFile(FilePairType.PointerFileOnly, "/folder with space/file on disk and staterepo 1.txt")
             .WithRandomContent(10, 1)
             .Build();
 
         var file2 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/folder/subfolder/file2.txt")
+            .WithActualFile(FilePairType.PointerFileOnly, "/folder 2/subfolder with space/file on disk 2.txt")
             .WithRandomContent(10, 2)
             .Build();
 
         var file3 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/other/file3.txt")
+            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/subfolder/file on disk.txt")
             .WithRandomContent(10, 3)
             .Build();
 
+        var file4 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, "/file on disk and staterepo 4.txt")
+            .WithRandomContent(10, 4)
+            .Build();
+
+
         // Create a real StateRepository using fixture state cache
         var stateRepository = new StateRepositoryBuilder()
-            .WithBinaryProperty(file1.OriginalHash, 100, pfes =>
+            .WithBinaryProperty(file1.OriginalHash, file1.OriginalContent.Length, pfes =>
             {
-                pfes.WithPointerFileEntry("/folder/file1.txt");
+                pfes.WithPointerFileEntry("/folder with space/file on disk and staterepo 1.txt");
             })
-            .WithBinaryProperty(file2.OriginalHash, 200, pfes =>
+            // file2 does not exist
+            //.WithBinaryProperty(file2.OriginalHash, file2.OriginalContent.Length, pfes =>
+            //{
+            //    pfes.WithPointerFileEntry("/folder/subfolder/file2.txt");
+            //})
+            .WithBinaryProperty(file4.OriginalHash, file4.OriginalContent.Length, pfes =>
             {
-                pfes.WithPointerFileEntry("/folder/subfolder/file2.txt");
-            })
-            .WithBinaryProperty(file3.OriginalHash, 300, pfes =>
-            {
-                pfes.WithPointerFileEntry("/other/file3.txt");
+                pfes.WithPointerFileEntry("/file on disk and staterepo 4.txt");
             })
             .Build(stateCache, "test-state");
 
@@ -71,7 +78,6 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
 
             LocalPath = fixture.TestRunSourceFolder,
             Prefix    = "/"
-
         };
 
         var handlerContext = await new HandlerContextBuilder(query, fakeLoggerFactory)

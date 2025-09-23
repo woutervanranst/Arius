@@ -2,6 +2,8 @@ using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using Zio;
+using Zio.FileSystems;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
@@ -29,11 +31,13 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
 
     internal async IAsyncEnumerable<string> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        var pointerFileEntries = handlerContext.StateRepository.GetPointerFileEntries(handlerContext.Request.Prefix, includeBinaryProperties: false);
+        var afs = new AggregateFileSystem();
+        afs.AddFileSystem(handlerContext.LocalFileSystem);
+        afs.AddFileSystem(handlerContext.RemoteFileSystem);
 
-        await foreach (var entry in pointerFileEntries.ToAsyncEnumerable().WithCancellation(cancellationToken))
+        foreach (var entry in afs.EnumerateFileEntries(handlerContext.Query.Prefix, "*", SearchOption.AllDirectories))
         {
-            yield return entry.RelativeName;
+            yield return entry.FullName;
         }
     }
 }

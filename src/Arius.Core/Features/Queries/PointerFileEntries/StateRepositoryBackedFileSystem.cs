@@ -1,4 +1,3 @@
-using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.StateRepositories;
 using Zio;
 using Zio.FileSystems;
@@ -16,7 +15,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
 
     protected override bool DirectoryExistsImpl(UPath path)
     {
-        throw new NotSupportedException();
+        return true;
     }
 
     protected override bool FileExistsImpl(UPath path)
@@ -68,7 +67,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         foreach (var entry in entries)
         {
             // Return the pointer file path directly
-            var pointerFilePath = new UPath($"/{entry.RelativeName}");
+            var pointerFilePath = new UPath(entry.RelativeName);
 
             // Apply search option filtering
             if (searchOption == SearchOption.TopDirectoryOnly)

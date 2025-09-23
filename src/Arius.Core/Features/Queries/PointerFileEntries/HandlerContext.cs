@@ -6,11 +6,9 @@ namespace Arius.Core.Features.Queries.PointerFileEntries;
 
 internal record HandlerContext
 {
-    public required PointerFileEntriesQuery Request         { get; init; }
-    public required IArchiveStorage         ArchiveStorage  { get; init; }
-    public required IStateRepository        StateRepository { get; init; }
-    //public required Sha256Hasher       Hasher          { get; init; }
-    //public required UPath[]            Targets         { get; init; }
-    public required FilePairFileSystem FileSystem      { get; init; }
-    //public required DirectoryEntry     BinaryCache     { get; init; }
+    public required PointerFileEntriesQuery         Query         { get; init; }
+    //public required IArchiveStorage                 ArchiveStorage  { get; init; }
+    public required IStateRepository                StateRepository { get; init; }
+    public required FilePairFileSystem              LocalFileSystem      { get; init; }
+    public required StateRepositoryBackedFileSystem RemoteFileSystem { get; init; }
 }
