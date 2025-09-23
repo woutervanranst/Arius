@@ -35,7 +35,7 @@ public partial class Window : IRecipient<OpenChooseRepositoryDialogMessage>
         var chooseDialog = serviceProvider.GetRequiredService<ChooseRepository.Window>();
         if (chooseDialog.DataContext is ChooseRepository.ChooseRepositoryViewModel chooseViewModel)
         {
-            chooseViewModel.Repository = message.InitialRepository;
+            chooseViewModel.Repository = message.Repository;
         }
 
         chooseDialog.Owner = this;
