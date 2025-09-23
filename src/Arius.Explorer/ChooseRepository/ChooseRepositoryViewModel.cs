@@ -5,14 +5,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Mediator;
 using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using Unit = System.Reactive.Unit;
 
@@ -23,22 +18,23 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     private readonly IMediator              mediator;
     private readonly Subject<Unit>          credentialsChangedSubject = new();
     private readonly IDisposable            debounceSubscription;
-    private readonly TimeSpan               credentialsDebounce;
+    private readonly TimeSpan               debounceTimeSpan;
     private readonly SynchronizationContext synchronizationContext;
 
     [ObservableProperty]
     private string windowName = "Choose Repository";
+
     public ChooseRepositoryViewModel(
         IMediator              mediator,
-        TimeSpan?              credentialsDebounce = null)
+        TimeSpan?              debounceTimeSpan = null)
     {
-        this.mediator            = mediator;
-        this.credentialsDebounce = credentialsDebounce ?? TimeSpan.FromMilliseconds(500);
-        synchronizationContext   = SynchronizationContext.Current ?? new SynchronizationContext();
+        this.mediator          = mediator;
+        this.debounceTimeSpan  = debounceTimeSpan ?? TimeSpan.FromMilliseconds(500);
+        synchronizationContext = SynchronizationContext.Current ?? new SynchronizationContext();
 
         // Set up debouncing for Storage Account credential changes
         debounceSubscription = credentialsChangedSubject
-            .Throttle(this.credentialsDebounce)
+            .Throttle(this.debounceTimeSpan)
             .Where(_ => !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey))
             .Select(_ => Observable.FromAsync(OnStorageAccountCredentialsChanged))
             .Switch() // cancels previous OnStorageAccountCredentialsChanged if new values arrive

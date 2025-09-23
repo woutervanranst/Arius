@@ -3,6 +3,7 @@ using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
@@ -35,22 +36,23 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         {
             ArchiveStatistics = "";
 
-            RootNode          = [];
-            SelectedFolder    = new FolderViewModel();
+            RootNode = [];
+            SelectedFolder = new FolderViewModel();
             SelectedItemsText = "";
             ArchiveStatistics = "";
         }
     }
 
-
-    [ObservableProperty]
-    private string windowName = "Arius Explorer";
-
     [RelayCommand]
     private void ViewLoaded()
     {
         // TODO: Initialize view when loaded
+        if (Repository == null)
+            ChooseRepository();
     }
+
+    [ObservableProperty]
+    private string windowName = "Arius Explorer";
 
     [ObservableProperty]
     private bool isLoading;
@@ -58,8 +60,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [ObservableProperty]
     private string archiveStatistics = "";
 
-    [ObservableProperty]
-    private ObservableCollection<RepositoryOptions> recentRepositories = [];
+    // -- REPOSITORY
 
     [ObservableProperty]
     private RepositoryOptions? repository;
@@ -71,9 +72,16 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             : $"{App.Name}: {value}";
     }
 
+
+
+
+
+
     // MENUS
 
-    [RelayCommand] // File > Open...
+    //      File > Open...
+
+    [RelayCommand] 
     private void ChooseRepository()
     {
         // Show dialog and handle result
@@ -85,8 +93,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
+    //      File > Recent > [list]
 
-    [RelayCommand] // File > Recent > [list]
+    [ObservableProperty]
+    private ObservableCollection<RepositoryOptions> recentRepositories = [];
+
+    [RelayCommand] 
     private void OpenRepository(RepositoryOptions repository)
     {
         Repository = repository;
@@ -99,12 +111,14 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // TODO: Actually load the repository data
     }
 
+    //      About
+
     [RelayCommand]
     private void About()
     {
         // TODO: Show about dialog
+        MessageBox.Show("h");
     }
-
 
 
     // TREEVIEW
