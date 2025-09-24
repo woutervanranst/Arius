@@ -117,14 +117,13 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 // Create root node
                 var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
                 {
-                    Name = "Root"
+                    Name = "Root",
+                    IsSelected = true,
+                    IsExpanded = true
                 };
 
                 RootNode         = [rootNode];
                 SelectedTreeNode = rootNode;
-
-                // Load initial content for root
-                await LoadNodeContentAsync(rootNode);
 
                 ArchiveStatistics = "Statistics TODO";
                 SelectedItemsText = "";
