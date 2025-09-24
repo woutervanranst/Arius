@@ -5,7 +5,7 @@
 namespace Arius.Core.Shared.StateRepositories.Migrations
 {
     /// <inheritdoc />
-    public partial class AddRelativeNameHashIndex : Migration
+    internal partial class AddRelativeNameHashIndex : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

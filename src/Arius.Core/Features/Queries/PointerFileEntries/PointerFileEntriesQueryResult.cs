@@ -6,12 +6,12 @@ public abstract record PointerFileEntriesQueryResult
 {
 }
 
-public record PointerFileEntriesQueryDirectoryResult : PointerFileEntriesQueryResult
+public sealed record PointerFileEntriesQueryDirectoryResult : PointerFileEntriesQueryResult
 {
     public required string RelativeName { get; init; }
 }
 
-public record PointerFileEntriesQueryFileResult : PointerFileEntriesQueryResult
+public sealed record PointerFileEntriesQueryFileResult : PointerFileEntriesQueryResult
 {
     public string? PointerFileEntry { get; init; }
     public string? PointerFileName  { get; init; }

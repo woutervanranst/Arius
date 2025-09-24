@@ -44,6 +44,12 @@ public class PublicClassTests
             typeof(Core.Features.Commands.Restore.FileProgressUpdate).FullName,
             
             typeof(Core.Features.Queries.ContainerNames.ContainerNamesQuery).FullName,
+            
+            // PointerFileEntries query types
+            typeof(Core.Features.Queries.PointerFileEntries.PointerFileEntriesQuery).FullName,
+            typeof(Core.Features.Queries.PointerFileEntries.PointerFileEntriesQueryResult).FullName,
+            typeof(Core.Features.Queries.PointerFileEntries.PointerFileEntriesQueryDirectoryResult).FullName,
+            typeof(Core.Features.Queries.PointerFileEntries.PointerFileEntriesQueryFileResult).FullName,
         ], ignoreOrder: true);
     }
 
