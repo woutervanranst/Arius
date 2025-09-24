@@ -38,7 +38,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Hot)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -92,7 +92,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot /* ! Notice the mismatch with (1) */, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Hot /* ! Notice the mismatch with (1) */)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -158,7 +158,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Hot)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -210,7 +210,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Hot, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Hot)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -267,7 +267,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Archive)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -323,7 +323,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Archive)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -388,7 +388,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Archive)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();
@@ -442,7 +442,7 @@ public class RestoreCommandHandlerHydrationTests
             .Build();
 
         var sr = new StateRepositoryBuilder()
-            .WithBinaryProperty(BINARY.OriginalHash, BINARY.OriginalContent.Length, archivedSize: 10, StorageTier.Archive, pfes => { pfes.WithPointerFileEntry(BINARY.OriginalPath); })
+            .WithFakeFile(BINARY, archivedSize: 10, StorageTier.Archive)
             .BuildFake();
 
         var rehydrationQuestionHandlerMock = Substitute.For<Func<IReadOnlyList<RehydrationDetail>, RehydrationDecision>>();

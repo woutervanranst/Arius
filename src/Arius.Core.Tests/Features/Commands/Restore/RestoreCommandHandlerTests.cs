@@ -111,8 +111,8 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
                 pfes.WithPointerFileEntry(DUPLICATEBINARIES[0].OriginalPath)
                     .WithPointerFileEntry(DUPLICATEBINARIES[1].OriginalPath);
             })
-            .WithBinaryProperty(EXISTINGFILE.OriginalHash,              EXISTINGFILE.OriginalContent.Length,              pfes => { pfes.WithPointerFileEntry(EXISTINGFILE.OriginalPath); })
-            .WithBinaryProperty(EXISTINGFILEWITHWRONGHASH.OriginalHash, EXISTINGFILEWITHWRONGHASH.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(EXISTINGFILEWITHWRONGHASH.OriginalPath); })
+            .WithFakeFile(EXISTINGFILE)
+            .WithFakeFile(EXISTINGFILEWITHWRONGHASH)
             .WithBinaryProperty(TARCONTENT1.OriginalHash,                      TARHASH,                                         TARCONTENT1.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT1.OriginalPath);})
             .WithBinaryProperty(TARCONTENT2.OriginalHash,                      TARHASH,                                         TARCONTENT2.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT2.OriginalPath);})
             .WithBinaryProperty(TARCONTENT3.OriginalHash,                      TARHASH,                                         TARCONTENT3.OriginalContent.Length, pfes => { pfes.WithPointerFileEntry(TARCONTENT3.OriginalPath);})

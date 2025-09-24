@@ -71,26 +71,11 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
 
         // Create a real StateRepository using fixture state cache
         var stateRepository = new StateRepositoryBuilder()
-            .WithBinaryProperty(file1.OriginalHash, file1.OriginalContent.Length, pfes =>
-            {
-                pfes.WithPointerFileEntry(file1.OriginalPath);
-            })
-            .WithBinaryProperty(file2.OriginalHash, file2.OriginalContent.Length, pfes =>
-            {
-                pfes.WithPointerFileEntry(file2.OriginalPath);
-            })
-            .WithBinaryProperty(file3.OriginalHash, file3.OriginalContent.Length, pfes =>
-            {
-                pfes.WithPointerFileEntry(file3.OriginalPath);
-            })
-            .WithBinaryProperty(file4.OriginalHash, file4.OriginalContent.Length, pfes =>
-            {
-                pfes.WithPointerFileEntry(file4.OriginalPath);
-            })
-            .WithBinaryProperty(file8.OriginalHash, file8.OriginalContent.Length, pfes =>
-            {
-                pfes.WithPointerFileEntry(file8.OriginalPath);
-            })
+            .WithFakeFile(file1)
+            .WithFakeFile(file2)
+            .WithFakeFile(file3)
+            .WithFakeFile(file4)
+            .WithFakeFile(file8)
             // Do not add file5, 6, 7
             .Build(stateCache, "test-state");
 

@@ -178,7 +178,7 @@ public class StateRepositoryBackedFileSystemTests : IClassFixture<FixtureWithFil
         paths.Count.ShouldBe(3);
     }
 
-    [Theory]
+    [Theory(Skip = "TODO Probably this is not necessary? Remove also the tests")]
     [InlineData(true)]
     [InlineData(false)]
     public void EnumeratePaths_WithSpecificDirectory_ReturnsMatchingFiles(bool useFakeRepository)

@@ -83,9 +83,30 @@ internal class StateRepositoryBuilder
             StorageTier        = storageTier,
             PointerFileEntries = pointerFileBuilder.PointerFileEntries
         };
-        
+
         binaryProperties.Add(binaryProperty);
         return this;
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile)
+    {
+        return WithFakeFile(fakeFile, StorageTier.Hot);
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile, StorageTier storageTier)
+    {
+        return WithBinaryProperty(fakeFile.OriginalHash, fakeFile.OriginalContent.Length, storageTier, pfes =>
+        {
+            pfes.WithPointerFileEntry(fakeFile.OriginalPath);
+        });
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile, long archivedSize, StorageTier storageTier)
+    {
+        return WithBinaryProperty(fakeFile.OriginalHash, fakeFile.OriginalContent.Length, archivedSize, storageTier, pfes =>
+        {
+            pfes.WithPointerFileEntry(fakeFile.OriginalPath);
+        });
     }
 
     public IStateRepository BuildFake()
