@@ -1,36 +1,12 @@
 {
   "profiles": {
-    "archive": {
+    "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive"
+      "commandLineArgs": "archive \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)\" -n ariusci -c test -p wouterpassphrase --tier cool"
     },
-    "archive with args": {
+    "arius restore": {
       "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\woute\\Documents\\AriusTest -n %ARIUS_ACCOUNT_NAME% -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --tier cool"
-    },
-    "archive with args and dedup": {
-      "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\woute\\Documents\\AriusTest -n %ARIUS_ACCOUNT_NAME% -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool"
-    },
-    "restore": {
-      "commandName": "Project",
-      "commandLineArgs": "restore C:\\Users\\Wouter\\Documents\\Test2 -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download"
-    },
-    "restore BIG": {
-      "commandName": "Project",
-      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c archivededup --synchronize"
-    },
-    "Docker": {
-      "commandName": "Docker",
-      "commandLineArgs": "archive"
-    },
-    "Docker w env vars": {
-      "commandName": "Docker",
-      "environmentVariables": {
-        "ARIUS_ACCOUNT_NAME": "ha",
-        "ARIUS_ACCOUNT_KEY": "ho"
-      },
-      "commandLineArgs": "archive"
+      "commandLineArgs": "restore --root \"C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1) - restored\" -n ariusci -c test -p wouterpassphrase"
     }
   }
 }

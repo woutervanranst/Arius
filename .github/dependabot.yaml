@@ -5,17 +5,15 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"
 
   - package-ecosystem: "docker"
-    directory: "/src"
+    directory: "/src"   # change if your Dockerfile(s) live elsewhere
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"
@@ -25,7 +23,6 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-    target-branch: "feat/arius5"
     commit-message:
       prefix: "chore"
       include: "scope"

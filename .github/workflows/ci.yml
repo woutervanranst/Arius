@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+  pull_request:
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'src/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  checks: write
+
+jobs:
+  arius_cli_test:
+    name: "🧪 CLI & Core Tests on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🧰 Setup .NET"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: "🏗️ Build Arius.Cli"
+        run: dotnet build Arius.Cli/Arius.Cli.csproj --configuration Release
+
+      - name: "🧪 Run Arius.Cli & Core Tests"
+        env:
+          RepositoryOptions__AccountKey: ${{ secrets.REPOSITORY_OPTIONS_ACCOUNT_KEY }}
+          RepositoryOptions__Passphrase: ${{ secrets.REPOSITORY_OPTIONS_PASSPHRASE }}
+          ARIUS_ACCOUNT_NAME: ariusci
+          ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+        run: |
+          dotnet test Arius.Cli.Tests/Arius.Cli.Tests.csproj --configuration Release --logger "trx;LogFileName=cli-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.ArchiveCommandHandlerTests.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.RestoreCommandHandlerTests.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: "📄 Publish Test Report"
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Arius.Cli & Core Test Report
+          path: '**/*.trx'
+          reporter: dotnet-trx
+
+      - name: "📊 Upload Coverage to Codecov"
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+  arius_cli_build:
+    name: "🚀 CLI Build & Release"
+    runs-on: ubuntu-latest
+    needs: arius_cli_test
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🧰 Setup .NET"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: "🧮 Determine version"
+        id: get_version
+        run: |
+          BASE_VERSION=$(grep -Po '(?<=<Version>)[^<]+' Arius.Cli/Arius.Cli.csproj | head -n 1)
+          BASE_VERSION=${BASE_VERSION/\$\(GITHUB_RUN_NUMBER\)/$GITHUB_RUN_NUMBER}
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "VERSION=${BASE_VERSION}" >> $GITHUB_ENV
+            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+          else
+            echo "VERSION=${BASE_VERSION}-prerelease" >> $GITHUB_ENV
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+          fi
+
+      - name: "📦 Publish CLI"
+        run: dotnet publish Arius.Cli/Arius.Cli.csproj --configuration Release --output publish
+
+      - name: "🗜️ Package artifact"
+        run: tar czf arius-cli-${VERSION}.tar.gz -C publish .
+
+      - name: "⬆️ Upload artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: arius-cli-${{ env.VERSION }}
+          path: arius-cli-${{ env.VERSION }}.tar.gz
+
+      - name: "🔑 Login to Docker Hub"
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: "🐳 Build and Push Docker Image"
+        run: |
+            IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:${VERSION}"
+            LATEST_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius5:latest"
+            docker build -t $IMAGE_NAME -t $LATEST_NAME -f Arius.Cli/Dockerfile .
+            docker push $IMAGE_NAME
+            docker push $LATEST_NAME
+
+      - name: "📝 Build Changelog"
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          commitMode: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🏷️ Create GitHub Release"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: v${{ env.VERSION }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          files: arius-cli-${{ env.VERSION }}.tar.gz
+          body: ${{ steps.build_changelog.outputs.changelog }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  arius_explorer_test:
+    name: "🧪 Explorer Tests (Windows)"
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🧰 Setup .NET"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: "🧪 Run Arius.Explorer & Core Tests"
+        env:
+          RepositoryOptions__AccountKey: ${{ secrets.REPOSITORY_OPTIONS_ACCOUNT_KEY }}
+          RepositoryOptions__Passphrase: ${{ secrets.REPOSITORY_OPTIONS_PASSPHRASE }}
+          ARIUS_ACCOUNT_NAME: ariusci
+          ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+        run: |
+          dotnet test Arius.Explorer.Tests/Arius.Explorer.Tests.csproj --configuration Release --logger "trx;LogFileName=explorer-test-results.trx" --collect:"XPlat Code Coverage"
+          dotnet test Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release --filter "FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Archive.ArchiveCommandHandlerTests.RunArchiveCommandTEMP&FullyQualifiedName!=Arius.Core.Tests.Features.Commands.Restore.RestoreCommandHandlerTests.Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP" --logger "trx;LogFileName=core-test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: "📄 Publish Test Report"
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Arius.Explorer Test Report
+          path: '**/*.trx'
+          reporter: dotnet-trx
+
+      - name: "📊 Upload Coverage to Codecov"
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+  arius_explorer_build:
+    name: "🏗️ Explorer Build (stub)"
+    runs-on: windows-latest
+    needs: arius_explorer_test
+    steps:
+      - name: "⏭️ Placeholder"
+        run: echo "Arius.Explorer build pipeline to be implemented."

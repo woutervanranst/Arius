@@ -1,0 +1,185 @@
+using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
+using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
+using Arius.Core.Tests.Helpers.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
+using Zio;
+
+namespace Arius.Core.Tests.Helpers.Builders;
+
+internal class StateRepositoryBuilder
+{
+    public static DateTime DEFAULTUTCTIME = new DateTime(2001, 05, 23, 21, 49, 51, DateTimeKind.Utc);
+
+    private readonly List<BinaryProperties> binaryProperties = [];
+
+    public class PointerFileEntryBuilder
+    {
+        internal readonly List<PointerFileEntry> PointerFileEntries = [];
+
+        public PointerFileEntryBuilder WithPointerFileEntry(UPath binaryFileRelativeName, DateTime? creationTimeUtc = null, DateTime? writeTimeUtc = null)
+        {
+            if (binaryFileRelativeName.IsRelative)
+                throw new ArgumentException($"BinaryFileRelativeName must start with a /");
+            if (binaryFileRelativeName.FullName.EndsWith(PointerFile.Extension))
+                throw new ArgumentException($"BinaryFileRelativeName must not end with '{PointerFile.Extension}'", nameof(binaryFileRelativeName));
+
+            PointerFileEntries.Add(new PointerFileEntry
+            {
+                RelativeName     = $"{binaryFileRelativeName}{PointerFile.Extension}",
+                CreationTimeUtc  = creationTimeUtc ?? DEFAULTUTCTIME,
+                LastWriteTimeUtc = writeTimeUtc ?? DEFAULTUTCTIME
+            });
+
+            return this;
+        }
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, originalSize, 42, StorageTier.Hot, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, StorageTier storageTier, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, originalSize, 42, storageTier, pointerFileEntries);
+    }
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, long originalSize, long archivedSize, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    {
+        var pointerFileBuilder = new PointerFileEntryBuilder();
+        pointerFileEntries?.Invoke(pointerFileBuilder);
+
+        var binaryProperty = new BinaryProperties
+        {
+            Hash               = hash,
+            ParentHash         = null,
+            OriginalSize       = originalSize,
+            ArchivedSize       = archivedSize,
+            StorageTier        = storageTier,
+            PointerFileEntries = pointerFileBuilder.PointerFileEntries
+        };
+        
+        binaryProperties.Add(binaryProperty);
+        return this;
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, Action<PointerFileEntryBuilder> pointerFileEntries)
+    {
+        return WithBinaryProperty(hash, parentHash, originalSize, 42, StorageTier.Hot, pointerFileEntries);
+    }
+
+    public StateRepositoryBuilder WithBinaryProperty(Hash hash, Hash parentHash, long originalSize, long archivedSize, StorageTier storageTier = StorageTier.Hot, Action<PointerFileEntryBuilder>? pointerFileEntries = null)
+    {
+        var pointerFileBuilder = new PointerFileEntryBuilder();
+        pointerFileEntries?.Invoke(pointerFileBuilder);
+
+        var binaryProperty = new BinaryProperties
+        {
+            Hash               = hash,
+            ParentHash         = parentHash,
+            OriginalSize       = originalSize,
+            ArchivedSize       = archivedSize,
+            StorageTier        = storageTier,
+            PointerFileEntries = pointerFileBuilder.PointerFileEntries
+        };
+
+        binaryProperties.Add(binaryProperty);
+        return this;
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile)
+    {
+        return WithFakeFile(fakeFile, StorageTier.Hot);
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile, StorageTier storageTier)
+    {
+        return WithBinaryProperty(fakeFile.OriginalHash, fakeFile.OriginalContent.Length, storageTier, pfes =>
+        {
+            pfes.WithPointerFileEntry(fakeFile.OriginalPath);
+        });
+    }
+
+    public StateRepositoryBuilder WithFakeFile(FakeFile fakeFile, long archivedSize, StorageTier storageTier)
+    {
+        return WithBinaryProperty(fakeFile.OriginalHash, fakeFile.OriginalContent.Length, archivedSize, storageTier, pfes =>
+        {
+            pfes.WithPointerFileEntry(fakeFile.OriginalPath);
+        });
+    }
+
+    public IStateRepository BuildFake()
+    {
+        var repository = new InMemoryStateRepository();
+
+        // Add all binary properties
+        var binaryPropertiesDtos = binaryProperties
+            .Select(bp => new BinaryProperties
+            {
+                Hash               = bp.Hash,
+                ParentHash         = bp.ParentHash,
+                OriginalSize       = bp.OriginalSize,
+                ArchivedSize       = bp.ArchivedSize,
+                StorageTier        = bp.StorageTier,
+                PointerFileEntries = []
+            })
+            .ToArray();
+
+        repository.AddBinaryProperties(binaryPropertiesDtos);
+
+        // Add all pointer file entries
+        var pointerFileEntryDtos = binaryProperties
+            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntry
+            {
+                Hash             = bp.Hash,
+                RelativeName     = pfe.RelativeName,
+                CreationTimeUtc  = pfe.CreationTimeUtc,
+                LastWriteTimeUtc = pfe.LastWriteTimeUtc,
+                BinaryProperties = null!
+            }))
+            .ToArray();
+
+        repository.UpsertPointerFileEntries(pointerFileEntryDtos);
+
+        return repository;
+    }
+
+    public IStateRepository Build(StateCache stateCache, string stateName)
+    {
+        var stateFile   = stateCache.GetStateFileEntry(stateName);
+        var contextPool = new StateRepositoryDbContextPool(stateFile, true, NullLogger<StateRepositoryDbContextPool>.Instance);
+        var stateRepo   = new StateRepository(contextPool);
+
+        // Add all binary properties
+        var bps = binaryProperties
+            .Select(bp => new BinaryProperties
+            {
+                Hash               = bp.Hash,
+                ParentHash         = bp.ParentHash,
+                OriginalSize       = bp.OriginalSize,
+                ArchivedSize       = bp.ArchivedSize,
+                StorageTier        = bp.StorageTier,
+                PointerFileEntries = []
+            })
+            .ToArray();
+
+        stateRepo.AddBinaryProperties(bps);
+
+        // Add all pointer file entries
+        var pfes = binaryProperties
+            .SelectMany(bp => bp.PointerFileEntries.Select(pfe => new PointerFileEntry
+            {
+                Hash             = bp.Hash,
+                RelativeName     = pfe.RelativeName,
+                CreationTimeUtc  = pfe.CreationTimeUtc,
+                LastWriteTimeUtc = pfe.LastWriteTimeUtc,
+                BinaryProperties = null!
+            }))
+            .ToArray();
+
+        stateRepo.UpsertPointerFileEntries(pfes);
+
+        return stateRepo;
+    }
+}

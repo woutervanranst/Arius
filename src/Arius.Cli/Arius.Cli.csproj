@@ -1,54 +1,51 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net9.0</TargetFramework>
+		<UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
 		<AssemblyName>arius</AssemblyName>
-		<Nullable>enable</Nullable>
-		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+		
+		<TieredCompilation>true</TieredCompilation>
 	</PropertyGroup>
 
+	<!--
+	Version information
+	When running in GitHub Actions we want the version number to reflect the run
+	that produced the build. The GITHUB_RUN_NUMBER variable is provided by the
+	Actions environment and increases with every run of the workflow. When this
+	variable is not available (e.g. when building locally) we fall back to a
+	descriptive "local" suffix.
+  -->
+	<PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
+		<!-- Use the run number as the patch version so the CLI prints e.g. v5.0.123 -->
+		<Version>5.0.$(GITHUB_RUN_NUMBER)</Version>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
+		<Version>5.0.0-local</Version>
+	</PropertyGroup>
 	<ItemGroup>
-		<None Include="..\.dockerignore" Link=".dockerignore">
-			<DependentUpon>DockerfileOld</DependentUpon>
-		</None>
+		<PackageReference Include="CliFx" />
+		<PackageReference Include="Microsoft.ApplicationInsights.WorkerService" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" />
+		<PackageReference Include="Serilog.Enrichers.Thread" />
+		<PackageReference Include="Serilog.Extensions.Hosting" />
+		<PackageReference Include="Serilog.Sinks.File" />
+		<PackageReference Include="Spectre.Console" />
+		<PackageReference Include="Mediator.Abstractions" />
+		<PackageReference Include="Mediator.SourceGenerator">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
-	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
-	<ItemGroup Condition="'$(Configuration)'=='Debug'">
+	<ItemGroup>
 		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
 	</ItemGroup>
-	<ItemGroup Condition="'$(Configuration)'=='Release'">
-		<PackageReference Include="WouterVanRanst.Arius.Core" Version="*" />
-		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1" />
-
-		<PackageReference Include="Spectre.Console" Version="0.48.0" />
-		<PackageReference Include="Spectre.Console.Cli" Version="0.48.0" />
-
-		<!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
-		<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.5.0" />
-		<!--<PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />-->
-
-
-		<!-- For AddCustomFormatter Logger-->
-		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
-
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-	</ItemGroup>
-
 
 	<ItemGroup>
 		<None Update="appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
 
