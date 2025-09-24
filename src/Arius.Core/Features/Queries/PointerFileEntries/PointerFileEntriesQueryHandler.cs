@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Storage;
 using Zio;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
@@ -83,7 +84,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 {
                     PointerFileEntry = rn,
                     OriginalSize     = pfe.BinaryProperties.OriginalSize,
-                    StorageTier      = pfe.BinaryProperties.StorageTier
+                    Hydrated         = pfe.BinaryProperties.StorageTier != StorageTier.Archive
                 };
 
                 var fp = FilePair.FromPointerFileEntry(handlerContext.LocalFileSystem, pfe);

@@ -114,31 +114,31 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
             x.BinaryFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt" &&
             x.OriginalSize == 14 &&
-            x.StorageTier == StorageTier.Hot);
+            x.Hydrated == true);
         files.ShouldContain(x =>
             x.PointerFileEntry == null &&
             x.PointerFileName == "/PointerFile 5.txt.pointer.arius" &&
             x.BinaryFileName == null &&
             x.OriginalSize == -1 && // This is an orphaned file: it does not exist in the StateDb and there is no BinaryFile
-            x.StorageTier == null);
+            x.Hydrated == null);
         files.ShouldContain(x => 
             x.PointerFileEntry == null &&
             x.PointerFileName == null &&
             x.BinaryFileName == "/BinaryFile 6.txt" &&
             x.OriginalSize == 16 &&
-            x.StorageTier == null);
+            x.Hydrated == null);
         files.ShouldContain(x =>
             x.PointerFileEntry == null &&
             x.PointerFileName == "/BinaryFile and PointerFile 7.txt.pointer.arius" &&
             x.BinaryFileName == "/BinaryFile and PointerFile 7.txt" &&
             x.OriginalSize == 17 &&
-            x.StorageTier == null);
+            x.Hydrated == null);
         files.ShouldContain(x =>
             x.PointerFileEntry == "/PointerFileEntry 8.txt.pointer.arius" &&
             x.PointerFileName == null &&
             x.BinaryFileName == null &&
             x.OriginalSize == 18 &&
-            x.StorageTier == StorageTier.Hot);
+            x.Hydrated == true);
         files.Length.ShouldBe(5);
 
 
@@ -163,7 +163,7 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileName == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
             x.BinaryFileName == null &&
             x.OriginalSize == 12 &&
-            x.StorageTier == StorageTier.Hot);
+            x.Hydrated == true);
 
 
         // Arrange
@@ -188,6 +188,6 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileName == null &&
             x.BinaryFileName == "/folder 2/BinaryFile and PointerFileEntry 3.txt" &&
             x.OriginalSize == 13 &&
-            x.StorageTier == StorageTier.Hot);
+            x.Hydrated == true);
     }
 }
