@@ -8,23 +8,23 @@ using Zio;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
-public abstract record Result
+public abstract record PointerFileEntriesQueryResult
 {
 }
 
-public record Directory : Result
+public record PointerFileEntriesQueryDirectoryResult : PointerFileEntriesQueryResult
 {
     public required string RelativeName { get; init; }
 }
 
-public record File : Result
+public record PointerFileEntriesQueryFileResult : PointerFileEntriesQueryResult
 {
     public string? PointerFileEntry { get; init; }
     public string? PointerFileName  { get; init; }
     public string? BinaryFileName   { get; init; }
 }
 
-internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, Result>
+internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, PointerFileEntriesQueryResult>
 {
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<PointerFileEntriesQueryHandler> logger;
@@ -35,7 +35,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
         this.logger = loggerFactory.CreateLogger<PointerFileEntriesQueryHandler>();
     }
 
-    public async IAsyncEnumerable<Result> Handle(PointerFileEntriesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<PointerFileEntriesQueryResult> Handle(PointerFileEntriesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
             .BuildAsync();
@@ -48,9 +48,9 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
         }
     }
 
-    internal async IAsyncEnumerable<Result> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    internal async IAsyncEnumerable<PointerFileEntriesQueryResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        var resultChannel = Channel.CreateUnbounded<Result>(new UnboundedChannelOptions() { /*TODO QUID ?? AllowSynchronousContinuations = true, */SingleReader = true, SingleWriter = false});
+        var resultChannel = Channel.CreateUnbounded<PointerFileEntriesQueryResult>(new UnboundedChannelOptions() { /*TODO QUID ?? AllowSynchronousContinuations = true, */SingleReader = true, SingleWriter = false});
 
         var directoryTask = Task.Run(async () =>
         {
@@ -60,7 +60,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 var rn = pfd.RelativeName;
 
                 yielded.Add(rn);
-                await resultChannel.Writer.WriteAsync(new Directory
+                await resultChannel.Writer.WriteAsync(new PointerFileEntriesQueryDirectoryResult
                 {
                     RelativeName = rn
                 });
@@ -72,7 +72,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 
                 if (yielded.Contains(rn))
                     continue; // this directory was already yielded when iterating on the StateRepository
-                await resultChannel.Writer.WriteAsync(new Directory
+                await resultChannel.Writer.WriteAsync(new PointerFileEntriesQueryDirectoryResult
                 {
                     RelativeName = rn
                 });
@@ -90,7 +90,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 var rn = pfe.RelativeName;
 
                 yielded.Add(rn);
-                var r = new File
+                var r = new PointerFileEntriesQueryFileResult
                 {
                     PointerFileEntry = rn
                 };
@@ -117,9 +117,9 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
 
                 var r = fp.Type switch
                 {
-                    FilePairType.PointerFileOnly           => new File { PointerFileName = fp.PointerFile.FullName },
-                    FilePairType.BinaryFileOnly            => new File { BinaryFileName = fp.BinaryFile.FullName },
-                    FilePairType.BinaryFileWithPointerFile => new File { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.PointerFileOnly           => new PointerFileEntriesQueryFileResult { PointerFileName = fp.PointerFile.FullName },
+                    FilePairType.BinaryFileOnly            => new PointerFileEntriesQueryFileResult { BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.BinaryFileWithPointerFile => new PointerFileEntriesQueryFileResult { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
                     FilePairType.None                      => throw new InvalidOperationException("This should not happen"),
                     _                                      => throw new ArgumentOutOfRangeException()
                 };

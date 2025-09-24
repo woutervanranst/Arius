@@ -6,8 +6,6 @@ using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Shouldly;
-using Directory = Arius.Core.Features.Queries.PointerFileEntries.Directory;
-using File = Arius.Core.Features.Queries.PointerFileEntries.File;
 
 namespace Arius.Core.Tests.Features.Queries.PointerFileEntries;
 
@@ -119,12 +117,12 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         var results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
 
         // Assert
-        var directories = results.OfType<Directory>().ToArray();
+        var directories = results.OfType<PointerFileEntriesQueryDirectoryResult>().ToArray();
         directories.ShouldContain(x => x.RelativeName == "/folder with space/");
         directories.ShouldContain(x => x.RelativeName == "/folder 2/");
         directories.Length.ShouldBe(2);
 
-        var files = results.OfType<File>().ToArray();
+        var files = results.OfType<PointerFileEntriesQueryFileResult>().ToArray();
         files.ShouldContain(x =>
             x.PointerFileEntry == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
             x.PointerFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
@@ -160,10 +158,10 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
 
         // Assert
-        directories = results.OfType<Directory>().ToArray();
+        directories = results.OfType<PointerFileEntriesQueryDirectoryResult>().ToArray();
         directories.Length.ShouldBe(0);
 
-        files = results.OfType<File>().ToArray();
+        files = results.OfType<PointerFileEntriesQueryFileResult>().ToArray();
         files.ShouldContain(x =>
             x.PointerFileEntry == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
             x.PointerFileName == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
@@ -182,11 +180,11 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
 
         // Assert
-        directories = results.OfType<Directory>().ToArray();
+        directories = results.OfType<PointerFileEntriesQueryDirectoryResult>().ToArray();
         directories.ShouldContain(x => x.RelativeName == "/folder 2/subfolder with space/");
         directories.Length.ShouldBe(1);
 
-        files = results.OfType<File>().ToArray();
+        files = results.OfType<PointerFileEntriesQueryFileResult>().ToArray();
         files.ShouldContain(x =>
             x.PointerFileEntry == "/folder 2/BinaryFile and PointerFileEntry 3.txt.pointer.arius" &&
             x.PointerFileName == null &&
