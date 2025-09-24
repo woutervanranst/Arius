@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
@@ -37,7 +38,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [RelayCommand]
     private void ViewLoaded()
     {
-        // TODO: Initialize view when loaded
+        // If the Explorer window is shown but no Repository is selected, open the ChooseRepository window
         if (Repository == null)
             ChooseRepository();
     }
@@ -55,7 +56,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     // MENUS
 
     //      File > Open...
-
     [RelayCommand] 
     private void ChooseRepository()
     {
@@ -68,7 +68,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     }
 
     //      File > Recent > [list]
-
     [ObservableProperty]
     private ObservableCollection<RepositoryOptions> recentRepositories = [];
 
@@ -80,6 +79,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
         Repository = repository; // this will trigger OnRepositoryChanged
     }
+
 
     // -- REPOSITORY
 
@@ -206,38 +206,49 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 Prefix        = node.Prefix
             };
 
-            var results     = mediator.CreateStream(query);
-            var directories = new List<TreeNodeViewModel>();
-            var files       = new List<FileItemViewModel>();
+            // Initialize collections for streaming updates
+            node.Folders = [];
+            node.Items   = [];
+
+            // Update the selected tree node reference for ListView binding immediately
+            SelectedTreeNode = node;
+            SelectedItemsText = "Loading...";
+
+            var results = mediator.CreateStream(query);
 
             await foreach (var result in results)
             {
-                switch (result)
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    case PointerFileEntriesQueryDirectoryResult directory:
-                        var dirName = ExtractDirectoryName(directory.RelativeName);
-                        var childNode = new TreeNodeViewModel(directory.RelativeName, OnNodeSelected)
-                        {
-                            Name = dirName
-                        };
-                        directories.Add(childNode);
-                        break;
+                    switch (result)
+                    {
+                        case PointerFileEntriesQueryDirectoryResult directory:
+                            var dirName = ExtractDirectoryName(directory.RelativeName);
+                            var childNode = new TreeNodeViewModel(directory.RelativeName, OnNodeSelected)
+                            {
+                                Name = dirName
+                            };
 
-                    case PointerFileEntriesQueryFileResult file:
-                        var fileItem = new FileItemViewModel(file);
-                        files.Add(fileItem);
+                            node.Folders.Add(childNode);
 
-                        break;
-                }
+                            break;
+
+                        case PointerFileEntriesQueryFileResult file:
+                            var fileItem = new FileItemViewModel(file);
+
+                            node.Items.Add(fileItem);
+                            SelectedItemsText = $"{node.Items.Count} items";
+
+                            break;
+                    }
+                });
             }
 
-            // Update UI on main thread
-            node.Folders = new ObservableCollection<TreeNodeViewModel>(directories);
-            node.Items = new ObservableCollection<FileItemViewModel>(files);
-
-            // Update the selected tree node reference for ListView binding
-            SelectedTreeNode = node;
-            SelectedItemsText = $"{files.Count} items";
+            // Final count update (in case there were only directories)
+            //Application.Current.Dispatcher.Invoke(() =>
+            //{
+                SelectedItemsText = $"{node.Items.Count} items";
+            //});
         }
         catch (Exception e)
         {
