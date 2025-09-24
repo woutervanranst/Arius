@@ -1,5 +1,6 @@
 using Arius.Core.Shared.FileSystem;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Options;
 using Zio;
 using Zio.FileSystems;
@@ -43,7 +44,7 @@ public class FixtureWithFileSystem : Fixture, IDisposable
 
         var pfs = new PhysicalFileSystem();
         var sfs = new SubFileSystem(pfs, pfs.ConvertPathFromInternal(TestRunSourceFolder.FullName));
-        FileSystem = new FilePairFileSystem(sfs);
+        FileSystem = new FilePairFileSystem(sfs, new FakeLogger<FilePairFileSystem>());
     }
 
     public void Dispose()

@@ -1,12 +1,16 @@
-﻿using Zio;
+﻿using Microsoft.Extensions.Logging;
+using Zio;
 using Zio.FileSystems;
 
 namespace Arius.Core.Shared.FileSystem;
 
 internal class FilePairFileSystem : ComposeFileSystem
 {
-    public FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, owned)
+    private readonly ILogger<FilePairFileSystem> logger;
+
+    public FilePairFileSystem(IFileSystem fileSystem, ILogger<FilePairFileSystem> logger, bool owned = true) : base(fileSystem, owned)
     {
+        this.logger = logger;
     }
 
     protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)
@@ -19,50 +23,86 @@ internal class FilePairFileSystem : ComposeFileSystem
 
     protected override IEnumerable<UPath> EnumeratePathsImpl(UPath path, string searchPattern, SearchOption searchOption, SearchTarget searchTarget)
     {
-        // Iterate over all the files in the filesystem, and yield only the binaryfiles or binaryfile-equivalents
-
         if (searchPattern != "*")
             throw new NotSupportedException();
-        if (searchOption != SearchOption.AllDirectories && searchOption != SearchOption.TopDirectoryOnly)
-            throw new NotSupportedException();
-        if (searchTarget != SearchTarget.File)
+
+        var fse = FallbackSafe.GetFileSystemEntry(path);
+        if (fse is not DirectoryEntry d)
             throw new NotSupportedException();
 
-        var fsi = FallbackSafe.GetFileSystemEntry(path);
-        if (fsi is not DirectoryEntry d)
-            throw new NotSupportedException();
-
-        foreach (var fe in EnumerateFiles(d, searchOption))
+        switch (searchTarget)
         {
-            var p = fe.Path;
-            if (p.IsPointerFilePath())
+            case SearchTarget.File:
             {
-                // this is a PointerFile
-                var bfp = p.GetBinaryFilePath();
-                if (FallbackSafe.FileExists(bfp))
+                foreach (var fe in EnumerateFiles(d, searchOption))
                 {
-                    // 1. BinaryFile exists too - yield nothing here, the BinaryFile will be yielded
-                    continue;
+                    var p = fe.Path;
+                    if (p.IsPointerFilePath())
+                    {
+                        // this is a PointerFile
+                        var bfp = p.GetBinaryFilePath();
+                        if (FallbackSafe.FileExists(bfp))
+                        {
+                            // 1. BinaryFile exists too - yield nothing here, the BinaryFile will be yielded
+                            continue;
+                        }
+                        else
+                        {
+                            // 2. BinaryFile does not exist
+                            yield return bfp; // yield the path of the (nonexisting) binaryfile
+                        }
+                    }
+                    else
+                    {
+                        // this is a BinaryFile
+                        yield return p;
+                    }
                 }
-                else
-                {
-                    // 2. BinaryFile does not exist
-                    yield return bfp; // yield the path of the (nonexisting) binaryfile
-                }
+
+                break;
             }
-            else
+            case SearchTarget.Directory:
             {
-                // this is a BinaryFile
-                yield return p;
+                foreach (var dir in EnumerateDirectories(d, searchOption))
+                {
+                    yield return dir.Path;
+                }
+
+                break;
+            }
+            case SearchTarget.Both:
+            default:
+                throw new NotSupportedException();
+        }
+    }
+
+    private static IEnumerable<DirectoryEntry> EnumerateDirectories(DirectoryEntry directory, SearchOption searchOption)
+    {
+        if (ShouldSkipDirectory(directory))
+            yield break;
+
+        foreach (var subDir in directory.EnumerateDirectories())
+        {
+            if (ShouldSkipDirectory(subDir))
+                continue;
+
+            yield return subDir;
+
+            if (searchOption == SearchOption.AllDirectories)
+            {
+                foreach (var deeper in EnumerateDirectories(subDir, searchOption))
+                {
+                    yield return deeper;
+                }
             }
         }
     }
 
-    private static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory, SearchOption searchOption)
+    private IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory, SearchOption searchOption)
     {
         if (ShouldSkipDirectory(directory))
         {
-            //logger.LogWarning("Skipping directory {directory} as it is hidden, system, or excluded", directory.FullName);
+            logger.LogWarning("Skipping directory {directory} as it is hidden, system, or excluded", directory.FullName);
             yield break;
         }
 
@@ -70,7 +110,7 @@ internal class FilePairFileSystem : ComposeFileSystem
         {
             if (ShouldSkipFile(fe))
             {
-                //logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fi.FullName);
+                logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fe.FullName);
                 continue;
             }
 
@@ -88,18 +128,15 @@ internal class FilePairFileSystem : ComposeFileSystem
                 }
             }
         }
-
-        yield break;
-
-
-        static bool ShouldSkipDirectory(DirectoryEntry dir) =>
-            (dir.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
-            ExcludedDirectories.Contains(dir.Name);
-
-        static bool ShouldSkipFile(FileEntry file) =>
-            (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
-            ExcludedFiles.Contains(Path.GetFileName(file.FullName));
     }
+
+    static bool ShouldSkipDirectory(DirectoryEntry dir) =>
+        (dir.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        ExcludedDirectories.Contains(dir.Name);
+
+    static bool ShouldSkipFile(FileEntry file) =>
+        (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        ExcludedFiles.Contains(Path.GetFileName(file.FullName));
 
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
     private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };

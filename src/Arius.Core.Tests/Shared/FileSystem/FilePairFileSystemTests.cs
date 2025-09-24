@@ -87,4 +87,104 @@ public class FilePairFileSystemTests
         files.Select(fe => fe.FullName)
             .ShouldBe(expectedRelativePaths, ignoreOrder: true);
     }
+
+    [Fact]
+    public async Task EnumerateDirectoryEntries_WithTopDirectoryOnly_ShouldListOnlyTopLevelNonExcludedDirectories()
+    {
+        // Arrange
+        var expectedRelativePaths = new[]
+        {
+            "/subdir",
+            "/subdir2"
+        };
+
+        // Act
+        var dirs = fixture.FileSystem.EnumerateDirectoryEntries(UPath.Root, "*", SearchOption.TopDirectoryOnly).ToList();
+
+        // Assert
+        dirs.ShouldNotBeNull();
+        dirs.Select(de => de.FullName)
+            .ShouldBe(expectedRelativePaths, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task EnumerateDirectoryEntries_WithAllDirectories_ShouldSkipExcludedDirectories()
+    {
+        // Arrange
+        // NB: The fixture includes the excluded directories under /subdir2:
+        // @eaDir, eaDir, SynoResource — these must be skipped.
+        var expectedRelativePaths = new[]
+        {
+            "/subdir",
+            "/subdir2"
+        };
+
+        // Act
+        var dirs = fixture.FileSystem.EnumerateDirectoryEntries(UPath.Root, "*", SearchOption.AllDirectories).ToList();
+
+        // Assert
+        dirs.ShouldNotBeNull();
+        dirs.Select(de => de.FullName)
+            .ShouldBe(expectedRelativePaths, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task EnumerateDirectoryEntries_WithTopDirectoryOnly_OnSubdir2_ShouldReturnNoNonExcludedChildren()
+    {
+        // Arrange
+        // /subdir2 only contains excluded children (@eaDir, eaDir, SynoResource) in the fixture.
+        var expectedRelativePaths = Array.Empty<string>();
+
+        // Act
+        var dirs = fixture.FileSystem.EnumerateDirectoryEntries(new UPath("/subdir2"), "*", SearchOption.TopDirectoryOnly).ToList();
+
+        // Assert
+        dirs.ShouldNotBeNull();
+        dirs.Select(de => de.FullName)
+            .ShouldBe(expectedRelativePaths, ignoreOrder: true);
+    }
+
+    [Fact(Skip = "Properly implement leading dot in files & folders")]
+    public async Task EnumerateDirectoryEntries_ShouldSkipHiddenAndSystemDirectories()
+    {
+        // Arrange
+        // Create a hidden directory and a normal directory under root.
+        var hiddenDir = new UPath("/.hidden_dir");     // leading dot = hidden (Linux convention)
+        var normalDir = new UPath("/visible_dir");
+
+        fixture.FileSystem.CreateDirectory(normalDir);
+        // Mark hidden dir explicitly hidden via attributes if supported by the fake FS, otherwise
+        // creating a directory with leading dot should be sufficient for ShouldSkipDirectory name/attr checks.
+        fixture.FileSystem.CreateDirectory(hiddenDir);
+        // If your Fake FS supports setting attributes on directories, uncomment the next line:
+        // fixture.FileSystem.SetAttributes(hiddenDir, FileAttributes.Directory | FileAttributes.Hidden);
+
+        var expectedRelativePaths = new[]
+        {
+            "/subdir",
+            "/subdir2",
+            "/visible_dir"
+        };
+
+        // Act
+        var dirs = fixture.FileSystem.EnumerateDirectoryEntries(UPath.Root, "*", SearchOption.TopDirectoryOnly).ToList();
+
+        // Assert
+        dirs.ShouldNotBeNull();
+        dirs.Select(de => de.FullName)
+            .ShouldBe(expectedRelativePaths, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task EnumerateDirectoryEntries_WithNonWildcardPattern_ShouldThrow()
+    {
+        // Act & Assert
+        var ex = Should.Throw<NotSupportedException>(() =>
+        {
+            // Any non-"*" pattern should throw per implementation
+            fixture.FileSystem.EnumerateDirectoryEntries(UPath.Root, "*.txt", SearchOption.TopDirectoryOnly).ToList();
+        });
+
+        ex.ShouldNotBeNull();
+    }
 }

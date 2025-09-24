@@ -105,7 +105,7 @@ internal class HandlerContextBuilder
                 baseFileSystem = new SubFileSystem(pfs, root, true);
             }
 
-            return new FilePairFileSystem(baseFileSystem, true);
+            return new FilePairFileSystem(baseFileSystem, loggerFactory.CreateLogger<FilePairFileSystem>(),true);
         }
     }
 }
