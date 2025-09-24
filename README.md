@@ -3,7 +3,7 @@
 <img src="docs/iceberg.svg" width="200" />
 
 [![CI](https://github.com/woutervanranst/Arius/actions/workflows/ci.yml/badge.svg?label=Release)](https://github.com/woutervanranst/Arius/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/woutervanranst/Arius/graph/badge.svg?token=GEZJ4Y0ZNK)]s://codecov.io/gh/woutervanranst/Arius)
+[![codecov](https://codecov.io/gh/woutervanranst/Arius/graph/badge.svg?token=GEZJ4Y0ZNK)](https://codecov.io/gh/woutervanranst/Arius)
 [![CodeQL](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml)
 
 [![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker)](https://hub.docker.com/r/woutervanranst/arius)
