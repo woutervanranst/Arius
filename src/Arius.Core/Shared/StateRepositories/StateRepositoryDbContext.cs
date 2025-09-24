@@ -92,7 +92,7 @@ internal class StateRepositoryDbContext : DbContext
             ) { }
     }
 
-    private class StorageTierConverter : ValueConverter<StorageTier, int>
+    internal class StorageTierConverter : ValueConverter<StorageTier, int>
     {
         public StorageTierConverter() : base(
             tier => ConvertTierToNumber(tier),

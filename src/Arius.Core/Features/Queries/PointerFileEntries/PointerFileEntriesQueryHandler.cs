@@ -3,6 +3,7 @@ using Mediator;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Zio;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
@@ -65,12 +66,19 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 {
                     RelativeName = pfd.RelativeName
                 });
+            }
 
+            foreach (var path in handlerContext.LocalFileSystem.EnumerateDirectories(handlerContext.Query.Prefix, "*", SearchOption.TopDirectoryOnly))
+            {
+                
             }
         }, cancellationToken);
 
-        var entryTask = Task.Run(() =>
+        var entryTask = Task.Run(async () =>
         {
+            // DEBUG
+            await directoryTask;
+
             foreach (var pfe in handlerContext.StateRepository.GetPointerFileEntries(handlerContext.Query.Prefix, topDirectoryOnly: true, includeBinaryProperties: true))
             {
                 resultChannel.Writer.TryWrite(new File

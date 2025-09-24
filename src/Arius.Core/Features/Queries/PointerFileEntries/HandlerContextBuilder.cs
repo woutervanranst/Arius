@@ -61,16 +61,11 @@ internal class HandlerContextBuilder
             throw new InvalidOperationException($"The specified container '{query.ContainerName}' does not exist in the storage account.");
         }
 
-        // State Repository
-        stateRepository ??= await BuildStateRepositoryAsync(archiveStorage);
-
         return new HandlerContext
         {
-            Query            = query,
-            //ArchiveStorage   = archiveStorage,
-            StateRepository  = stateRepository,
-            LocalFileSystem  = GetFilePairFileSystem(),
-            RemoteFileSystem = GetStateRepositoryBackedFileSystem()
+            Query           = query,
+            StateRepository = stateRepository ??= await BuildStateRepositoryAsync(archiveStorage),
+            LocalFileSystem = GetFilePairFileSystem()
         };
 
 
@@ -112,11 +107,5 @@ internal class HandlerContextBuilder
 
             return new FilePairFileSystem(baseFileSystem, true);
         }
-
-        StateRepositoryBackedFileSystem GetStateRepositoryBackedFileSystem()
-        {
-            return new StateRepositoryBackedFileSystem(stateRepository);
-        }
-
     }
 }

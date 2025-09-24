@@ -4,6 +4,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
+[Obsolete("Probably this is not necessary? Remove also the tests")]
 internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
 {
     private readonly IStateRepository stateRepository;
@@ -62,7 +63,7 @@ internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
         if (!path.IsAbsolute)
             throw new ArgumentException("The path must start with a '/' character.", nameof(path));
 
-        var entries = stateRepository.GetPointerFileEntries(path.FullName, false);
+        var entries = stateRepository.GetPointerFileEntries(path.FullName, topDirectoryOnly: searchOption == SearchOption.TopDirectoryOnly, includeBinaryProperties: false);
 
         foreach (var entry in entries)
         {

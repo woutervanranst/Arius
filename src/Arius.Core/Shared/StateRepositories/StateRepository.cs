@@ -162,37 +162,38 @@ internal class StateRepository : IStateRepository
 
             var results = context.Database.SqlQuery<PointerFileQueryResult>(FormattableStringFactory.Create(fileQuery, dbRelativeNamePrefix));
 
+            var stc = new StateRepositoryDbContext.StorageTierConverter();
+
             foreach (var result in results)
             {
-                var hash = Hash.FromBytes(result.Hash);
+                var hash         = Hash.FromBytes(result.Hash);
                 var relativeName = "/" + result.RelativeName;
 
                 BinaryProperties? binaryProperties = null;
                 if (result.BpHash != null)
                 {
-                    var bpHash = Hash.FromBytes(result.BpHash);
+                    var bpHash     = Hash.FromBytes(result.BpHash);
                     var parentHash = result.ParentHash != null ? Hash.FromBytes(result.ParentHash) : null;
 
                     binaryProperties = new BinaryProperties
                     {
-                        Hash = bpHash,
-                        ParentHash = parentHash,
+                        Hash         = bpHash,
+                        ParentHash   = parentHash,
                         OriginalSize = result.OriginalSize ?? 0,
                         ArchivedSize = result.ArchivedSize ?? 0,
-                        StorageTier = result.StorageTier.HasValue ? (StorageTier)result.StorageTier.Value : StorageTier.Hot
+                        StorageTier  = (StorageTier)stc.ConvertFromProvider(result.StorageTier.Value)
                     };
                 }
 
                 yield return new PointerFileEntry
                 {
-                    Hash = hash,
-                    RelativeName = relativeName,
-                    CreationTimeUtc = result.CreationTimeUtc,
+                    Hash             = hash,
+                    RelativeName     = relativeName,
+                    CreationTimeUtc  = result.CreationTimeUtc,
                     LastWriteTimeUtc = result.LastWriteTimeUtc,
                     BinaryProperties = binaryProperties!
                 };
             }
-
         }
         else
         {
