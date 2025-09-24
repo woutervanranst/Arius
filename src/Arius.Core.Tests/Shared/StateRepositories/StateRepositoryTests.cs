@@ -564,29 +564,35 @@ public class StateRepositoryTests : IDisposable
             })
             .Build(stateCache, "test-state");
 
+        var sr = ((StateRepository)stateRepository);
+        
         // Act
-        var r = ((StateRepository)stateRepository).GetPointerFileItems("/").ToList();
+        var dirs  = sr.GetPointerFileDirectories("/", true).ToList();
+        var files = sr.GetPointerFileEntries("/", true, true).ToList();
         
         // Assert
-        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder 2/");
-        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder with space/");
-        r.OfType<PointerFileEntry>().ShouldContain(pfe => pfe.RelativeName == "/file on disk and staterepo 4.txt");
+        dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/");
+        dirs.ShouldContain(pfd => pfd.RelativeName == "/folder with space/");
+        files.ShouldContain(pfe => pfe.RelativeName == "/file on disk and staterepo 4.txt");
 
 
         // Act
-        r = ((StateRepository)stateRepository).GetPointerFileItems("/folder 2/").ToList();
+        dirs  = sr.GetPointerFileDirectories("/folder 2/", true).ToList();
+        files = sr.GetPointerFileEntries("/folder 2/", true, true).ToList();
 
         // Assert
-        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder 2/subfolder with space/");
-        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder 2/subfolder/");
-        r.OfType<PointerFileEntry>().ShouldBeEmpty();
+        dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/subfolder with space/");
+        dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/subfolder/");
+        files.ShouldBeEmpty();
+
 
         // Act
-        r = ((StateRepository)stateRepository).GetPointerFileItems("/folder 2/subfolder with space/").ToList();
+        dirs  = sr.GetPointerFileDirectories("/folder 2/subfolder with space/", true).ToList();
+        files = sr.GetPointerFileEntries("/folder 2/subfolder with space/", true, true).ToList();
 
         // Assert
-        r.OfType<PointerFileDirectory>().ShouldBeEmpty();
-        r.OfType<PointerFileEntry>().ShouldContain(pfe => pfe.RelativeName == "/folder 2/subfolder with space/file on disk 2.txt");
+        dirs.ShouldBeEmpty();
+        files.ShouldContain(pfe => pfe.RelativeName == "/folder 2/subfolder with space/file on disk 2.txt");
     }
 
     private static Hash CreateTestHash(int seed)

@@ -14,9 +14,7 @@ internal record BinaryProperties
     public virtual ICollection<PointerFileEntry> PointerFileEntries { get; set; }
 }
 
-internal abstract record PointerFileItem {}
-
-internal record PointerFileEntry : PointerFileItem
+internal record PointerFileEntry
 {
     public         Hash             Hash             { get; init; }
     public         string           RelativeName     { get; init; }
@@ -26,7 +24,7 @@ internal record PointerFileEntry : PointerFileItem
     public virtual BinaryProperties BinaryProperties { get; init; }
 }
 
-internal record PointerFileDirectory : PointerFileItem
+internal record PointerFileDirectory
 {
     public string RelativeName { get; init; }
 }
