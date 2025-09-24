@@ -16,5 +16,5 @@ public sealed record PointerFileEntriesQueryFileResult : PointerFileEntriesQuery
     public string? BinaryFileName   { get; init; }
 
     public required long  OriginalSize { get; init; }
-    public          bool? Hydrated     { get; init; } // True / False / Null in case of not present in blob
+    public          bool? Hydrated     { get; init; } // Null in case of not present in blob
 }
