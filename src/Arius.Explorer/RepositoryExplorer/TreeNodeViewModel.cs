@@ -25,10 +25,16 @@ public partial class TreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<FileItemViewModel> items = [];
 
-    public TreeNodeViewModel(string prefix, Action<TreeNodeViewModel>? onSelected = null)
+    public TreeNodeViewModel(string prefix, Action<TreeNodeViewModel>? onSelected = null, bool showPlaceholder = true)
     {
         this.prefix = prefix;
         this.onSelected = onSelected;
+
+        // Add placeholder child to show expansion chevron, but avoid recursion
+        if (showPlaceholder)
+        {
+            folders = [new TreeNodeViewModel("", null, false) { Name = "Loading..." }];
+        }
     }
 
     partial void OnIsSelectedChanged(bool value)

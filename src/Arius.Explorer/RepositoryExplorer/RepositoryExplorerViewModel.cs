@@ -150,12 +150,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             var query = new PointerFileEntriesQuery
             {
-                AccountName = Repository.AccountName,
-                AccountKey = Repository.AccountKey,
+                AccountName   = Repository.AccountName,
+                AccountKey    = Repository.AccountKey,
                 ContainerName = Repository.ContainerName,
-                Passphrase = Repository.Passphrase,
-                LocalPath = new DirectoryInfo(Repository.LocalDirectoryPath),
-                Prefix = node.Prefix
+                Passphrase    = Repository.Passphrase,
+                LocalPath     = new DirectoryInfo(Repository.LocalDirectoryPath),
+                Prefix        = node.Prefix
             };
 
             // Initialize collections for streaming updates
