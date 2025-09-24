@@ -1,6 +1,9 @@
+using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
@@ -12,6 +15,7 @@ public class StateRepositoryTests : IDisposable
 {
     private readonly FixtureWithFileSystem        fixture;
     private readonly StateRepositoryDbContextPool contextPool;
+    private readonly StateCache                   stateCache;
     private readonly StateRepository              stateRepository;
     private readonly FileEntry                    stateFile;
 
@@ -24,7 +28,12 @@ public class StateRepositoryTests : IDisposable
         stateFile = new FileEntry(fixture.FileSystem, $"/{stateFileName}");
 
         contextPool     = new StateRepositoryDbContextPool(stateFile, ensureCreated: true, NullLogger<StateRepositoryDbContextPool>.Instance);
+        
+        stateCache      = new StateCache(fixture.RepositoryOptions.AccountName, fixture.RepositoryOptions.ContainerName);
+
         stateRepository = new StateRepository(contextPool);
+
+        
     }
 
     public void Dispose()
@@ -509,14 +518,60 @@ public class StateRepositoryTests : IDisposable
         retrievedPfes[0].RelativeName.ShouldBe("/persistent/file.txt.pointer.arius");
     }
 
+    [Fact]
+    public void GetPointerFileItems_RootPrefix()
+    {
+        // Arrange
+
+        // Create actual files on disk using the fixture
+        var file1 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, "/folder with space/file on disk and staterepo 1.txt")
+            .WithRandomContent(10, 1)
+            .Build();
+
+        var file2 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, "/folder 2/subfolder with space/file on disk 2.txt")
+            .WithRandomContent(10, 2)
+            .Build();
+
+        var file3 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/subfolder/file on disk.txt")
+            .WithRandomContent(10, 3)
+            .Build();
+
+        var file4 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, "/file on disk and staterepo 4.txt")
+            .WithRandomContent(10, 4)
+            .Build();
+
+        // Create a real StateRepository using fixture state cache
+        var stateRepository = new StateRepositoryBuilder()
+            .WithBinaryProperty(file1.OriginalHash, file1.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry("/folder with space/file on disk and staterepo 1.txt");
+            })
+            // file2 does not exist
+            //.WithBinaryProperty(file2.OriginalHash, file2.OriginalContent.Length, pfes =>
+            //{
+            //    pfes.WithPointerFileEntry("/folder/subfolder/file2.txt");
+            //})
+            .WithBinaryProperty(file4.OriginalHash, file4.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry("/file on disk and staterepo 4.txt");
+            })
+            .Build(stateCache, "test-state");
+
+        // Act
+        var r = ((StateRepository)stateRepository).GetPointerFileItems("/").ToList();
+        
+        // Assert
+        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder2/");
+        r.OfType<PointerFileDirectory>().ShouldContain(pfd => pfd.RelativeName == "/folder with space/");
+        r.OfType<PointerFileEntry>().ShouldContain(pfe => pfe.RelativeName == "/file on disk and staterepo 4.txt");
+    }
+
     private static Hash CreateTestHash(int seed)
     {
-        var bytes = new byte[32];
-        for (int i = 0; i < 32; i++)
-        {
-            bytes[i] = (byte)(seed + i);
-        }
-
-        return Hash.FromBytes(bytes);
+        return FakeHashBuilder.GenerateValidHash(seed);
     }
 }
