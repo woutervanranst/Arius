@@ -191,55 +191,64 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     private async Task LoadNodeContentAsync(TreeNodeViewModel node)
     {
-        if (Repository == null)
-            return;
-
-        var query = new PointerFileEntriesQuery
+        try
         {
-            AccountName = Repository.AccountName,
-            AccountKey = Repository.AccountKey,
-            ContainerName = Repository.ContainerName,
-            Passphrase = Repository.Passphrase,
-            LocalPath = new DirectoryInfo(Repository.LocalDirectoryPath),
-            Prefix = node.Prefix
-        };
+            if (Repository == null)
+                return;
 
-        var results = mediator.CreateStream(query);
-        var directories = new List<TreeNodeViewModel>();
-        var files = new List<FileItemViewModel>();
-
-        await foreach (var result in results)
-        {
-            switch (result)
+            var query = new PointerFileEntriesQuery
             {
-                case PointerFileEntriesQueryDirectoryResult directoryResult:
-                    var dirName = ExtractDirectoryName(directoryResult.RelativeName);
-                    var childNode = new TreeNodeViewModel(directoryResult.RelativeName, OnNodeSelected)
-                    {
-                        Name = dirName
-                    };
-                    directories.Add(childNode);
-                    break;
+                AccountName   = Repository.AccountName,
+                AccountKey    = Repository.AccountKey,
+                ContainerName = Repository.ContainerName,
+                Passphrase    = Repository.Passphrase,
+                LocalPath     = new DirectoryInfo(Repository.LocalDirectoryPath),
+                Prefix        = node.Prefix
+            };
 
-                case PointerFileEntriesQueryFileResult fileResult:
-                    var fileName = ExtractFileName(fileResult);
-                    if (!string.IsNullOrEmpty(fileName))
-                    {
-                        var fileItem = new FileItemViewModel(fileName, fileResult.OriginalSize);
-                        files.Add(fileItem);
-                    }
-                    break;
+            var results     = mediator.CreateStream(query);
+            var directories = new List<TreeNodeViewModel>();
+            var files       = new List<FileItemViewModel>();
+
+            await foreach (var result in results)
+            {
+                switch (result)
+                {
+                    case PointerFileEntriesQueryDirectoryResult directoryResult:
+                        var dirName = ExtractDirectoryName(directoryResult.RelativeName);
+                        var childNode = new TreeNodeViewModel(directoryResult.RelativeName, OnNodeSelected)
+                        {
+                            Name = dirName
+                        };
+                        directories.Add(childNode);
+                        break;
+
+                    case PointerFileEntriesQueryFileResult fileResult:
+                        var fileName = ExtractFileName(fileResult);
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            var fileItem = new FileItemViewModel(fileName, fileResult.OriginalSize);
+                            files.Add(fileItem);
+                        }
+
+                        break;
+                }
             }
+
+            // Update UI on main thread
+            node.Folders = new ObservableCollection<TreeNodeViewModel>(directories);
+
+            if (SelectedFolder == null)
+                SelectedFolder = new FolderViewModel();
+
+            SelectedFolder.Items = new ObservableCollection<FileItemViewModel>(files);
+            SelectedItemsText    = $"{files.Count} items";
         }
-
-        // Update UI on main thread
-        node.Folders = new ObservableCollection<TreeNodeViewModel>(directories);
-
-        if (SelectedFolder == null)
-            SelectedFolder = new FolderViewModel();
-
-        SelectedFolder.Items = new ObservableCollection<FileItemViewModel>(files);
-        SelectedItemsText = $"{files.Count} items";
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            //throw;
+        }
     }
 
     private static string ExtractDirectoryName(string relativeName)
