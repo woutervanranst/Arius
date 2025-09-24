@@ -3,6 +3,7 @@ using System;
 using Arius.Core.Shared.StateRepositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Arius.Core.Shared.StateRepositories.Migrations
 {
     [DbContext(typeof(StateRepositoryDbContext))]
-    partial class StateRepositoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250924072642_AddRelativeNameHashIndex")]
+    partial class AddRelativeNameHashIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");

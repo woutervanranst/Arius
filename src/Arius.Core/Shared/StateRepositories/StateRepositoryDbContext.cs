@@ -50,6 +50,9 @@ internal class StateRepositoryDbContext : DbContext
 
         pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
         pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
+        // Composite index for better query performance on prefix searches with joins (for GetPointerFileEntries / topdirectoryonly & GetPointerFileDirectories / topdirectoryonly)
+        pfeb.HasIndex(pfe => new { pfe.RelativeName, pfe.Hash })
+            .HasDatabaseName("IX_PointerFileEntries_RelativeName_Hash");
 
         //pfeb.Property(pfe => pfe.Hash)
         //    .HasConversion(new HashToByteConverter());

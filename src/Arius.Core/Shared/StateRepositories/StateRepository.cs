@@ -218,7 +218,7 @@ internal class StateRepository : IStateRepository
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
         var dbPrefix = relativeNamePrefix.RemovePrefix('/');
 
-        // First, get directories at the next level using SqlQuery
+        // Get directories at the next level using SqlQuery
         var directoryQuery = $@"
             SELECT DISTINCT
                 SUBSTR(RelativeName, 1, LENGTH({{0}}) + INSTR(SUBSTR(RelativeName, LENGTH({{0}}) + 1), '/')) AS DirectoryPath
@@ -252,13 +252,6 @@ internal class StateRepository : IStateRepository
         else
             return context.PointerFileEntries.AsNoTracking().SingleOrDefault(pfe => pfe.RelativeName == relativeName);
     }
-
-    //public IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
-    //{
-    //    using var context = GetContext();
-    //    foreach (var pfe in context.PointerFileEntries)
-    //        yield return pfe;
-    //}
 
     public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
