@@ -67,6 +67,11 @@ internal class InMemoryStateRepository : IStateRepository
         SetHasChanges();
     }
 
+    public IEnumerable<PointerFileDirectory> GetPointerFileDirectories(string relativeNamePrefix, bool topDirectoryOnly)
+    {
+        throw new NotImplementedException();
+    }
+
     public IEnumerable<PointerFileEntry> GetPointerFileEntries(string relativeNamePrefix, bool topDirectoryOnly, bool includeBinaryProperties = false)
     {
         if (topDirectoryOnly)

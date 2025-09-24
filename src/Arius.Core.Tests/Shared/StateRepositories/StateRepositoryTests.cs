@@ -564,11 +564,9 @@ public class StateRepositoryTests : IDisposable
             })
             .Build(stateCache, "test-state");
 
-        var sr = ((StateRepository)stateRepository);
-        
         // Act
-        var dirs  = sr.GetPointerFileDirectories("/", true).ToList();
-        var files = sr.GetPointerFileEntries("/", true, true).ToList();
+        var dirs  = stateRepository.GetPointerFileDirectories("/", true).ToList();
+        var files = stateRepository.GetPointerFileEntries("/", true, true).ToList();
         
         // Assert
         dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/");
@@ -577,8 +575,8 @@ public class StateRepositoryTests : IDisposable
 
 
         // Act
-        dirs  = sr.GetPointerFileDirectories("/folder 2/", true).ToList();
-        files = sr.GetPointerFileEntries("/folder 2/", true, true).ToList();
+        dirs  = stateRepository.GetPointerFileDirectories("/folder 2/", true).ToList();
+        files = stateRepository.GetPointerFileEntries("/folder 2/", true, true).ToList();
 
         // Assert
         dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/subfolder with space/");
@@ -587,8 +585,8 @@ public class StateRepositoryTests : IDisposable
 
 
         // Act
-        dirs  = sr.GetPointerFileDirectories("/folder 2/subfolder with space/", true).ToList();
-        files = sr.GetPointerFileEntries("/folder 2/subfolder with space/", true, true).ToList();
+        dirs  = stateRepository.GetPointerFileDirectories("/folder 2/subfolder with space/", true).ToList();
+        files = stateRepository.GetPointerFileEntries("/folder 2/subfolder with space/", true, true).ToList();
 
         // Assert
         dirs.ShouldBeEmpty();
