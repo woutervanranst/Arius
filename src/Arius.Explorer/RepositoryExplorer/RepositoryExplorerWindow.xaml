@@ -120,12 +120,12 @@
                                     <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <i:Interaction.Triggers>
                                             <i:EventTrigger EventName="Checked">
-                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemCheckedCommand,
+                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemSelectionChangedCommand,
                                                                                 RelativeSource={RelativeSource AncestorType=ListView}}"
                                                                        CommandParameter="{Binding}" />
                                             </i:EventTrigger>
                                             <i:EventTrigger EventName="Unchecked">
-                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemUncheckedCommand,
+                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemSelectionChangedCommand,
                                                                                 RelativeSource={RelativeSource AncestorType=ListView}}"
                                                                        CommandParameter="{Binding}" />
                                             </i:EventTrigger>

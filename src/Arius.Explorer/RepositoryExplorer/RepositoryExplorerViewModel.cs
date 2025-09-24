@@ -249,21 +249,19 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private ObservableCollection<FileItemViewModel> selectedFiles = [];
 
     [RelayCommand]
-    private void ItemChecked(FileItemViewModel item)
+    private void ItemSelectionChanged(FileItemViewModel item)
     {
-        item.IsSelected = true;
-        if (!SelectedFiles.Contains(item))
+        if (item.IsSelected)
         {
-            SelectedFiles.Add(item);
+            if (!SelectedFiles.Contains(item))
+            {
+                SelectedFiles.Add(item);
+            }
         }
-        UpdateSelectedItemsText();
-    }
-
-    [RelayCommand]
-    private void ItemUnchecked(FileItemViewModel item)
-    {
-        item.IsSelected = false;
-        SelectedFiles.Remove(item);
+        else
+        {
+            SelectedFiles.Remove(item);
+        }
         UpdateSelectedItemsText();
     }
 
