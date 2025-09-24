@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:repositoryExplorer="clr-namespace:Arius.Explorer.RepositoryExplorer"
         xmlns:converters="clr-namespace:Arius.Explorer.Shared.Converters"
         mc:Ignorable="d"
@@ -11,11 +11,11 @@
         Title="{Binding WindowName}" 
         Height="1024" Width="1280">
 
-    <behaviors:Interaction.Triggers>
-        <behaviors:EventTrigger EventName="Loaded">
-            <behaviors:InvokeCommandAction Command="{Binding ViewLoadedCommand}" />
-        </behaviors:EventTrigger>
-    </behaviors:Interaction.Triggers>
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding ViewLoadedCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
 
     <Window.Resources>
         <converters:BytesToReadableSizeConverter x:Key="BytesToReadableSizeConverter" />
@@ -117,7 +117,20 @@
                         <GridViewColumn Width="50">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <i:Interaction.Triggers>
+                                            <i:EventTrigger EventName="Checked">
+                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemCheckedCommand,
+                                                                                RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                       CommandParameter="{Binding}" />
+                                            </i:EventTrigger>
+                                            <i:EventTrigger EventName="Unchecked">
+                                                <i:InvokeCommandAction Command="{Binding DataContext.ItemUncheckedCommand,
+                                                                                RelativeSource={RelativeSource AncestorType=ListView}}"
+                                                                       CommandParameter="{Binding}" />
+                                            </i:EventTrigger>
+                                        </i:Interaction.Triggers>
+                                    </CheckBox>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

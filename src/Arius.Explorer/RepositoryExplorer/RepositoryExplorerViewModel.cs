@@ -3,6 +3,7 @@ using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Humanizer;
 using Mediator;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -243,6 +244,40 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     [ObservableProperty]
     private string selectedItemsText = "";
+
+    [ObservableProperty]
+    private ObservableCollection<FileItemViewModel> selectedFiles = [];
+
+    [RelayCommand]
+    private void ItemChecked(FileItemViewModel item)
+    {
+        item.IsSelected = true;
+        if (!SelectedFiles.Contains(item))
+        {
+            SelectedFiles.Add(item);
+        }
+        UpdateSelectedItemsText();
+    }
+
+    [RelayCommand]
+    private void ItemUnchecked(FileItemViewModel item)
+    {
+        item.IsSelected = false;
+        SelectedFiles.Remove(item);
+        UpdateSelectedItemsText();
+    }
+
+    private void UpdateSelectedItemsText()
+    {
+        var selectedCount = SelectedFiles.Count;
+        var totalSize = SelectedFiles.Sum(item => item.OriginalLength);
+
+        SelectedItemsText = selectedCount == 0
+            ? ""
+            : $"{selectedCount} item(s) selected, {totalSize.Bytes().Humanize()}";
+    }
+
+    // RESTORE
 
     [RelayCommand]
     private void Restore()
