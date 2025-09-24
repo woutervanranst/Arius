@@ -40,7 +40,7 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             .Build();
 
         var file3 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/subfolder/BinaryFile and PointerFileEntry 3.txt")
+            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/BinaryFile and PointerFileEntry 3.txt")
             .WithRandomContent(10, 3)
             .Build();
 
@@ -138,5 +138,50 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileName == "/PointerFile 5.txt.pointer.arius" &&
             x.BinaryFileName == null);
         files.Length.ShouldBe(4);
+
+
+        // Arrange
+        query = query with { Prefix = "/folder 2/subfolder with space/" };
+
+        handlerContext = await new HandlerContextBuilder(query, fakeLoggerFactory)
+            .WithArchiveStorage(mockStorage)
+            .WithStateRepository(stateRepository)
+            .BuildAsync();
+
+        // Act
+        results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
+
+        // Assert
+        directories = results.OfType<Directory>().ToArray();
+        directories.Length.ShouldBe(0);
+
+        files = results.OfType<File>().ToArray();
+        files.ShouldContain(x =>
+            x.PointerFileEntry == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
+            x.PointerFileName == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
+            x.BinaryFileName == null);
+
+
+        // Arrange
+        query = query with { Prefix = "/folder 2/" };
+
+        handlerContext = await new HandlerContextBuilder(query, fakeLoggerFactory)
+            .WithArchiveStorage(mockStorage)
+            .WithStateRepository(stateRepository)
+            .BuildAsync();
+
+        // Act
+        results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
+
+        // Assert
+        directories = results.OfType<Directory>().ToArray();
+        directories.ShouldContain(x => x.RelativeName == "/folder 2/subfolder with space/");
+        directories.Length.ShouldBe(1);
+
+        files = results.OfType<File>().ToArray();
+        files.ShouldContain(x =>
+            x.PointerFileEntry == "/folder 2/BinaryFile and PointerFileEntry 3.txt.pointer.arius" &&
+            x.PointerFileName == null &&
+            x.BinaryFileName == "/folder 2/BinaryFile and PointerFileEntry 3.txt");
     }
 }
