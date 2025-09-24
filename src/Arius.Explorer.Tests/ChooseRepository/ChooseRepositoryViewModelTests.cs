@@ -43,6 +43,11 @@ public class ChooseRepositoryViewModelTests
             LocalDirectoryPath  = "C:/data",
             AccountName         = "account",
             AccountKeyProtected = "account-key".Protect(),
+
+            await Task.Delay(1000); //flaky test shizzle
+            await Task.Yield();
+            await WaitForDebouncerAsync(() => !viewModel.IsLoading); // Wait for the OnStorageAccountCredentialsChanged to complete
+            
             ContainerName       = "container",
             PassphraseProtected = "passphrase".Protect()
         };
@@ -110,7 +115,7 @@ public class ChooseRepositoryViewModelTests
         viewModel.ContainerName.ShouldBe(string.Empty);
     }
 
-    [Fact (Skip = "TODO Flaky")]
+    [Fact]
     public async Task OpenRepositoryCommand_WhenExecutedWithValidInputFields_InitializesRepository()
     {
         // Arrange
