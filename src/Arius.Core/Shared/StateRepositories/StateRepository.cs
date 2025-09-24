@@ -2,6 +2,7 @@
 using Arius.Core.Shared.Storage;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
+using System.Runtime.CompilerServices;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 
@@ -133,6 +134,9 @@ internal class StateRepository : IStateRepository
         if (!relativeNamePrefix.StartsWith('/'))
             throw new ArgumentException("The relativeNamePrefix must start with a '/' character.", nameof(relativeNamePrefix));
 
+        if (topDirectoryOnly)
+            throw new NotImplementedException("The topDirectoryOnly option is not implemented yet.");
+
         using var context = contextPool.CreateContext();
 
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
@@ -158,116 +162,73 @@ internal class StateRepository : IStateRepository
         // Convert the prefix to match the database format (remove "/" prefix that the RemovePointerFileExtensionConverter removes)
         var dbPrefix = prefix.RemovePrefix('/');
 
-        // Use raw SQL with proper parameterization for both queries
-        using var connection = context.Database.GetDbConnection();
-        connection.Open();
-
-        // First, get directories at the next level
-        var directoryQuery = @"
+        // First, get directories at the next level using SqlQuery
+        var directoryQuery = $@"
             SELECT DISTINCT
-                SUBSTR(RelativeName, 1, LENGTH(@prefix) + INSTR(SUBSTR(RelativeName, LENGTH(@prefix) + 1), '/')) AS DirectoryPath
+                SUBSTR(RelativeName, 1, LENGTH({{0}}) + INSTR(SUBSTR(RelativeName, LENGTH({{0}}) + 1), '/')) AS DirectoryPath
             FROM PointerFileEntries
-            WHERE RelativeName LIKE @prefix || '%'
-              AND LENGTH(RelativeName) > LENGTH(@prefix)
-              AND INSTR(SUBSTR(RelativeName, LENGTH(@prefix) + 1), '/') > 0
+            WHERE RelativeName LIKE {{0}} || '%'
+              AND LENGTH(RelativeName) > LENGTH({{0}})
+              AND INSTR(SUBSTR(RelativeName, LENGTH({{0}}) + 1), '/') > 0
             ORDER BY DirectoryPath";
 
-        using (var command = connection.CreateCommand())
+        var directoryResults = context.Database.SqlQuery<string>(FormattableStringFactory.Create(directoryQuery, dbPrefix));
+        
+        foreach (var directoryPath in directoryResults)
         {
-            command.CommandText = directoryQuery;
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@prefix";
-            parameter.Value = dbPrefix;
-            command.Parameters.Add(parameter);
-
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                var directoryPath = (string)reader["DirectoryPath"];
-                yield return new PointerFileDirectory { RelativeName = "/" + directoryPath };
-            }
+            yield return new PointerFileDirectory { RelativeName = "/" + directoryPath };
         }
 
-        // Then, get files at the current level
-        var fileQuery = @"
+        // Then, get files at the current level using SqlQuery with a custom result type
+        var fileQuery = $@"
             SELECT 
                 pfe.Hash, pfe.RelativeName, pfe.CreationTimeUtc, pfe.LastWriteTimeUtc,
                 bp.Hash as BpHash, bp.ParentHash, bp.OriginalSize, bp.ArchivedSize, bp.StorageTier
             FROM PointerFileEntries pfe
             LEFT JOIN BinaryProperties bp ON pfe.Hash = bp.Hash
-            WHERE pfe.RelativeName LIKE @prefix || '%'
+            WHERE pfe.RelativeName LIKE {{0}} || '%'
               AND (
-                LENGTH(pfe.RelativeName) = LENGTH(@prefix) OR 
-                INSTR(SUBSTR(pfe.RelativeName, LENGTH(@prefix) + 1), '/') = 0
+                LENGTH(pfe.RelativeName) = LENGTH({{0}}) OR 
+                INSTR(SUBSTR(pfe.RelativeName, LENGTH({{0}}) + 1), '/') = 0
               )
             ORDER BY pfe.RelativeName";
 
-        using (var command = connection.CreateCommand())
+        var fileResults = context.Database.SqlQuery<PointerFileQueryResult>(FormattableStringFactory.Create(fileQuery, dbPrefix));
+        
+        foreach (var result in fileResults)
         {
-            command.CommandText = fileQuery;
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@prefix";
-            parameter.Value = dbPrefix;
-            command.Parameters.Add(parameter);
+            var hash = Hash.FromBytes(result.Hash);
+            var relativeName = "/" + result.RelativeName;
 
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
+            BinaryProperties? binaryProperties = null;
+            if (result.BpHash != null)
             {
-                var hash = Hash.FromBytes((byte[])reader["Hash"]);
-                var relativeName = "/" + (string)reader["RelativeName"];
-                
-                // Handle DateTime fields that are stored as TEXT in SQLite
-                DateTime? creationTimeUtc = null;
-                if (reader["CreationTimeUtc"] != DBNull.Value)
-                {
-                    var creationTimeValue = reader["CreationTimeUtc"];
-                    if (creationTimeValue is string creationTimeStr)
-                        creationTimeUtc = DateTime.Parse(creationTimeStr);
-                    else if (creationTimeValue is DateTime creationTimeDate)
-                        creationTimeUtc = creationTimeDate;
-                }
-                
-                DateTime? lastWriteTimeUtc = null;
-                if (reader["LastWriteTimeUtc"] != DBNull.Value)
-                {
-                    var lastWriteTimeValue = reader["LastWriteTimeUtc"];
-                    if (lastWriteTimeValue is string lastWriteTimeStr)
-                        lastWriteTimeUtc = DateTime.Parse(lastWriteTimeStr);
-                    else if (lastWriteTimeValue is DateTime lastWriteTimeDate)
-                        lastWriteTimeUtc = lastWriteTimeDate;
-                }
+                var bpHash = Hash.FromBytes(result.BpHash);
+                var parentHash = result.ParentHash != null ? Hash.FromBytes(result.ParentHash) : null;
 
-                BinaryProperties? binaryProperties = null;
-                if (reader["BpHash"] != DBNull.Value)
+                binaryProperties = new BinaryProperties
                 {
-                    var bpHash = Hash.FromBytes((byte[])reader["BpHash"]);
-                    var parentHash = reader["ParentHash"] == DBNull.Value ? null : Hash.FromBytes((byte[])reader["ParentHash"]);
-                    var originalSize = (long)reader["OriginalSize"];
-                    var archivedSize = (long)reader["ArchivedSize"];
-                    var storageTier = (StorageTier)(long)reader["StorageTier"];
-
-                    binaryProperties = new BinaryProperties
-                    {
-                        Hash = bpHash,
-                        ParentHash = parentHash,
-                        OriginalSize = originalSize,
-                        ArchivedSize = archivedSize,
-                        StorageTier = storageTier
-                    };
-                }
-
-                yield return new PointerFileEntry
-                {
-                    Hash = hash,
-                    RelativeName = relativeName,
-                    CreationTimeUtc = creationTimeUtc,
-                    LastWriteTimeUtc = lastWriteTimeUtc,
-                    BinaryProperties = binaryProperties!
+                    Hash = bpHash,
+                    ParentHash = parentHash,
+                    OriginalSize = result.OriginalSize ?? 0,
+                    ArchivedSize = result.ArchivedSize ?? 0,
+                    StorageTier = result.StorageTier.HasValue ? (StorageTier)result.StorageTier.Value : StorageTier.Hot
                 };
             }
+
+            yield return new PointerFileEntry
+            {
+                Hash = hash,
+                RelativeName = relativeName,
+                CreationTimeUtc = result.CreationTimeUtc,
+                LastWriteTimeUtc = result.LastWriteTimeUtc,
+                BinaryProperties = binaryProperties!
+            };
         }
     }
 
+    private record PointerFileQueryResult(byte[] Hash, string RelativeName, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc, byte[]? BpHash, byte[]? ParentHash, long? OriginalSize, long? ArchivedSize, long? StorageTier);
+    
     public PointerFileEntry? GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false)
     {
         if (!relativeName.StartsWith('/'))
