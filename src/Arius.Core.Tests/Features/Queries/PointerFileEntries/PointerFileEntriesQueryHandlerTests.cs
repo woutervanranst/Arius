@@ -65,7 +65,7 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             .Build();
 
         var file8 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.None, "/None 8.txt")
+            .WithActualFile(FilePairType.None, "/PointerFileEntry 8.txt")
             .WithRandomContent(10, 8)
             .Build();
 
@@ -88,7 +88,11 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             {
                 pfes.WithPointerFileEntry(file4.OriginalPath);
             })
-            // Do not add file5, 6, 7, 8
+            .WithBinaryProperty(file8.OriginalHash, file8.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry(file8.OriginalPath);
+            })
+            // Do not add file5, 6, 7
             .Build(stateCache, "test-state");
 
         // Create mock archive storage that returns our state
@@ -137,7 +141,11 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileEntry == null &&
             x.PointerFileName == "/PointerFile 5.txt.pointer.arius" &&
             x.BinaryFileName == null);
-        files.Length.ShouldBe(4);
+        files.ShouldContain(x =>
+            x.PointerFileEntry == "/PointerFileEntry 8.txt.pointer.arius" &&
+            x.PointerFileName == null &&
+            x.BinaryFileName == null);
+        files.Length.ShouldBe(5);
 
 
         // Arrange

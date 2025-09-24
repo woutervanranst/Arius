@@ -120,7 +120,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                     FilePairType.PointerFileOnly           => new File { PointerFileName = fp.PointerFile.FullName },
                     FilePairType.BinaryFileOnly            => new File { BinaryFileName = fp.BinaryFile.FullName },
                     FilePairType.BinaryFileWithPointerFile => new File { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
-                    FilePairType.None                      => throw new InvalidOperationException(),
+                    FilePairType.None                      => throw new InvalidOperationException("This should not happen"),
                     _                                      => throw new ArgumentOutOfRangeException()
                 };
 
