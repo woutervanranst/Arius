@@ -13,7 +13,7 @@
 
     <behaviors:Interaction.Triggers>
         <behaviors:EventTrigger EventName="Loaded">
-            <behaviors:InvokeCommandAction Command="{Binding OnViewLoadedCommand}" />
+            <behaviors:InvokeCommandAction Command="{Binding ViewLoadedCommand}" />
         </behaviors:EventTrigger>
     </behaviors:Interaction.Triggers>
 
@@ -42,7 +42,7 @@
 
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="File">
-                <MenuItem Header="Open..." Command="{Binding ChooseRepositoryCommand}"/>
+                <MenuItem Header="Open..." Command="{Binding OpenChooseRepositoryDialogCommand}"/>
                 <MenuItem Header="Open recent" ItemsSource="{Binding RecentRepositories}">
                     <MenuItem.ItemContainerStyle>
                         <Style TargetType="MenuItem">

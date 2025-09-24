@@ -8,7 +8,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
@@ -32,15 +31,20 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         RecentRepositories = settings.RecentRepositories;
 
         // Check for most recent repository and auto-open if exists
-        Repository = recentRepositoryManager.GetMostRecent();  // this will trigger OnRepositoryChanged
+        var mostRecent = recentRepositoryManager.GetMostRecent();
+        if (mostRecent != null)
+        {
+            Repository = mostRecent; // this will trigger OnRepositoryChanged for UI updates
+            _ = LoadRepositoryAsync(); // fire-and-forget for initial load
+        }
     }
 
-    [RelayCommand]
-    private void OnViewLoaded()
+    [RelayCommand] // triggered by View's Loaded event
+    private async Task ViewLoaded()
     {
         // If the Explorer window is shown but no Repository is selected, open the ChooseRepository window
         if (Repository == null)
-            ChooseRepository();
+            await OpenChooseRepositoryDialogAsync();
     }
 
     [ObservableProperty]
@@ -57,13 +61,13 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     //      File > Open...
     [RelayCommand] 
-    private void ChooseRepository()
+    private async Task OpenChooseRepositoryDialogAsync()
     {
         // Show dialog and handle result
         var openedRepository = dialogService.ShowChooseRepositoryDialog(Repository);
         if (openedRepository != null)
         {
-            OpenRepository(openedRepository);
+            await OpenRepositoryAsync(openedRepository);
         }
     }
 
@@ -72,12 +76,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private ObservableCollection<RepositoryOptions> recentRepositories = [];
 
     [RelayCommand]
-    private void OpenRepository(RepositoryOptions repository)
+    private async Task OpenRepositoryAsync(RepositoryOptions repository)
     {
         // Use the new service to update recent repositories
         recentRepositoryManager.TouchOrAdd(repository);
 
-        Repository = repository; // this will trigger OnRepositoryChanged
+        Repository = repository;
+
+        // Load repository data asynchronously
+        if (repository != null)
+        {
+            await LoadRepositoryAsync();
+        }
     }
 
 
@@ -86,51 +96,50 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [ObservableProperty]
     private RepositoryOptions? repository;
 
-    partial void OnRepositoryChanged(RepositoryOptions? repository)
-    {
-        WindowName = repository == null
-            ? $"{App.Name} - No Repository"
-            : $"{App.Name}: {repository}";
-
-        if (repository != null)
-        {
-            // Fire and forget - load repository data asynchronously
-            _ = Task.Run(async () => await LoadRepositoryAsync());
-        }
-        else
-        {
-            // Clear UI when no repository
-            RootNode          = [];
-            SelectedTreeNode  = null;
-            SelectedItemsText = "";
-            ArchiveStatistics = "";
-        }
-    }
     private async Task LoadRepositoryAsync()
     {
         if (Repository == null)
-            return;
-
-        IsLoading = true;
-        try
         {
-            // Create root node
-            var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
-            {
-                Name = "Root"
-            };
-
-            RootNode = [rootNode];
-
-            // Load initial content for root
-            await LoadNodeContentAsync(rootNode);
-
+            WindowName        = $"{App.Name} - No Repository";
+            RootNode          = [];
+            SelectedTreeNode  = null;
+            ArchiveStatistics = "";
+            SelectedItemsText = "";
+        }
+        else
+        {
+            WindowName        = $"{App.Name}: {Repository}";
             ArchiveStatistics = "Statistics TODO";
+
+            IsLoading = true;
+            try
+            {
+                // Create root node
+                var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
+                {
+                    Name = "Root"
+                };
+
+                RootNode         = [rootNode];
+                SelectedTreeNode = rootNode;
+
+                // Load initial content for root
+                await LoadNodeContentAsync(rootNode);
+
+                ArchiveStatistics = "Statistics TODO";
+                SelectedItemsText = "";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
-        finally
-        {
-            IsLoading = false;
-        }
+    }
+
+    private async void OnNodeSelected(TreeNodeViewModel selectedNode)
+    {
+        // Load the content for the selected node
+        await LoadNodeContentAsync(selectedNode);
     }
 
     private async Task LoadNodeContentAsync(TreeNodeViewModel node)
@@ -201,11 +210,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
-    private async void OnNodeSelected(TreeNodeViewModel selectedNode)
-    {
-        // Load the content for the selected node
-        await LoadNodeContentAsync(selectedNode);
-    }
+
 
 
 
