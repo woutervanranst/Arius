@@ -90,11 +90,15 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         // Act
         var results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
 
-        // If we get here, we expect certain results
-        results.OfType<Directory>().ShouldContain(x => x.RelativeName == "/folder with space/");
-        results.OfType<Directory>().ShouldContain(x => x.RelativeName == "/folder 2/");
-        results.OfType<File>().ShouldContain(x => x.RelativeName == "/folder/file1.txt.pointer.arius");
-        results.OfType<File>().ShouldContain(x => x.RelativeName == "/folder/subfolder/file2.txt.pointer.arius");
-        results.OfType<File>().ShouldContain(x => x.RelativeName == "/other/file3.txt.pointer.arius");
+        // Assert
+        var directories = results.OfType<Directory>().ToArray();
+        directories.ShouldContain(x => x.RelativeName == "/folder with space/");
+        directories.ShouldContain(x => x.RelativeName == "/folder 2/");
+        directories.Length.ShouldBe(2);
+
+        var files = results.OfType<File>().ToArray();
+        files.ShouldContain(x => x.PointerFileName == "/folder/file1.txt.pointer.arius");
+        files.ShouldContain(x => x.PointerFileName == "/folder/subfolder/file2.txt.pointer.arius");
+        files.ShouldContain(x => x.PointerFileName == "/other/file3.txt.pointer.arius");
     }
 }

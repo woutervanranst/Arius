@@ -3,6 +3,7 @@ using Mediator;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using Arius.Core.Shared.FileSystem;
 using Zio;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
@@ -13,12 +14,14 @@ public abstract record Result
 
 public record Directory : Result
 {
-    public string RelativeName { get; init; }
+    public required string RelativeName { get; init; }
 }
 
 public record File : Result
 {
-    public string RelativeName { get; init; }
+    public string? PointerFileEntry { get; init; }
+    public string? BinaryFileName   { get; init; }
+    public string? PointerFileName  { get; init; }
 }
 
 internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, Result>
@@ -45,32 +48,32 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
 
     internal async IAsyncEnumerable<Result> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        //var afs = new AggregateFileSystem(); // https://github.com/xoofx/zio/tree/main/doc#aggregatefilesystem
-        //afs.AddFileSystem(handlerContext.LocalFileSystem);
-        //afs.AddFileSystem(handlerContext.RemoteFileSystem);
-
-        //foreach (var entry in afs.EnumerateFileEntries(handlerContext.Query.Prefix, "*", SearchOption.TopDirectoryOnly))
-        //{
-        //    yield return entry.FullName;
-        //}
-
-        //var sr = handlerContext.StateRepository.
-
         var resultChannel = Channel.CreateUnbounded<Result>(new UnboundedChannelOptions() { /*TODO QUID ?? AllowSynchronousContinuations = true, */SingleReader = true, SingleWriter = false});
 
-        var directoryTask = Task.Run(() =>
+        var directoryTask = Task.Run(async () =>
         {
+            var yielded = new HashSet<string>();
             foreach (var pfd in handlerContext.StateRepository.GetPointerFileDirectories(handlerContext.Query.Prefix, topDirectoryOnly: true))
             {
-                resultChannel.Writer.TryWrite(new Directory
+                var rn = pfd.RelativeName;
+
+                yielded.Add(rn);
+                await resultChannel.Writer.WriteAsync(new Directory
                 {
-                    RelativeName = pfd.RelativeName
+                    RelativeName = rn
                 });
             }
 
             foreach (var path in handlerContext.LocalFileSystem.EnumerateDirectories(handlerContext.Query.Prefix, "*", SearchOption.TopDirectoryOnly))
             {
+                var rn = path.FullName + "/";
                 
+                if (yielded.Contains(rn))
+                    continue;
+                await resultChannel.Writer.WriteAsync(new Directory
+                {
+                    RelativeName = rn
+                });
             }
         }, cancellationToken);
 
@@ -81,14 +84,29 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
 
             foreach (var pfe in handlerContext.StateRepository.GetPointerFileEntries(handlerContext.Query.Prefix, topDirectoryOnly: true, includeBinaryProperties: true))
             {
-                resultChannel.Writer.TryWrite(new File
+                var r = new File
                 {
-                    RelativeName = pfe.RelativeName
-                });
+                    PointerFileEntry = pfe.RelativeName
+                };
+
+                var fp = FilePair.FromPointerFileEntry(handlerContext.LocalFileSystem, pfe);
+                r = fp.Type switch
+                {
+                    FilePairType.PointerFileOnly           => r with { PointerFileName = fp.PointerFile.FullName },
+                    FilePairType.BinaryFileOnly            => r with { BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.BinaryFileWithPointerFile => r with { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.None                      => r,
+                    _                                      => throw new ArgumentOutOfRangeException()
+                };
+
+                await resultChannel.Writer.WriteAsync(r);
             }
         }, cancellationToken);
 
-        Task.WhenAll(directoryTask, entryTask).ContinueWith(_ => resultChannel.Writer.Complete());
+        Task.WhenAll(directoryTask, entryTask).ContinueWith(_ =>
+        {
+            resultChannel.Writer.Complete();
+        });
 
         await foreach (var r in resultChannel.Reader.ReadAllAsync(cancellationToken))
             yield return r;
