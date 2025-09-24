@@ -13,7 +13,7 @@
 
     <behaviors:Interaction.Triggers>
         <behaviors:EventTrigger EventName="Loaded">
-            <behaviors:InvokeCommandAction Command="{Binding ViewLoadedCommand}" />
+            <behaviors:InvokeCommandAction Command="{Binding OnViewLoadedCommand}" />
         </behaviors:EventTrigger>
     </behaviors:Interaction.Triggers>
 

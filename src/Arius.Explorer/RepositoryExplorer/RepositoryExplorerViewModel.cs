@@ -36,7 +36,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ViewLoaded()
+    private void OnViewLoaded()
     {
         // If the Explorer window is shown but no Repository is selected, open the ChooseRepository window
         if (Repository == null)
@@ -86,13 +86,13 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [ObservableProperty]
     private RepositoryOptions? repository;
 
-    partial void OnRepositoryChanged(RepositoryOptions? value)
+    partial void OnRepositoryChanged(RepositoryOptions? repository)
     {
-        WindowName = value == null
+        WindowName = repository == null
             ? $"{App.Name} - No Repository"
-            : $"{App.Name}: {value}";
+            : $"{App.Name}: {repository}";
 
-        if (value != null)
+        if (repository != null)
         {
             // Fire and forget - load repository data asynchronously
             _ = Task.Run(async () => await LoadRepositoryAsync());
@@ -103,26 +103,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             RootNode          = [];
             SelectedTreeNode  = null;
             SelectedItemsText = "";
+            ArchiveStatistics = "";
         }
-
-
-        ArchiveStatistics = value != null ? $"Repository: {value.LocalDirectoryPath}" : "";
-
-        //if (r is not null)
-        //    OpenRepository(r);
-        //if (Repository != null)
-        //{
-        //    ArchiveStatistics = $"Repository: {Repository.LocalDirectoryPath}";
-        //}
-        //else
-        //{
-        //    ArchiveStatistics = "";
-        //    RootNode = [];
-        //    SelectedFolder = new FolderViewModel();
-        //    SelectedItemsText = "";
-        //}
     }
-
     private async Task LoadRepositoryAsync()
     {
         if (Repository == null)
@@ -141,53 +124,14 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             // Load initial content for root
             await LoadNodeContentAsync(rootNode);
+
+            ArchiveStatistics = "Statistics TODO";
         }
         finally
         {
             IsLoading = false;
         }
     }
-
-    //      About
-
-    [RelayCommand]
-    private void About()
-    {
-        var explorerClickOnceVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "unknown"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
-        var explorerVersion          = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "unknown";
-        var x                        = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
-        var coreVersion              = typeof(Arius.Core.Bootstrapper).Assembly.GetName().Version;
-
-        MessageBox.Show($"""
-                         Arius Explorer v{explorerVersion}, ClickOnce v{explorerClickOnceVersion}, Assembly v{x}
-                         Arius Core v{coreVersion}
-                         """, App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
-    }
-
-
-    // TREEVIEW
-
-    [ObservableProperty]
-    private ObservableCollection<TreeNodeViewModel> rootNode = [];
-
-    [ObservableProperty]
-    private TreeNodeViewModel? selectedTreeNode;
-
-    
-    // LISTVIEW
-
-    [ObservableProperty]
-    private string selectedItemsText = "";
-
-    [RelayCommand]
-    private void Restore()
-    {
-        // TODO: Implement restore functionality
-    }
-
-    // HELPER METHODS
-
-
 
     private async Task LoadNodeContentAsync(TreeNodeViewModel node)
     {
@@ -198,17 +142,17 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             var query = new PointerFileEntriesQuery
             {
-                AccountName   = Repository.AccountName,
-                AccountKey    = Repository.AccountKey,
+                AccountName = Repository.AccountName,
+                AccountKey = Repository.AccountKey,
                 ContainerName = Repository.ContainerName,
-                Passphrase    = Repository.Passphrase,
-                LocalPath     = new DirectoryInfo(Repository.LocalDirectoryPath),
-                Prefix        = node.Prefix
+                Passphrase = Repository.Passphrase,
+                LocalPath = new DirectoryInfo(Repository.LocalDirectoryPath),
+                Prefix = node.Prefix
             };
 
             // Initialize collections for streaming updates
             node.Folders = [];
-            node.Items   = [];
+            node.Items = [];
 
             // Update the selected tree node reference for ListView binding immediately
             SelectedTreeNode = node;
@@ -247,7 +191,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             // Final count update (in case there were only directories)
             //Application.Current.Dispatcher.Invoke(() =>
             //{
-                SelectedItemsText = $"{node.Items.Count} items";
+            SelectedItemsText = $"{node.Items.Count} items";
             //});
         }
         catch (Exception e)
@@ -257,17 +201,56 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
+    private async void OnNodeSelected(TreeNodeViewModel selectedNode)
+    {
+        // Load the content for the selected node
+        await LoadNodeContentAsync(selectedNode);
+    }
+
+
+
+    //      About
+
+    [RelayCommand]
+    private void About()
+    {
+        var explorerClickOnceVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "unknown"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
+        var explorerVersion          = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version ?? "unknown";
+        var x                        = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+        var coreVersion              = typeof(Arius.Core.Bootstrapper).Assembly.GetName().Version;
+
+        MessageBox.Show($"""
+                         Arius Explorer v{explorerVersion}, ClickOnce v{explorerClickOnceVersion}, Assembly v{x}
+                         Arius Core v{coreVersion}
+                         """, App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+
+    // TREEVIEW
+
+    [ObservableProperty]
+    private ObservableCollection<TreeNodeViewModel> rootNode = [];
+
+    [ObservableProperty]
+    private TreeNodeViewModel? selectedTreeNode;
+
+    
+    // LISTVIEW
+
+    [ObservableProperty]
+    private string selectedItemsText = "";
+
+    [RelayCommand]
+    private void Restore()
+    {
+        // TODO: Implement restore functionality
+    }
+
     private static string ExtractDirectoryName(string relativeName)
     {
         // Extract directory name from path like "/folder1/folder2/" -> "folder2"
         var trimmed = relativeName.TrimEnd('/');
         var lastSlash = trimmed.LastIndexOf('/');
         return lastSlash >= 0 ? trimmed[(lastSlash + 1)..] : trimmed;
-    }
-
-    private async void OnNodeSelected(TreeNodeViewModel selectedNode)
-    {
-        // Load the content for the selected node
-        await LoadNodeContentAsync(selectedNode);
     }
 }
