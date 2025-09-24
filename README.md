@@ -7,7 +7,7 @@
 [![CodeQL](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml)
 
 [![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker)](https://hub.docker.com/r/woutervanranst/arius)
-[![Explorer](https://img.shields.io/badge/Windows-Explorer?logo=windows&logoColor=lightblue)](https://woutervanranst.github.io/Arius/explorer/Arius.Explorer.application)
+[![ClickOnce](https://img.shields.io/badge/Windows-ClickOnce-dsfs?logo=windows&logoColor=lightblue)](https://woutervanranst.github.io/Arius/explorer/Arius.Explorer.application)
 
 Arius is a lightweight archival solution, specifically built to leverage the Azure Blob Archive tier.
 
