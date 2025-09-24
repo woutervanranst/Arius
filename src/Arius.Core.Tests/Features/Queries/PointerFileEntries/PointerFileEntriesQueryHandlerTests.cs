@@ -6,6 +6,8 @@ using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Shouldly;
+using Directory = Arius.Core.Features.Queries.PointerFileEntries.Directory;
+using File = Arius.Core.Features.Queries.PointerFileEntries.File;
 
 namespace Arius.Core.Tests.Features.Queries.PointerFileEntries;
 
@@ -89,8 +91,10 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         var results = await handler.Handle(handlerContext, CancellationToken.None).ToListAsync();
 
         // If we get here, we expect certain results
-        results.ShouldContain("/folder/file1.txt.pointer.arius");
-        results.ShouldContain("/folder/subfolder/file2.txt.pointer.arius");
-        results.ShouldContain("/other/file3.txt.pointer.arius");
+        results.OfType<Directory>().ShouldContain(x => x.RelativeName == "/folder with space/");
+        results.OfType<Directory>().ShouldContain(x => x.RelativeName == "/folder 2/");
+        results.OfType<File>().ShouldContain(x => x.RelativeName == "/folder/file1.txt.pointer.arius");
+        results.OfType<File>().ShouldContain(x => x.RelativeName == "/folder/subfolder/file2.txt.pointer.arius");
+        results.OfType<File>().ShouldContain(x => x.RelativeName == "/other/file3.txt.pointer.arius");
     }
 }

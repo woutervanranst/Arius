@@ -519,7 +519,7 @@ public class StateRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void GetPointerFileItems_RootPrefix()
+    public void GetPointerFileDirectoriesAndGetPointerFileEntriesWithTopDirectoryOnly()
     {
         // Arrange
 

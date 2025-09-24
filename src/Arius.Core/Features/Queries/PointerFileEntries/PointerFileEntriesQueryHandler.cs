@@ -2,12 +2,25 @@ using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
-using Zio;
-using Zio.FileSystems;
+using System.Threading.Channels;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
-internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, string>
+public abstract record Result
+{
+}
+
+public record Directory : Result
+{
+    public string RelativeName { get; init; }
+}
+
+public record File : Result
+{
+    public string RelativeName { get; init; }
+}
+
+internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, Result>
 {
     private readonly ILoggerFactory loggerFactory;
 
@@ -16,7 +29,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
         this.loggerFactory = loggerFactory;
     }
 
-    public async IAsyncEnumerable<string> Handle(PointerFileEntriesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
+    public async IAsyncEnumerable<Result> Handle(PointerFileEntriesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
             .BuildAsync();
@@ -29,15 +42,47 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
         }
     }
 
-    internal async IAsyncEnumerable<string> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    internal async IAsyncEnumerable<Result> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        var afs = new AggregateFileSystem();
-        afs.AddFileSystem(handlerContext.LocalFileSystem);
-        afs.AddFileSystem(handlerContext.RemoteFileSystem);
+        //var afs = new AggregateFileSystem(); // https://github.com/xoofx/zio/tree/main/doc#aggregatefilesystem
+        //afs.AddFileSystem(handlerContext.LocalFileSystem);
+        //afs.AddFileSystem(handlerContext.RemoteFileSystem);
 
-        foreach (var entry in afs.EnumerateFileEntries(handlerContext.Query.Prefix, "*", SearchOption.AllDirectories))
+        //foreach (var entry in afs.EnumerateFileEntries(handlerContext.Query.Prefix, "*", SearchOption.TopDirectoryOnly))
+        //{
+        //    yield return entry.FullName;
+        //}
+
+        //var sr = handlerContext.StateRepository.
+
+        var resultChannel = Channel.CreateUnbounded<Result>(new UnboundedChannelOptions() { /*TODO QUID ?? AllowSynchronousContinuations = true, */SingleReader = true, SingleWriter = false});
+
+        var directoryTask = Task.Run(() =>
         {
-            yield return entry.FullName;
-        }
+            foreach (var pfd in handlerContext.StateRepository.GetPointerFileDirectories(handlerContext.Query.Prefix, topDirectoryOnly: true))
+            {
+                resultChannel.Writer.TryWrite(new Directory
+                {
+                    RelativeName = pfd.RelativeName
+                });
+
+            }
+        }, cancellationToken);
+
+        var entryTask = Task.Run(() =>
+        {
+            foreach (var pfe in handlerContext.StateRepository.GetPointerFileEntries(handlerContext.Query.Prefix, topDirectoryOnly: true, includeBinaryProperties: true))
+            {
+                resultChannel.Writer.TryWrite(new File
+                {
+                    RelativeName = pfe.RelativeName
+                });
+            }
+        }, cancellationToken);
+
+        Task.WhenAll(directoryTask, entryTask).ContinueWith(_ => resultChannel.Writer.Complete());
+
+        await foreach (var r in resultChannel.Reader.ReadAllAsync(cancellationToken))
+            yield return r;
     }
 }
