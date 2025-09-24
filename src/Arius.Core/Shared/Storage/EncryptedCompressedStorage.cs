@@ -63,9 +63,18 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         await using var blobStream         = blobStreamResult.Value;
         await using var decryptedStream    = await blobStream.GetDecryptionStreamAsync(passphrase, cancellationToken);
         await using var decompressedStream = new GZipStream(decryptedStream, CompressionMode.Decompress);
-        await using var fileStream         = targetFile.Create();
 
-        await decompressedStream.CopyToAsync(fileStream, cancellationToken);
+        try
+        {
+            await using var fileStream = targetFile.Create();
+            await decompressedStream.CopyToAsync(fileStream, cancellationToken);
+        }
+        catch (InvalidDataException e)
+        {
+            // TODO add a unit test for this case
+            targetFile.Delete();
+            throw new ArgumentException("Could not decrypt state file. Check the passphrase.");
+        }
     }
 
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
