@@ -270,11 +270,27 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         get
         {
             var selectedCount = SelectedFiles.Count;
-            var totalSize = SelectedFiles.Sum(item => item.OriginalLength);
+            var totalCount    = SelectedTreeNode?.Items.Count ?? 0;
+            var totalSize     = SelectedTreeNode?.Items.Sum(item => item.OriginalLength) ?? 0;
 
-            return selectedCount == 0
-                ? ""
-                : $"{selectedCount} item(s) selected, {totalSize.Bytes().Humanize()}";
+            if (selectedCount == 0)
+            {
+                if (totalCount == 0)
+                {
+                    return "0 item(s)";
+                }
+                else
+                {
+
+                    return totalCount > 0 ? $"{totalCount} item(s), {totalSize.Bytes().Humanize()}" : "";
+                }
+            }
+            else
+            {
+                var totalSelectedSize = SelectedFiles.Sum(item => item.OriginalLength);
+
+                return $"{selectedCount} of {totalCount} item(s) selected, {totalSelectedSize.Bytes().Humanize()} of {totalSize.Bytes().Humanize()}";
+            }
         }
     }
 
