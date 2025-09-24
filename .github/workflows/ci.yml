@@ -111,11 +111,26 @@ jobs:
 
       - name: "🐳 Build and Push Docker Image"
         run: |
-            IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:${VERSION}"
-            LATEST_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:latest"
-            docker build -t $IMAGE_NAME -t $LATEST_NAME -f Arius.Cli/Dockerfile .
-            docker push $IMAGE_NAME
-            docker push $LATEST_NAME
+          set -euo pipefail
+          IMAGE_BASE="${{ secrets.DOCKERHUB_USERNAME }}/arius"
+          VERSION_TAG="${IMAGE_BASE}:${VERSION}"
+
+          # Choose the extra tag based on prerelease flag
+          if [[ "${IS_PRERELEASE}" == "true" ]]; then
+            EXTRA_TAG="${IMAGE_BASE}:latest-prerelease"
+          else
+            EXTRA_TAG="${IMAGE_BASE}:latest"
+          fi
+
+          echo "Building ${VERSION_TAG} and ${EXTRA_TAG}"
+          docker build -t "${VERSION_TAG}" -t "${EXTRA_TAG}" -f Arius.Cli/Dockerfile .
+
+          echo "Pushing ${VERSION_TAG}"
+          docker push "${VERSION_TAG}"
+
+          echo "Pushing ${EXTRA_TAG}"
+          docker push "${EXTRA_TAG}"
+
 
       - name: "📝 Build Changelog"
         id: build_changelog
