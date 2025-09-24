@@ -26,6 +26,9 @@ internal class FilePairFileSystem : ComposeFileSystem
         if (searchPattern != "*")
             throw new NotSupportedException();
 
+        if (!FallbackSafe.DirectoryExists(path) && !FallbackSafe.FileExists(path))
+            yield break;
+
         var fse = FallbackSafe.GetFileSystemEntry(path);
         if (fse is not DirectoryEntry d)
             throw new NotSupportedException();

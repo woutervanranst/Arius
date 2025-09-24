@@ -112,7 +112,7 @@ public class FilePairFileSystemTests
     {
         // Arrange
         // NB: The fixture includes the excluded directories under /subdir2:
-        // @eaDir, eaDir, SynoResource — these must be skipped.
+        // @eaDir, eaDir, SynoResource ï¿½ these must be skipped.
         var expectedRelativePaths = new[]
         {
             "/subdir",
@@ -186,5 +186,19 @@ public class FilePairFileSystemTests
         });
 
         ex.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task EnumerateFileEntries_WithNonExistentPath_ShouldReturnEmptyCollection()
+    {
+        // Arrange
+        var nonExistentPath = new UPath("/path/that/does/not/exist");
+
+        // Act
+        var files = fixture.FileSystem.EnumerateFileEntries(nonExistentPath, "*", SearchOption.TopDirectoryOnly).ToList();
+
+        // Assert
+        files.ShouldNotBeNull();
+        files.ShouldBeEmpty();
     }
 }
