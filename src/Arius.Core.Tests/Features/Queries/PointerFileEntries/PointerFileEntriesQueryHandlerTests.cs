@@ -125,5 +125,18 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
             x.PointerFileEntry == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
             x.PointerFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
             x.BinaryFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt");
+        files.ShouldContain(x => 
+            x.PointerFileEntry == null &&
+            x.PointerFileName == null &&
+            x.BinaryFileName == "/BinaryFile 6.txt");
+        files.ShouldContain(x =>
+            x.PointerFileEntry == null &&
+            x.PointerFileName == "/BinaryFile and PointerFile 7.txt.pointer.arius" &&
+            x.BinaryFileName == "/BinaryFile and PointerFile 7.txt");
+        files.ShouldContain(x =>
+            x.PointerFileEntry == null &&
+            x.PointerFileName == "/PointerFile 5.txt.pointer.arius" &&
+            x.BinaryFileName == null);
+        files.Length.ShouldBe(4);
     }
 }

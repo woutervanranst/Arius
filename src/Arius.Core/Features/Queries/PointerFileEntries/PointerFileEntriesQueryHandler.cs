@@ -71,7 +71,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                 var rn = path.FullName + "/";
                 
                 if (yielded.Contains(rn))
-                    continue;
+                    continue; // this directory was already yielded when iterating on the StateRepository
                 await resultChannel.Writer.WriteAsync(new Directory
                 {
                     RelativeName = rn
@@ -84,11 +84,15 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
             // DEBUG
             await directoryTask;
 
+            var yielded = new HashSet<string>();
             foreach (var pfe in handlerContext.StateRepository.GetPointerFileEntries(handlerContext.Query.Prefix, topDirectoryOnly: true, includeBinaryProperties: true))
             {
+                var rn = pfe.RelativeName;
+
+                yielded.Add(rn);
                 var r = new File
                 {
-                    PointerFileEntry = pfe.RelativeName
+                    PointerFileEntry = rn
                 };
 
                 var fp = FilePair.FromPointerFileEntry(handlerContext.LocalFileSystem, pfe);
@@ -98,6 +102,25 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
                     FilePairType.BinaryFileOnly            => r with { BinaryFileName = fp.BinaryFile.FullName },
                     FilePairType.BinaryFileWithPointerFile => r with { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
                     FilePairType.None                      => r,
+                    _                                      => throw new ArgumentOutOfRangeException()
+                };
+
+                await resultChannel.Writer.WriteAsync(r);
+            }
+
+            foreach (var path in handlerContext.LocalFileSystem.EnumerateFiles(handlerContext.Query.Prefix, "*", SearchOption.TopDirectoryOnly))
+            {
+                var fp = FilePair.FromBinaryFilePath(handlerContext.LocalFileSystem, path);
+
+                if (yielded.Contains(fp.PointerFile.FullName))
+                    continue; // this file was already yielded when iterating on the StateRepository
+
+                var r = fp.Type switch
+                {
+                    FilePairType.PointerFileOnly           => new File { PointerFileName = fp.PointerFile.FullName },
+                    FilePairType.BinaryFileOnly            => new File { BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.BinaryFileWithPointerFile => new File { PointerFileName = fp.PointerFile.FullName, BinaryFileName = fp.BinaryFile.FullName },
+                    FilePairType.None                      => throw new InvalidOperationException(),
                     _                                      => throw new ArgumentOutOfRangeException()
                 };
 
