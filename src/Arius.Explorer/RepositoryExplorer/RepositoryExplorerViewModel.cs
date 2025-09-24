@@ -1,8 +1,11 @@
+using Arius.Core.Features.Queries.PointerFileEntries;
 using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Mediator;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Reflection;
 using System.Windows;
 
@@ -13,35 +16,22 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private readonly IApplicationSettings settings;
     private readonly IRecentRepositoryManager recentRepositoryManager;
     private readonly IDialogService dialogService;
+    private readonly IMediator mediator;
 
     // -- INITIALIZATION & GENERAL WINDOW
 
-    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService)
+    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService, IMediator mediator)
     {
         this.settings                = settings;
         this.recentRepositoryManager = recentRepositoryManager;
         this.dialogService           = dialogService;
+        this.mediator                = mediator;
 
         // Load recent repositories from settings
         RecentRepositories = settings.RecentRepositories;
 
         // Check for most recent repository and auto-open if exists
-        Repository = recentRepositoryManager.GetMostRecent();
-        if (Repository != null)
-        {
-            ArchiveStatistics = $"Repository: {Repository.LocalDirectoryPath}";
-
-            // TODO Load
-        }
-        else
-        {
-            ArchiveStatistics = "";
-
-            RootNode = [];
-            SelectedFolder = new FolderViewModel();
-            SelectedItemsText = "";
-            ArchiveStatistics = "";
-        }
+        Repository = recentRepositoryManager.GetMostRecent();  // this will trigger OnRepositoryChanged
     }
 
     [RelayCommand]
@@ -60,19 +50,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     [ObservableProperty]
     private string archiveStatistics = "";
-
-    // -- REPOSITORY
-
-    [ObservableProperty]
-    private RepositoryOptions? repository;
-
-    partial void OnRepositoryChanged(RepositoryOptions? value)
-    {
-        WindowName = value == null
-            ? $"{App.Name} - No Repository"
-            : $"{App.Name}: {value}";
-    }
-
+    
 
     // MENUS
 
@@ -85,7 +63,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         var openedRepository = dialogService.ShowChooseRepositoryDialog(Repository);
         if (openedRepository != null)
         {
-            Repository = openedRepository;
             OpenRepository(openedRepository);
         }
     }
@@ -95,17 +72,80 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<RepositoryOptions> recentRepositories = [];
 
-    [RelayCommand] 
+    [RelayCommand]
     private void OpenRepository(RepositoryOptions repository)
     {
-        Repository = repository;
-
         // Use the new service to update recent repositories
         recentRepositoryManager.TouchOrAdd(repository);
 
+        Repository = repository; // this will trigger OnRepositoryChanged
+    }
+
+    // -- REPOSITORY
+
+    [ObservableProperty]
+    private RepositoryOptions? repository;
+
+    partial void OnRepositoryChanged(RepositoryOptions? value)
+    {
+        WindowName = value == null
+            ? $"{App.Name} - No Repository"
+            : $"{App.Name}: {value}";
+
+        if (value != null)
+        {
+            // Fire and forget - load repository data asynchronously
+            _ = Task.Run(async () => await LoadRepositoryAsync());
+        }
+        else
+        {
+            // Clear UI when no repository
+            RootNode          = [];
+            SelectedFolder    = new FolderViewModel();
+            SelectedItemsText = "";
+        }
+
+
         ArchiveStatistics = $"Repository: {repository.LocalDirectoryPath}";
 
-        // TODO: Actually load the repository data
+        //if (r is not null)
+        //    OpenRepository(r);
+        //if (Repository != null)
+        //{
+        //    ArchiveStatistics = $"Repository: {Repository.LocalDirectoryPath}";
+        //}
+        //else
+        //{
+        //    ArchiveStatistics = "";
+        //    RootNode = [];
+        //    SelectedFolder = new FolderViewModel();
+        //    SelectedItemsText = "";
+        //}
+    }
+
+    private async Task LoadRepositoryAsync()
+    {
+        if (Repository == null)
+            return;
+
+        IsLoading = true;
+        try
+        {
+            // Create root node
+            var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
+            {
+                Name = "Root"
+            };
+
+            RootNode = [rootNode];
+
+            // Load initial content for root
+            await LoadNodeContentAsync(rootNode);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     //      About
@@ -143,5 +183,88 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private void Restore()
     {
         // TODO: Implement restore functionality
+    }
+
+    // HELPER METHODS
+
+
+
+    private async Task LoadNodeContentAsync(TreeNodeViewModel node)
+    {
+        if (Repository == null)
+            return;
+
+        var query = new PointerFileEntriesQuery
+        {
+            AccountName = Repository.AccountName,
+            AccountKey = Repository.AccountKey,
+            ContainerName = Repository.ContainerName,
+            Passphrase = Repository.Passphrase,
+            LocalPath = new DirectoryInfo(Repository.LocalDirectoryPath),
+            Prefix = node.Prefix
+        };
+
+        var results = mediator.CreateStream(query);
+        var directories = new List<TreeNodeViewModel>();
+        var files = new List<FileItemViewModel>();
+
+        await foreach (var result in results)
+        {
+            switch (result)
+            {
+                case PointerFileEntriesQueryDirectoryResult directoryResult:
+                    var dirName = ExtractDirectoryName(directoryResult.RelativeName);
+                    var childNode = new TreeNodeViewModel(directoryResult.RelativeName, OnNodeSelected)
+                    {
+                        Name = dirName
+                    };
+                    directories.Add(childNode);
+                    break;
+
+                case PointerFileEntriesQueryFileResult fileResult:
+                    var fileName = ExtractFileName(fileResult);
+                    if (!string.IsNullOrEmpty(fileName))
+                    {
+                        var fileItem = new FileItemViewModel(fileName, fileResult.OriginalSize);
+                        files.Add(fileItem);
+                    }
+                    break;
+            }
+        }
+
+        // Update UI on main thread
+        node.Folders = new ObservableCollection<TreeNodeViewModel>(directories);
+
+        if (SelectedFolder == null)
+            SelectedFolder = new FolderViewModel();
+
+        SelectedFolder.Items = new ObservableCollection<FileItemViewModel>(files);
+        SelectedItemsText = $"{files.Count} items";
+    }
+
+    private static string ExtractDirectoryName(string relativeName)
+    {
+        // Extract directory name from path like "/folder1/folder2/" -> "folder2"
+        var trimmed = relativeName.TrimEnd('/');
+        var lastSlash = trimmed.LastIndexOf('/');
+        return lastSlash >= 0 ? trimmed[(lastSlash + 1)..] : trimmed;
+    }
+
+    private static string ExtractFileName(PointerFileEntriesQueryFileResult file)
+    {
+        // Extract file name from path like "/folder1/file.txt" -> "file.txt"
+        var n = file.BinaryFileName ?? file.PointerFileEntry;
+
+        if (string.IsNullOrEmpty(n))
+            return string.Empty;
+
+        var lastSlash = n.LastIndexOf('/');
+        return lastSlash >= 0 ? n[(lastSlash + 1)..] : n;
+    }
+
+    private async void OnNodeSelected(TreeNodeViewModel selectedNode)
+    {
+        // Load the content for the selected node
+        await LoadNodeContentAsync(selectedNode);
     }
 }

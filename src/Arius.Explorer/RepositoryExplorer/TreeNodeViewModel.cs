@@ -6,21 +6,33 @@ namespace Arius.Explorer.RepositoryExplorer;
 public partial class TreeNodeViewModel : ObservableObject
 {
     private readonly string prefix;
+    private readonly Action<TreeNodeViewModel>? onSelected;
+
+    public string Prefix => prefix;
 
     [ObservableProperty]
-    private string name;
-    
+    private string name = string.Empty;
+
     [ObservableProperty]
     private bool isSelected;
-    
+
     [ObservableProperty]
     private bool isExpanded;
-    
+
     [ObservableProperty]
     private ObservableCollection<TreeNodeViewModel> folders = [];
 
-    public TreeNodeViewModel(string prefix)
+    public TreeNodeViewModel(string prefix, Action<TreeNodeViewModel>? onSelected = null)
     {
         this.prefix = prefix;
+        this.onSelected = onSelected;
+    }
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        if (value)
+        {
+            onSelected?.Invoke(this);
+        }
     }
 }
