@@ -1,3 +1,4 @@
+using Arius.Core.Features.Commands.Restore;
 using Arius.Core.Features.Queries.PointerFileEntries;
 using Arius.Explorer.Settings;
 using Arius.Explorer.Shared.Services;
@@ -8,6 +9,7 @@ using Mediator;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
+using System.Text;
 using System.Windows;
 
 namespace Arius.Explorer.RepositoryExplorer;
@@ -299,7 +301,66 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [RelayCommand]
     private async Task Restore()
     {
-        // TODO: Implement restore functionality
+        // Validate prerequisites
+        if (Repository == null || !SelectedFiles.Any())
+            return;
+
+        // Show confirmation dialog
+        var msg = new StringBuilder();
+
+        var itemsToHydrate = SelectedFiles.Where(item => item.File.Hydrated == false);
+        if (itemsToHydrate.Any())
+            msg.AppendLine($"This will start hydration on {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).Bytes().Humanize()}). This may incur a significant cost.");
+
+        var itemsToRestore = SelectedFiles.Where(item => item.File.Hydrated == true);
+        msg.AppendLine($"This will download {itemsToRestore.Count()} item(s) ({itemsToRestore.Sum(item => item.OriginalLength).Bytes().Humanize()}).");
+        msg.AppendLine();
+        msg.AppendLine("Proceed?");
+
+        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+            return;
+
+        // Extract the relative paths from selected items
+        var targets = SelectedFiles
+            .Select(f => $".{f.File.PointerFileEntry ?? f.File.BinaryFileName ?? f.File.PointerFileName}")
+            .Where(path => !string.IsNullOrEmpty(path))
+            .ToArray();
+
+        if (!targets.Any())
+            return;
+
+        // Create the RestoreCommand
+        var command = new RestoreCommand
+        {
+            AccountName     = Repository.AccountName,
+            AccountKey      = Repository.AccountKey,
+            ContainerName   = Repository.ContainerName,
+            Passphrase      = Repository.Passphrase,
+            LocalRoot       = new DirectoryInfo(Repository.LocalDirectoryPath),
+            Targets         = targets,
+            Download        = true,
+            IncludePointers = false
+        };
+
+        // Execute the restore
+        try
+        {
+            IsLoading = true;
+            var result = await mediator.Send(command);
+
+            // Refresh the view after restore
+            if (SelectedTreeNode != null)
+                await LoadNodeContentAsync(SelectedTreeNode);
+        }
+        catch (Exception ex)
+        {
+            // Handle error (optionally show message)
+            MessageBox.Show($"Restore failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private static string ExtractDirectoryName(string relativeName) // TODO move this logic to the TreeNodeViewModel, just like FileItemViewModel

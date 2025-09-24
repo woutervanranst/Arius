@@ -8,6 +8,8 @@ namespace Arius.Explorer.RepositoryExplorer;
 
 public partial class FileItemViewModel : ObservableObject
 {
+    public PointerFileEntriesQueryFileResult File { get; }
+
     [ObservableProperty]
     private string name;
     
@@ -31,6 +33,8 @@ public partial class FileItemViewModel : ObservableObject
 
     public FileItemViewModel(PointerFileEntriesQueryFileResult file)
     {
+        File = file;
+
         var n = file.BinaryFileName ?? file.PointerFileEntry?.RemoveSuffix(".pointer.arius") ?? "UNKNOWN"; // TODO how to properly remove the suffix?
         Name = Path.GetFileName(n);
 
