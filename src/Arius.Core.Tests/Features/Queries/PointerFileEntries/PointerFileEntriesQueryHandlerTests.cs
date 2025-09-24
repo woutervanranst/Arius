@@ -30,23 +30,43 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
 
         // Create actual files on disk using the fixture
         var file1 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/folder with space/file on disk and staterepo 1.txt")
+            .WithActualFile(FilePairType.None, "/folder with space/only PointerFileEntry 1.txt")
             .WithRandomContent(10, 1)
             .Build();
 
         var file2 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/folder 2/subfolder with space/file on disk 2.txt")
+            .WithActualFile(FilePairType.PointerFileOnly, "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt")
             .WithRandomContent(10, 2)
             .Build();
 
         var file3 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/subfolder/file on disk.txt")
+            .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/subfolder/BinaryFile and PointerFileEntry 3.txt")
             .WithRandomContent(10, 3)
             .Build();
 
         var file4 = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, "/file on disk and staterepo 4.txt")
+            .WithActualFile(FilePairType.BinaryFileWithPointerFile, "/BinaryFile and PointerFile and PointerFileEntry 4.txt")
             .WithRandomContent(10, 4)
+            .Build();
+
+        var file5 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, "/PointerFile 5.txt")
+            .WithRandomContent(10, 5)
+            .Build();
+
+        var file6 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, "/BinaryFile 6.txt")
+            .WithRandomContent(10, 6)
+            .Build();
+
+        var file7 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileWithPointerFile, "/BinaryFile and PointerFile 7.txt")
+            .WithRandomContent(10, 7)
+            .Build();
+
+        var file8 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.None, "/None 8.txt")
+            .WithRandomContent(10, 8)
             .Build();
 
 
@@ -54,17 +74,21 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         var stateRepository = new StateRepositoryBuilder()
             .WithBinaryProperty(file1.OriginalHash, file1.OriginalContent.Length, pfes =>
             {
-                pfes.WithPointerFileEntry("/folder with space/file on disk and staterepo 1.txt");
+                pfes.WithPointerFileEntry(file1.OriginalPath);
             })
-            // file2 does not exist
-            //.WithBinaryProperty(file2.OriginalHash, file2.OriginalContent.Length, pfes =>
-            //{
-            //    pfes.WithPointerFileEntry("/folder/subfolder/file2.txt");
-            //})
+            .WithBinaryProperty(file2.OriginalHash, file2.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry(file2.OriginalPath);
+            })
+            .WithBinaryProperty(file3.OriginalHash, file3.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry(file3.OriginalPath);
+            })
             .WithBinaryProperty(file4.OriginalHash, file4.OriginalContent.Length, pfes =>
             {
-                pfes.WithPointerFileEntry("/file on disk and staterepo 4.txt");
+                pfes.WithPointerFileEntry(file4.OriginalPath);
             })
+            // Do not add file5, 6, 7, 8
             .Build(stateCache, "test-state");
 
         // Create mock archive storage that returns our state
@@ -97,8 +121,9 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         directories.Length.ShouldBe(2);
 
         var files = results.OfType<File>().ToArray();
-        files.ShouldContain(x => x.PointerFileName == "/folder/file1.txt.pointer.arius");
-        files.ShouldContain(x => x.PointerFileName == "/folder/subfolder/file2.txt.pointer.arius");
-        files.ShouldContain(x => x.PointerFileName == "/other/file3.txt.pointer.arius");
+        files.ShouldContain(x =>
+            x.PointerFileEntry == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
+            x.PointerFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
+            x.BinaryFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt");
     }
 }

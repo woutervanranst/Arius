@@ -20,8 +20,8 @@ public record Directory : Result
 public record File : Result
 {
     public string? PointerFileEntry { get; init; }
-    public string? BinaryFileName   { get; init; }
     public string? PointerFileName  { get; init; }
+    public string? BinaryFileName   { get; init; }
 }
 
 internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, Result>
