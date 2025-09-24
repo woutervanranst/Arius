@@ -177,9 +177,51 @@ jobs:
           fail_ci_if_error: true
 
   arius_explorer_build:
-    name: "🏗️ Explorer Build (stub)"
+    name: "🚀 Explorer Build & Release"
     runs-on: windows-latest
     needs: arius_explorer_test
+    if: github.event_name == 'push'
     steps:
-      - name: "⏭️ Placeholder"
-        run: echo "Arius.Explorer build pipeline to be implemented."
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "🧰 Setup .NET"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: "🧮 Determine version"
+        run: |
+          $csprojPath = "src/Arius.Explorer/Arius.Explorer.csproj"
+          if (-not (Test-Path $csprojPath)) {
+              throw "Unable to find $csprojPath"
+          }
+
+          $content = Get-Content $csprojPath -Raw
+          $match = [regex]::Match($content, '<Version>(?<version>[^<]+)</Version>')
+          if (-not $match.Success) {
+              throw "Unable to locate <Version> in $csprojPath"
+          }
+
+          if (-not $env:GITHUB_RUN_NUMBER) {
+              throw "GITHUB_RUN_NUMBER was not provided by the runner"
+          }
+
+          $baseVersion = $match.Groups['version'].Value.Replace('$(GITHUB_RUN_NUMBER)', $env:GITHUB_RUN_NUMBER)
+          $isPrerelease = $false
+          if ($env:GITHUB_REF -eq 'refs/heads/main') {
+              $version = $baseVersion
+          } else {
+              $version = "$baseVersion-prerelease"
+              $isPrerelease = $true
+          }
+
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "IS_PRERELEASE=$isPrerelease" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: "🚀 Publish ClickOnce"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./.github/workflows/release.ps1 -Version $env:VERSION

@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net9.0-windows</TargetFramework>
-		
-		<UseWPF>true</UseWPF>
+        <PropertyGroup>
+                <OutputType>WinExe</OutputType>
+                <TargetFramework>net9.0-windows</TargetFramework>
+
+                <UseWPF>true</UseWPF>
 
 		<ApplicationIcon>Resources\iceberg.ico</ApplicationIcon> <!--Windows Application icon-->
 		<!--<PackageIcon>Resources\iceberg.ico</PackageIcon> --><!--Nuget package icon-->
@@ -15,9 +15,24 @@
 		<AssemblyName>Arius.Explorer</AssemblyName>
 		<Title>Arius Explorer</Title>
 		<!--<PackageId>Arius.Explorer</PackageId>-->
-		<Product>Arius Explorer</Product>
-		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-	</PropertyGroup>
+                <Product>Arius Explorer</Product>
+                <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+        </PropertyGroup>
+
+        <!--
+        Version information
+        Keep the ClickOnce version aligned with the workflow run number just like Arius.Cli does.
+        When running inside GitHub Actions we use the automatically incrementing
+        GITHUB_RUN_NUMBER as the patch component. When building locally the variable is not
+        defined, so we fall back to a descriptive "local" suffix to make it obvious that the
+        build did not originate from CI.
+  -->
+        <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' != ''">
+                <Version>5.0.$(GITHUB_RUN_NUMBER)</Version>
+        </PropertyGroup>
+        <PropertyGroup Condition="'$(GITHUB_RUN_NUMBER)' == ''">
+                <Version>5.0.0-local</Version>
+        </PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Hosting" />
