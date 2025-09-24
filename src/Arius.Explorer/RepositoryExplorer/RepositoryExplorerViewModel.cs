@@ -138,6 +138,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     private async void OnNodeSelected(TreeNodeViewModel selectedNode)
     {
+        // Clear selection when switching nodes
+        SelectedFiles.Clear();
+        UpdateSelectedItemsText();
+
         // Load the content for the selected node
         await LoadNodeContentAsync(selectedNode);
     }
