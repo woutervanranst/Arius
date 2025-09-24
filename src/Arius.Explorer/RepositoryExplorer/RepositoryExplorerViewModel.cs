@@ -105,7 +105,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             RootNode          = [];
             SelectedTreeNode  = null;
             ArchiveStatistics = "";
-            SelectedItemsText = "";
+            OnPropertyChanged(nameof(SelectedItemsText));
         }
         else
         {
@@ -127,7 +127,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 SelectedTreeNode = rootNode;
 
                 ArchiveStatistics = "Statistics TODO";
-                SelectedItemsText = "";
+                OnPropertyChanged(nameof(SelectedItemsText));
             }
             finally
             {
@@ -140,7 +140,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     {
         // Clear selection when switching nodes
         SelectedFiles.Clear();
-        UpdateSelectedItemsText();
 
         // Load the content for the selected node
         await LoadNodeContentAsync(selectedNode);
@@ -169,7 +168,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             // Update the selected tree node reference for ListView binding immediately
             SelectedTreeNode = node;
-            SelectedItemsText = "Loading...";
+            ArchiveStatistics = "Loading...";
 
             var results = mediator.CreateStream(query);
 
@@ -194,7 +193,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                             var fileItem = new FileItemViewModel(file);
 
                             node.Items.Add(fileItem);
-                            SelectedItemsText = $"{node.Items.Count} items";
+                            OnPropertyChanged(nameof(SelectedItemsText));
 
                             break;
                     }
@@ -204,7 +203,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             // Final count update (in case there were only directories)
             //Application.Current.Dispatcher.Invoke(() =>
             //{
-            SelectedItemsText = $"{node.Items.Count} items";
+            OnPropertyChanged(nameof(SelectedItemsText));
             //});
         }
         catch (Exception e)
@@ -263,26 +262,26 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         {
             SelectedFiles.Remove(item);
         }
-        UpdateSelectedItemsText();
+        OnPropertyChanged(nameof(SelectedItemsText));
     }
 
-    [ObservableProperty]
-    private string selectedItemsText = "";
-
-    private void UpdateSelectedItemsText()
+    public string SelectedItemsText
     {
-        var selectedCount = SelectedFiles.Count;
-        var totalSize = SelectedFiles.Sum(item => item.OriginalLength);
+        get
+        {
+            var selectedCount = SelectedFiles.Count;
+            var totalSize = SelectedFiles.Sum(item => item.OriginalLength);
 
-        SelectedItemsText = selectedCount == 0
-            ? ""
-            : $"{selectedCount} item(s) selected, {totalSize.Bytes().Humanize()}";
+            return selectedCount == 0
+                ? ""
+                : $"{selectedCount} item(s) selected, {totalSize.Bytes().Humanize()}";
+        }
     }
 
     // RESTORE
 
     [RelayCommand]
-    private void Restore()
+    private async Task Restore()
     {
         // TODO: Implement restore functionality
     }
