@@ -5,6 +5,8 @@ namespace Arius.Explorer.RepositoryExplorer;
 
 public partial class TreeNodeViewModel : ObservableObject
 {
+    private readonly string prefix;
+
     [ObservableProperty]
     private string name;
     
@@ -17,13 +19,8 @@ public partial class TreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<TreeNodeViewModel> folders = [];
 
-    public TreeNodeViewModel(string name)
+    public TreeNodeViewModel(string prefix)
     {
-        this.name = name;
-    }
-
-    partial void OnIsSelectedChanged(bool value)
-    {
-        // TODO: Handle selection change, update SelectedFolder in parent ViewModel
+        this.prefix = prefix;
     }
 }

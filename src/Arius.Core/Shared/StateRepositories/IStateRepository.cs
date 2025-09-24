@@ -17,6 +17,5 @@ internal interface IStateRepository
     IEnumerable<PointerFileDirectory> GetPointerFileDirectories(string relativeNamePrefix, bool topDirectoryOnly);
     IEnumerable<PointerFileEntry>     GetPointerFileEntries(string relativeNamePrefix, bool topDirectoryOnly, bool includeBinaryProperties = false);
     PointerFileEntry?                 GetPointerFileEntry(string relativeName, bool includeBinaryProperties = false);
-
-    void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted);
+    void                              DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted);
 }
