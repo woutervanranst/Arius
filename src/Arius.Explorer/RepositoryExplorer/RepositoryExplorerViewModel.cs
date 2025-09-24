@@ -247,9 +247,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     // LISTVIEW
 
     [ObservableProperty]
-    private string selectedItemsText = "";
-
-    [ObservableProperty]
     private ObservableCollection<FileItemViewModel> selectedFiles = [];
 
     [RelayCommand]
@@ -268,6 +265,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
         UpdateSelectedItemsText();
     }
+
+    [ObservableProperty]
+    private string selectedItemsText = "";
 
     private void UpdateSelectedItemsText()
     {
