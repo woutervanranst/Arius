@@ -3,6 +3,7 @@ using Arius.Core.Shared.Storage;
 using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using System.Runtime.CompilerServices;
+using Arius.Core.Shared.FileSystem;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 
@@ -167,7 +168,7 @@ internal class StateRepository : IStateRepository
             foreach (var result in results)
             {
                 var hash         = Hash.FromBytes(result.Hash);
-                var relativeName = "/" + result.RelativeName;
+                var relativeName = $"/{result.RelativeName}{PointerFile.Extension}";
 
                 BinaryProperties? binaryProperties = null;
                 if (result.BpHash != null)

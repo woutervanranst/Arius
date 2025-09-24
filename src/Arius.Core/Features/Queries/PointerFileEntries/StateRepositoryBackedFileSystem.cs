@@ -4,7 +4,7 @@ using Zio.FileSystems;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;
 
-[Obsolete("Probably this is not necessary? Remove also the tests")]
+[Obsolete("TODO Probably this is not necessary? Remove also the tests")]
 internal class StateRepositoryBackedFileSystem : ReadOnlyFileSystem
 {
     private readonly IStateRepository stateRepository;

@@ -571,7 +571,7 @@ public class StateRepositoryTests : IDisposable
         // Assert
         dirs.ShouldContain(pfd => pfd.RelativeName == "/folder 2/");
         dirs.ShouldContain(pfd => pfd.RelativeName == "/folder with space/");
-        files.ShouldContain(pfe => pfe.RelativeName == "/file on disk and staterepo 4.txt");
+        files.ShouldContain(pfe => pfe.RelativeName == "/file on disk and staterepo 4.txt.pointer.arius");
 
 
         // Act
@@ -590,7 +590,7 @@ public class StateRepositoryTests : IDisposable
 
         // Assert
         dirs.ShouldBeEmpty();
-        files.ShouldContain(pfe => pfe.RelativeName == "/folder 2/subfolder with space/file on disk 2.txt");
+        files.ShouldContain(pfe => pfe.RelativeName == "/folder 2/subfolder with space/file on disk 2.txt.pointer.arius");
     }
 
     private static Hash CreateTestHash(int seed)
