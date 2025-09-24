@@ -1,6 +1,7 @@
 using Arius.Core.Features.Queries.PointerFileEntries;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.StateRepositories;
+using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
@@ -29,42 +30,42 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         // Create actual files on disk using the fixture
         var file1 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.None, "/folder with space/only PointerFileEntry 1.txt")
-            .WithRandomContent(10, 1)
+            .WithRandomContent(11, 1)
             .Build();
 
         var file2 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.PointerFileOnly, "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt")
-            .WithRandomContent(10, 2)
+            .WithRandomContent(12, 2)
             .Build();
 
         var file3 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, "/folder 2/BinaryFile and PointerFileEntry 3.txt")
-            .WithRandomContent(10, 3)
+            .WithRandomContent(13, 3)
             .Build();
 
         var file4 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileWithPointerFile, "/BinaryFile and PointerFile and PointerFileEntry 4.txt")
-            .WithRandomContent(10, 4)
+            .WithRandomContent(14, 4)
             .Build();
 
         var file5 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.PointerFileOnly, "/PointerFile 5.txt")
-            .WithRandomContent(10, 5)
+            .WithRandomContent(15, 5)
             .Build();
 
         var file6 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, "/BinaryFile 6.txt")
-            .WithRandomContent(10, 6)
+            .WithRandomContent(16, 6)
             .Build();
 
         var file7 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileWithPointerFile, "/BinaryFile and PointerFile 7.txt")
-            .WithRandomContent(10, 7)
+            .WithRandomContent(17, 7)
             .Build();
 
         var file8 = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.None, "/PointerFileEntry 8.txt")
-            .WithRandomContent(10, 8)
+            .WithRandomContent(18, 8)
             .Build();
 
 
@@ -126,23 +127,33 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         files.ShouldContain(x =>
             x.PointerFileEntry == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
             x.PointerFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt.pointer.arius" &&
-            x.BinaryFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt");
-        files.ShouldContain(x => 
-            x.PointerFileEntry == null &&
-            x.PointerFileName == null &&
-            x.BinaryFileName == "/BinaryFile 6.txt");
-        files.ShouldContain(x =>
-            x.PointerFileEntry == null &&
-            x.PointerFileName == "/BinaryFile and PointerFile 7.txt.pointer.arius" &&
-            x.BinaryFileName == "/BinaryFile and PointerFile 7.txt");
+            x.BinaryFileName == "/BinaryFile and PointerFile and PointerFileEntry 4.txt" &&
+            x.OriginalSize == 14 &&
+            x.StorageTier == StorageTier.Hot);
         files.ShouldContain(x =>
             x.PointerFileEntry == null &&
             x.PointerFileName == "/PointerFile 5.txt.pointer.arius" &&
-            x.BinaryFileName == null);
+            x.BinaryFileName == null &&
+            x.OriginalSize == -1 && // This is an orphaned file: it does not exist in the StateDb and there is no BinaryFile
+            x.StorageTier == null);
+        files.ShouldContain(x => 
+            x.PointerFileEntry == null &&
+            x.PointerFileName == null &&
+            x.BinaryFileName == "/BinaryFile 6.txt" &&
+            x.OriginalSize == 16 &&
+            x.StorageTier == null);
+        files.ShouldContain(x =>
+            x.PointerFileEntry == null &&
+            x.PointerFileName == "/BinaryFile and PointerFile 7.txt.pointer.arius" &&
+            x.BinaryFileName == "/BinaryFile and PointerFile 7.txt" &&
+            x.OriginalSize == 17 &&
+            x.StorageTier == null);
         files.ShouldContain(x =>
             x.PointerFileEntry == "/PointerFileEntry 8.txt.pointer.arius" &&
             x.PointerFileName == null &&
-            x.BinaryFileName == null);
+            x.BinaryFileName == null &&
+            x.OriginalSize == 18 &&
+            x.StorageTier == StorageTier.Hot);
         files.Length.ShouldBe(5);
 
 
@@ -165,7 +176,9 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         files.ShouldContain(x =>
             x.PointerFileEntry == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
             x.PointerFileName == "/folder 2/subfolder with space/PointerFile and PointerFileEntry 2.txt.pointer.arius" &&
-            x.BinaryFileName == null);
+            x.BinaryFileName == null &&
+            x.OriginalSize == 12 &&
+            x.StorageTier == StorageTier.Hot);
 
 
         // Arrange
@@ -188,6 +201,8 @@ public class PointerFileEntriesQueryHandlerTests : IClassFixture<FixtureWithFile
         files.ShouldContain(x =>
             x.PointerFileEntry == "/folder 2/BinaryFile and PointerFileEntry 3.txt.pointer.arius" &&
             x.PointerFileName == null &&
-            x.BinaryFileName == "/folder 2/BinaryFile and PointerFileEntry 3.txt");
+            x.BinaryFileName == "/folder 2/BinaryFile and PointerFileEntry 3.txt" &&
+            x.OriginalSize == 13 &&
+            x.StorageTier == StorageTier.Hot);
     }
 }

@@ -1,0 +1,22 @@
+using Arius.Core.Shared.Storage;
+
+namespace Arius.Core.Features.Queries.PointerFileEntries;
+
+public abstract record PointerFileEntriesQueryResult
+{
+}
+
+public record PointerFileEntriesQueryDirectoryResult : PointerFileEntriesQueryResult
+{
+    public required string RelativeName { get; init; }
+}
+
+public record PointerFileEntriesQueryFileResult : PointerFileEntriesQueryResult
+{
+    public string? PointerFileEntry { get; init; }
+    public string? PointerFileName  { get; init; }
+    public string? BinaryFileName   { get; init; }
+
+    public required long OriginalSize { get; init; }
+    public StorageTier? StorageTier { get; init; }
+}
