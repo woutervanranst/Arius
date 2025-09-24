@@ -60,8 +60,8 @@ public class StateRepositoryTests : IDisposable
     public void AddBinaryProperties_Should_Insert_Records_And_Set_HasChanges()
     {
         // Arrange
-        var hash1 = CreateTestHash(1);
-        var hash2 = CreateTestHash(2);
+        var hash1 = FakeHashBuilder.GenerateValidHash(1);
+        var hash2 = FakeHashBuilder.GenerateValidHash(2);
 
         var bp1 = new BinaryProperties
         {
@@ -109,7 +109,7 @@ public class StateRepositoryTests : IDisposable
     public void GetBinaryProperty_Should_Return_Null_For_NonExistent_Hash()
     {
         // Arrange
-        var nonExistentHash = CreateTestHash(999);
+        var nonExistentHash = FakeHashBuilder.GenerateValidHash(999);
 
         // Act
         var result = stateRepository.GetBinaryProperty(nonExistentHash);
@@ -122,7 +122,7 @@ public class StateRepositoryTests : IDisposable
     public void UpsertPointerFileEntries_Should_Insert_New_Records_And_Set_HasChanges()
     {
         // Arrange
-        var hash         = CreateTestHash(1);
+        var hash         = FakeHashBuilder.GenerateValidHash(1);
         var creationTime = DateTime.UtcNow.AddDays(-1);
         var writeTime    = DateTime.UtcNow;
 
@@ -165,7 +165,7 @@ public class StateRepositoryTests : IDisposable
     public void UpsertPointerFileEntries_Should_Update_Existing_Records_And_Set_HasChanges()
     {
         // Arrange - Insert initial record
-        var hash                = CreateTestHash(1);
+        var hash                = FakeHashBuilder.GenerateValidHash(1);
         var initialCreationTime = DateTime.UtcNow.AddDays(-2);
         var initialWriteTime    = DateTime.UtcNow.AddDays(-1);
 
@@ -232,7 +232,7 @@ public class StateRepositoryTests : IDisposable
     public void UpsertPointerFileEntries_Should_Not_Set_HasChanges_When_No_Changes()
     {
         // Arrange - Insert initial record
-        var hash         = CreateTestHash(1);
+        var hash         = FakeHashBuilder.GenerateValidHash(1);
         var creationTime = DateTime.UtcNow.AddDays(-1);
         var writeTime    = DateTime.UtcNow;
 
@@ -274,9 +274,9 @@ public class StateRepositoryTests : IDisposable
     public void GetPointerFileEntries_Should_Filter_By_Prefix()
     {
         // Arrange
-        var hash1 = CreateTestHash(1);
-        var hash2 = CreateTestHash(2);
-        var hash3 = CreateTestHash(3);
+        var hash1 = FakeHashBuilder.GenerateValidHash(1);
+        var hash2 = FakeHashBuilder.GenerateValidHash(2);
+        var hash3 = FakeHashBuilder.GenerateValidHash(3);
 
         // First create the BinaryProperties that the PointerFileEntries will reference
         var bp1 = new BinaryProperties { Hash = hash1, OriginalSize = 100, StorageTier = StorageTier.Hot, PointerFileEntries = new List<PointerFileEntry>() };
@@ -333,7 +333,7 @@ public class StateRepositoryTests : IDisposable
     public void GetPointerFileEntries_With_IncludeBinaryProperties_Should_Load_Related_Data()
     {
         // Arrange
-        var hash = CreateTestHash(1);
+        var hash = FakeHashBuilder.GenerateValidHash(1);
 
         var bp = new BinaryProperties
         {
@@ -371,8 +371,8 @@ public class StateRepositoryTests : IDisposable
     public void DeletePointerFileEntries_Should_Remove_Records_And_Set_HasChanges()
     {
         // Arrange
-        var hash1 = CreateTestHash(1);
-        var hash2 = CreateTestHash(2);
+        var hash1 = FakeHashBuilder.GenerateValidHash(1);
+        var hash2 = FakeHashBuilder.GenerateValidHash(2);
 
         // First create the BinaryProperties that the PointerFileEntries will reference
         var bp1 = new BinaryProperties { Hash = hash1, OriginalSize = 100, StorageTier = StorageTier.Hot, PointerFileEntries = new List<PointerFileEntry>() };
@@ -419,7 +419,7 @@ public class StateRepositoryTests : IDisposable
     public void DeletePointerFileEntries_Should_Not_Set_HasChanges_When_No_Matching_Records()
     {
         // Arrange
-        var hash = CreateTestHash(1);
+        var hash = FakeHashBuilder.GenerateValidHash(1);
 
         // First create the BinaryProperties that the PointerFileEntry will reference
         var bp = new BinaryProperties { Hash = hash, OriginalSize = 100, StorageTier = StorageTier.Hot, PointerFileEntries = new List<PointerFileEntry>() };
@@ -442,7 +442,7 @@ public class StateRepositoryTests : IDisposable
         newStateRepository.HasChanges.ShouldBeFalse();
 
         // Act - Try to delete non-matching entries
-        var nonExistentHash = CreateTestHash(999);
+        var nonExistentHash = FakeHashBuilder.GenerateValidHash(999);
         newStateRepository.DeletePointerFileEntries(entry => entry.Hash == nonExistentHash);
 
         // Assert
@@ -457,7 +457,7 @@ public class StateRepositoryTests : IDisposable
     public void Vacuum_Should_Work_Without_Error()
     {
         // Arrange
-        var hash = CreateTestHash(1);
+        var hash = FakeHashBuilder.GenerateValidHash(1);
         var bp = new BinaryProperties
         {
             Hash               = hash,
@@ -480,7 +480,7 @@ public class StateRepositoryTests : IDisposable
     public void Data_Should_Persist_Across_Context_Recreations()
     {
         // Arrange
-        var hash = CreateTestHash(1);
+        var hash = FakeHashBuilder.GenerateValidHash(1);
         var bp = new BinaryProperties
         {
             Hash               = hash,
@@ -591,10 +591,5 @@ public class StateRepositoryTests : IDisposable
         // Assert
         dirs.ShouldBeEmpty();
         files.ShouldContain(pfe => pfe.RelativeName == "/folder 2/subfolder with space/file on disk 2.txt.pointer.arius");
-    }
-
-    private static Hash CreateTestHash(int seed)
-    {
-        return FakeHashBuilder.GenerateValidHash(seed);
     }
 }
