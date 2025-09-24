@@ -302,7 +302,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // TODO: Implement restore functionality
     }
 
-    private static string ExtractDirectoryName(string relativeName)
+    private static string ExtractDirectoryName(string relativeName) // TODO move this logic to the TreeNodeViewModel, just like FileItemViewModel
     {
         // Extract directory name from path like "/folder1/folder2/" -> "folder2"
         var trimmed = relativeName.TrimEnd('/');
