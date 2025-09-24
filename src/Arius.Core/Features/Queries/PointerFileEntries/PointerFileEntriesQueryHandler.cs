@@ -27,10 +27,12 @@ public record File : Result
 internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileEntriesQuery, Result>
 {
     private readonly ILoggerFactory loggerFactory;
+    private readonly ILogger<PointerFileEntriesQueryHandler> logger;
 
     public PointerFileEntriesQueryHandler(ILoggerFactory loggerFactory)
     {
         this.loggerFactory = loggerFactory;
+        this.logger = loggerFactory.CreateLogger<PointerFileEntriesQueryHandler>();
     }
 
     public async IAsyncEnumerable<Result> Handle(PointerFileEntriesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -103,10 +105,18 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
             }
         }, cancellationToken);
 
-        Task.WhenAll(directoryTask, entryTask).ContinueWith(_ =>
+        Task.WhenAll(directoryTask, entryTask).ContinueWith(task =>
         {
-            resultChannel.Writer.Complete();
-        });
+            if (task.IsFaulted)
+            {
+                logger.LogError(task.Exception, "Tasks failed during pointer file entries query");
+                resultChannel.Writer.Complete(task.Exception.GetBaseException());
+            }
+            else
+            {
+                resultChannel.Writer.Complete();
+            }
+        }, TaskContinuationOptions.ExecuteSynchronously);
 
         await foreach (var r in resultChannel.Reader.ReadAllAsync(cancellationToken))
             yield return r;
