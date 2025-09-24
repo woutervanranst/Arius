@@ -30,7 +30,7 @@ public partial class TreeNodeViewModel : ObservableObject
         this.prefix = prefix;
         this.onSelected = onSelected;
 
-        // Add placeholder child to show expansion chevron, but avoid recursion
+        // Add placeholder child to show expansion chevron
         if (showPlaceholder)
         {
             folders = [new TreeNodeViewModel("", null, false) { Name = "Loading..." }];
@@ -41,7 +41,16 @@ public partial class TreeNodeViewModel : ObservableObject
     {
         if (value)
         {
+            IsExpanded = true; // Expand when selected
             onSelected?.Invoke(this);
+        }
+    }
+
+    partial void OnIsExpandedChanged(bool value)
+    {
+        if (value)
+        {
+            IsSelected = true; // Select when expanded
         }
     }
 }
