@@ -120,7 +120,8 @@ public class ChooseRepositoryViewModelTests
         viewModel.LocalDirectoryPath = "C:/data";
         viewModel.AccountName        = "account";
         viewModel.AccountKey         = "secret-key";
-        await Task.Delay(100); //flaky test shizzle
+        await Task.Delay(250); //flaky test shizzle
+        await Task.Yield();
         await WaitForDebouncerAsync(() => !viewModel.IsLoading); // Wait for the OnStorageAccountCredentialsChanged to complete
         viewModel.ContainerName      = "container";
         viewModel.Passphrase         = "secret-pass";
