@@ -1,5 +1,8 @@
+using Arius.Core.Features.Queries.PointerFileEntries;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.IO;
 using System.Windows.Media;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
@@ -9,36 +12,51 @@ public partial class FileItemViewModel : ObservableObject
     private string name;
     
     [ObservableProperty]
-    private bool isSelected;
-    
+    private Brush pointerFileStateColor;
+    [ObservableProperty]
+    private Brush binaryFileStateColor;
+    [ObservableProperty]
+    private Brush pointerFileEntryStateColor;
+    [ObservableProperty]
+    private Brush chunkStateColor;
+
     [ObservableProperty]
     private long originalLength;
-    
+
     [ObservableProperty]
-    private Brush pointerFileStateColor = Brushes.Gray;
-    
-    [ObservableProperty]
-    private Brush binaryFileStateColor = Brushes.LightGray;
-    
-    [ObservableProperty]
-    private Brush pointerFileEntryStateColor = Brushes.Gray;
-    
-    [ObservableProperty]
-    private Brush chunkStateColor = Brushes.LightGray;
-    
+    private bool isSelected;
+
     [ObservableProperty]
     private string stateTooltip = "File state unknown";
 
-    public FileItemViewModel(string name, long originalLength)
+    public FileItemViewModel(PointerFileEntriesQueryFileResult file)
     {
-        this.name = name;
-        this.originalLength = originalLength;
-        
-        // Set default colors for demonstration
-        PointerFileStateColor = Brushes.Green;
-        BinaryFileStateColor = Brushes.LightGreen;
-        PointerFileEntryStateColor = Brushes.Blue;
-        ChunkStateColor = Brushes.LightBlue;
-        StateTooltip = "File is archived and available";
+        var n = file.BinaryFileName ?? file.PointerFileEntry?.RemoveSuffix(".pointer.arius") ?? "UNKNOWN"; // TODO how to properly remove the suffix?
+        Name = Path.GetFileName(n);
+
+        PointerFileStateColor      = file.PointerFileName is not null ? Brushes.Black : Brushes.Transparent;
+        BinaryFileStateColor       = file.BinaryFileName is not null ? Brushes.Blue : Brushes.White; // NOT transparent - if the PointerFile is black then the full half circle is black
+        PointerFileEntryStateColor = file.PointerFileEntry is not null ? Brushes.Black : Brushes.Transparent;
+        ChunkStateColor = file.Hydrated switch
+        {
+            true  => Brushes.Blue,
+            false => Brushes.LightBlue,
+            null  => Brushes.Transparent,
+        };
+
+        OriginalLength = file.OriginalSize;
+
+        //StateTooltip = "File is archived and available";
+
+
+        // TODO add support for HydrationState.Hydrating
+        //        return HydrationState switch
+        //        {
+        //            Core.Facade.HydrationState.Hydrated         => Brushes.Blue,
+        //            Core.Facade.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
+        //            Core.Facade.HydrationState.Hydrating        => Brushes.DeepSkyBlue,
+        //            Core.Facade.HydrationState.NotHydrated      => Brushes.LightBlue,
+        //            null                                        => Brushes.Transparent,
+        //            _                                           => throw new ArgumentOutOfRangeException()
     }
 }

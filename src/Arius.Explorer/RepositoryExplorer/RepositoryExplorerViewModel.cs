@@ -214,22 +214,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             {
                 switch (result)
                 {
-                    case PointerFileEntriesQueryDirectoryResult directoryResult:
-                        var dirName = ExtractDirectoryName(directoryResult.RelativeName);
-                        var childNode = new TreeNodeViewModel(directoryResult.RelativeName, OnNodeSelected)
+                    case PointerFileEntriesQueryDirectoryResult directory:
+                        var dirName = ExtractDirectoryName(directory.RelativeName);
+                        var childNode = new TreeNodeViewModel(directory.RelativeName, OnNodeSelected)
                         {
                             Name = dirName
                         };
                         directories.Add(childNode);
                         break;
 
-                    case PointerFileEntriesQueryFileResult fileResult:
-                        var fileName = ExtractFileName(fileResult);
-                        if (!string.IsNullOrEmpty(fileName))
-                        {
-                            var fileItem = new FileItemViewModel(fileName, fileResult.OriginalSize);
-                            files.Add(fileItem);
-                        }
+                    case PointerFileEntriesQueryFileResult file:
+                        var fileItem = new FileItemViewModel(file);
+                        files.Add(fileItem);
 
                         break;
                 }
@@ -256,18 +252,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         var trimmed = relativeName.TrimEnd('/');
         var lastSlash = trimmed.LastIndexOf('/');
         return lastSlash >= 0 ? trimmed[(lastSlash + 1)..] : trimmed;
-    }
-
-    private static string ExtractFileName(PointerFileEntriesQueryFileResult file)
-    {
-        // Extract file name from path like "/folder1/file.txt" -> "file.txt"
-        var n = file.BinaryFileName ?? file.PointerFileEntry;
-
-        if (string.IsNullOrEmpty(n))
-            return string.Empty;
-
-        var lastSlash = n.LastIndexOf('/');
-        return lastSlash >= 0 ? n[(lastSlash + 1)..] : n;
     }
 
     private async void OnNodeSelected(TreeNodeViewModel selectedNode)
