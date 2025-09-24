@@ -15,7 +15,7 @@ internal class StateRepositoryDbContext : DbContext
     }
 
     public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
-    public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
+    public virtual DbSet<BinaryProperties> BinaryProperties   { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -48,8 +48,9 @@ internal class StateRepositoryDbContext : DbContext
         pfeb.ToTable("PointerFileEntries");
         pfeb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
 
-        pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
-        pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
+        pfeb.HasIndex(pfe => pfe.Hash); // NOT unique
+        pfeb.HasIndex(pfe => pfe.RelativeName); // to facilitate GetPointerFileEntriesAtVersionAsync
+
         // Composite index for better query performance on prefix searches with joins (for GetPointerFileEntries / topdirectoryonly & GetPointerFileDirectories / topdirectoryonly)
         pfeb.HasIndex(pfe => new { pfe.RelativeName, pfe.Hash })
             .HasDatabaseName("IX_PointerFileEntries_RelativeName_Hash");
@@ -103,10 +104,10 @@ internal class StateRepositoryDbContext : DbContext
             return tier switch
             {
                 StorageTier.Archive => 10,
-                StorageTier.Cold => 20,
-                StorageTier.Cool => 30,
-                StorageTier.Hot => 40,
-                _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown storage tier")
+                StorageTier.Cold    => 20,
+                StorageTier.Cool    => 30,
+                StorageTier.Hot     => 40,
+                _                   => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown storage tier")
             };
         }
 
@@ -118,7 +119,7 @@ internal class StateRepositoryDbContext : DbContext
                 20 => StorageTier.Cold,
                 30 => StorageTier.Cool,
                 40 => StorageTier.Hot,
-                _ => throw new ArgumentOutOfRangeException(nameof(number), number, "Unknown storage tier")
+                _  => throw new ArgumentOutOfRangeException(nameof(number), number, "Unknown storage tier")
             };
         }
     }
