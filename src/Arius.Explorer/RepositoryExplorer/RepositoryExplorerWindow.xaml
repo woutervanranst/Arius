@@ -109,7 +109,7 @@
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
             <!--Items explorer-->
-            <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
+            <ListView Grid.Column="2" ItemsSource="{Binding SelectedTreeNode.Items}">
                 <ListView.View>
                     <GridView>
 

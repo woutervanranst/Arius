@@ -22,6 +22,9 @@ public partial class TreeNodeViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<TreeNodeViewModel> folders = [];
 
+    [ObservableProperty]
+    private ObservableCollection<FileItemViewModel> items = [];
+
     public TreeNodeViewModel(string prefix, Action<TreeNodeViewModel>? onSelected = null)
     {
         this.prefix = prefix;

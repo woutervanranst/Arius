@@ -101,12 +101,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         {
             // Clear UI when no repository
             RootNode          = [];
-            SelectedFolder    = new FolderViewModel();
+            SelectedTreeNode  = null;
             SelectedItemsText = "";
         }
 
 
-        ArchiveStatistics = $"Repository: {repository.LocalDirectoryPath}";
+        ArchiveStatistics = value != null ? $"Repository: {value.LocalDirectoryPath}" : "";
 
         //if (r is not null)
         //    OpenRepository(r);
@@ -171,7 +171,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private ObservableCollection<TreeNodeViewModel> rootNode = [];
 
     [ObservableProperty]
-    private FolderViewModel? selectedFolder;
+    private TreeNodeViewModel? selectedTreeNode;
 
     
     // LISTVIEW
@@ -237,12 +237,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             // Update UI on main thread
             node.Folders = new ObservableCollection<TreeNodeViewModel>(directories);
+            node.Items = new ObservableCollection<FileItemViewModel>(files);
 
-            if (SelectedFolder == null)
-                SelectedFolder = new FolderViewModel();
-
-            SelectedFolder.Items = new ObservableCollection<FileItemViewModel>(files);
-            SelectedItemsText    = $"{files.Count} items";
+            // Update the selected tree node reference for ListView binding
+            SelectedTreeNode = node;
+            SelectedItemsText = $"{files.Count} items";
         }
         catch (Exception e)
         {
