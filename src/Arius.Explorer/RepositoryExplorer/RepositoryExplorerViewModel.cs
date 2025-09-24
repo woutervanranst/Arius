@@ -203,10 +203,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             }
 
             // Final count update (in case there were only directories)
-            //Application.Current.Dispatcher.Invoke(() =>
-            //{
             OnPropertyChanged(nameof(SelectedItemsText));
-            //});
+
+            ArchiveStatistics = "Statistics TODO";
+
         }
         catch (Exception e)
         {
