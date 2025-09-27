@@ -17,8 +17,8 @@ internal static class Program
     public static void Main(string[] args)
     {
         // --- Serilog Configuration ---
-        var logDirectory = "logs";
-        var logPath = Path.Combine(logDirectory, $"arius-explorer-{DateTime.Now:yyyyMMdd_HHmmss}.log");
+        var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "logs");
+        var logPath      = Path.Combine(logDirectory, $"arius-explorer-{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
         // Configure the static logger instance
         Log.Logger = new LoggerConfiguration()

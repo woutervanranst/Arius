@@ -87,16 +87,15 @@ internal static class FileSystemExtensions
 
     public static DirectoryEntry CreateTempSubdirectory(string? purpose = default, bool persistent = false)
     {
-        var name = (purpose, persistent) switch
+        // For simplicity sake, always use the temp path from the physical filesystem. If we use the SubFileSystem/MemoryFileSystem, we would get an additional /temp path in our restore folder
+        var fullName = (purpose, persistent) switch
         {
             (null, true)      => throw new ArgumentException("If purpose is not specified, ephemeral must be true", nameof(purpose)),
-            (null, false)     => $"arius-{Guid.CreateVersion7()}",
-            (not null, true)  => $"arius-{purpose}",
-            (not null, false) => $"arius-{purpose}-{Guid.CreateVersion7()}",
+            (not null, true)  => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", purpose),
+            (null, false)     => Path.Combine(Path.GetTempPath(), $"arius-{Guid.CreateVersion7()}"),
+            (not null, false) => Path.Combine(Path.GetTempPath(), $"arius-{purpose}-{Guid.CreateVersion7()}"),
         };
 
-        // For simplicity sake, always use the temp path from the physical filesystem. If we use the SubFileSystem/MemoryFileSystem, we would get an additional /temp path in our restore folder
-        var fullName = Path.Combine(Path.GetTempPath(), name);
         Directory.CreateDirectory(fullName);
 
         var pfs = new PhysicalFileSystem();
