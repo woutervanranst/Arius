@@ -35,7 +35,7 @@ internal class PointerFileEntriesQueryHandler : IStreamQueryHandler<PointerFileE
 
     internal async IAsyncEnumerable<PointerFileEntriesQueryResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        var resultChannel = Channel.CreateUnbounded<PointerFileEntriesQueryResult>(new UnboundedChannelOptions()
+        var resultChannel = Channel.CreateUnbounded<PointerFileEntriesQueryResult>(new UnboundedChannelOptions
         {
             /*TODO QUID ?? AllowSynchronousContinuations = true, */SingleReader = true, SingleWriter = false
         });

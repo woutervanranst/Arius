@@ -199,7 +199,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         logger.LogInformation("Starting hash verification with parallelism {HashParallelism}", handlerContext.Request.HashParallelism);
         
         return Parallel.ForEachAsync(filePairsToHashChannel.Reader.ReadAllAsync(cancellationToken),
-            new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.HashParallelism, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.HashParallelism, CancellationToken = cancellationToken },
             async (filePairWithPointerFileEntry, innerCancellationToken) =>
             {
                 try
@@ -243,7 +243,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         logger.LogInformation("Starting binary download with parallelism {DownloadParallelism}", handlerContext.Request.DownloadParallelism);
         
         return Parallel.ForEachAsync(filePairsToRestoreChannel.Reader.ReadAllAsync(cancellationToken),
-            new ParallelOptions() { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.DownloadParallelism, CancellationToken = cancellationToken },
             async (filePairWithPointerFileEntry, innerCancellationToken) =>
             {
                 var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
