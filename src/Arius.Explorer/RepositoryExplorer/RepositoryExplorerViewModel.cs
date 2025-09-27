@@ -348,6 +348,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             IsLoading = true;
             var result = await mediator.Send(command);
 
+            // TODO handle REsult if (result)
+            
+            SelectedFiles.Clear();
+
             // Refresh the view after restore
             if (SelectedTreeNode != null)
                 await LoadNodeContentAsync(SelectedTreeNode);
