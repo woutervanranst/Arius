@@ -50,7 +50,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
     internal async ValueTask<RestoreCommandResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Starting restore operation for {TargetCount} targets with hash parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
+        logger.LogInformation("Starting restore operation for {TargetCount} targets with hashing parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
         
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;

@@ -9,8 +9,8 @@ public sealed record RestoreCommand : RepositoryCommandProperties, ICommand<Rest
     public required bool          Download        { get; init; }
     public required bool          IncludePointers { get; init; }
 
-    public int HashParallelism     { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
-    public int DownloadParallelism { get; init; } = 1; // TODO if #DEBUG en based on CPU count?
+    public int HashParallelism     { get; init; } = Environment.ProcessorCount;
+    public int DownloadParallelism { get; init; } = Math.Min(4, Environment.ProcessorCount);
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 

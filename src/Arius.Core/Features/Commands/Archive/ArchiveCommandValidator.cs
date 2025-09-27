@@ -14,9 +14,13 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
             .Must(ExistAndBeDirectory)
             .WithMessage("LocalRoot must exist and be a valid directory.");
 
-        RuleFor(x => x.Parallelism)
+        RuleFor(x => x.HashingParallelism)
             .GreaterThan(0)
-            .WithMessage("Parallelism must be greater than 0.");
+            .WithMessage("HashingParallelism must be greater than 0.");
+
+        RuleFor(x => x.UploadParallelism)
+            .GreaterThan(0)
+            .WithMessage("UploadParallelism must be greater than 0.");
 
         RuleFor(x => x.SmallFileBoundary)
             .GreaterThan(0)

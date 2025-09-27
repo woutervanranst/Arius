@@ -13,7 +13,8 @@ public class ArchiveCommandBuilder
     private bool                       removeLocal;
     private StorageTier                tier;
     private DirectoryInfo              localRoot;
-    private int                        parallelism;
+    private int                        hashingParallelism;
+    private int                        uploadParallelism;
     private int                        smallFileBoundary;
     private IProgress<ProgressUpdate>? progressReporter;
     private bool                       useRetryPolicy;
@@ -47,12 +48,13 @@ public class ArchiveCommandBuilder
             localRoot     = new DirectoryInfo(Path.GetTempPath());
         }
 
-        removeLocal       = false;
-        tier              = StorageTier.Cool;
-        parallelism       = 1;
-        smallFileBoundary = 2 * 1024 * 1024;
-        progressReporter  = null;
-        useRetryPolicy    = true;
+        removeLocal        = false;
+        tier               = StorageTier.Cool;
+        hashingParallelism = 1;
+        uploadParallelism  = 1;
+        smallFileBoundary  = 2 * 1024 * 1024;
+        progressReporter   = null;
+        useRetryPolicy     = true;
     }
 
     public ArchiveCommandBuilder WithAccountName(string accountName)
@@ -97,9 +99,15 @@ public class ArchiveCommandBuilder
         return this;
     }
 
-    public ArchiveCommandBuilder WithParallelism(int parallelism)
+    public ArchiveCommandBuilder WithHashingParallelism(int hashingParallelism)
     {
-        this.parallelism = parallelism;
+        this.hashingParallelism = hashingParallelism;
+        return this;
+    }
+
+    public ArchiveCommandBuilder WithUploadParallelism(int uploadParallelism)
+    {
+        this.uploadParallelism = uploadParallelism;
         return this;
     }
 
@@ -125,17 +133,18 @@ public class ArchiveCommandBuilder
     {
         return new ArchiveCommand
         {
-            AccountName       = accountName,
-            AccountKey        = accountKey,
-            ContainerName     = containerName,
-            Passphrase        = passphrase,
-            RemoveLocal       = removeLocal,
-            Tier              = tier,
-            LocalRoot         = localRoot,
-            Parallelism       = parallelism,
-            SmallFileBoundary = smallFileBoundary,
-            ProgressReporter  = progressReporter,
-            UseRetryPolicy    = useRetryPolicy
+            AccountName        = accountName,
+            AccountKey         = accountKey,
+            ContainerName      = containerName,
+            Passphrase         = passphrase,
+            RemoveLocal        = removeLocal,
+            Tier               = tier,
+            LocalRoot          = localRoot,
+            HashingParallelism = hashingParallelism,
+            UploadParallelism  = uploadParallelism,
+            SmallFileBoundary  = smallFileBoundary,
+            ProgressReporter   = progressReporter,
+            UseRetryPolicy     = useRetryPolicy
         };
     }
 }

@@ -9,7 +9,8 @@ public sealed record ArchiveCommand : RepositoryCommandProperties, ICommand<Unit
     public required StorageTier   Tier        { get; init; }
     public required DirectoryInfo LocalRoot   { get; init; }
 
-    public int Parallelism { get; init; } = 1; //Todo split up per purpose, use #DEBUG etc en make it cpu based
+    public int HashingParallelism { get; init; } = Environment.ProcessorCount;
+    public int UploadParallelism  { get; init; } = Math.Min(4, Environment.ProcessorCount);
 
     public int SmallFileBoundary { get; init; } = 1024 * 1024; // 1 MB
 

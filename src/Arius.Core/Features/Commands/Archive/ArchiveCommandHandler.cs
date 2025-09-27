@@ -51,7 +51,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Starting archive operation for path {LocalRoot} with parallelism {Parallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.Parallelism);
+        logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
         
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -184,10 +184,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource)
     {
-        logger.LogInformation("Starting file hashing with parallelism {Parallelism}", handlerContext.Request.Parallelism);
-        
+        logger.LogInformation("Starting file hashing with parallelism {HashingParallelism}", handlerContext.Request.HashingParallelism);
+
         var t = Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
-            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.HashingParallelism, CancellationToken = cancellationToken },
             async (filePair, innerCancellationToken) =>
             {
                 try
@@ -247,7 +247,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Parallel.ForEachAsync(hashedLargeFilesChannel.Reader.ReadAllAsync(cancellationToken),
-            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.UploadParallelism, CancellationToken = cancellationToken },
             async (filePairWithHash, innerCancellationToken) =>
             {
                 try

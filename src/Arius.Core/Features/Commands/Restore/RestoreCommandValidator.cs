@@ -31,6 +31,14 @@ internal class RestoreCommandValidator : AbstractValidator<RestoreCommand>
         RuleFor(x => x.LocalRoot)
             .Must(localRoot => localRoot.Exists)
             .WithMessage("LocalRoot directory must exist.");
+
+        RuleFor(x => x.HashParallelism)
+            .GreaterThan(0)
+            .WithMessage("HashParallelism must be greater than 0.");
+
+        RuleFor(x => x.DownloadParallelism)
+            .GreaterThan(0)
+            .WithMessage("DownloadParallelism must be greater than 0.");
     }
 
     private static bool IsValidPath(string path)
