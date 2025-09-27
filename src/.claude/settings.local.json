@@ -15,10 +15,8 @@
       "mcp__serena__check_onboarding_performed",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "Bash(dotnet test:*)",
-      "Bash(dotnet build:*)",
       "Bash(./build-wsl.sh:*)",
-      "Read(/mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius5/docs/**)",
+      "Read(/mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius/docs/**)",
       "WebSearch",
       "mcp__serena__think_about_collected_information"
     ],
