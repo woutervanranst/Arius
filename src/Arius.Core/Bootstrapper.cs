@@ -27,15 +27,11 @@ public static class Bootstrapper
         //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly()); // zie https://www.milanjovanovic.tech/blog/cqrs-validation-with-mediatr-pipeline-and-fluentvalidation#running-validation-from-the-use-case
 
         // Add Mediator
-        services.AddMediator();
-
-        //services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
-        //services.AddSingleton<AzureContainerFactory>();
-        //services.AddSingleton<AzureRemoteRepositoryFactory>();
-
-        //services.AddSingleton<ICryptoService, CryptoService>();
-        //services.AddSingleton<IFileSystem, LocalFileSystem>();
-        //services.AddSingleton<PointerFileSerializer>();
+        services.AddMediator(options =>
+        {
+            options.GenerateTypesAsInternal = true;
+            options.ServiceLifetime         = ServiceLifetime.Transient;
+        });
 
         return services;
     }
