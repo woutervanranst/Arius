@@ -32,6 +32,11 @@ internal class StateRepository : IStateRepository
                 .AsNoTracking()
                 .SingleOrDefault(x => x.Hash == h));
 
+    /// <summary>
+    /// Returns the BinaryProperties for the given hash, or null if not found.
+    /// </summary>
+    /// <param name="h"></param>
+    /// <returns></returns>
     public BinaryProperties? GetBinaryProperty(Hash h)
     {
         using var context = contextPool.CreateContext();
