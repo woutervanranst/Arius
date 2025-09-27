@@ -1,4 +1,5 @@
-﻿using Arius.Core.Shared.Extensions;
+﻿using Arius.Core.Shared.Concurrency;
+using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
@@ -33,7 +34,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         this.config        = config;
     }
 
-    private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
+    private readonly InFlightGate<Hash, Unit> _uploadGate = new();
 
     private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
@@ -366,44 +367,66 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     {
         var (filePair, hash) = filePairWithHash;
 
-        // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, hash);
-
-        // 3. Upload the Binary, if needed
-        if (needsToBeUploaded)
+        // 2. Check if the Binary is already present in the database
+        var bp = handlerContext.StateRepository.GetBinaryProperty(hash);
+        if (bp is null)
         {
-            var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
-            logger.LogInformation("Uploading large file {FileName} ({FileSize}, hash: {Hash})", filePair.FullName, fileSizeFormatted, hash.ToShortString());
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {fileSizeFormatted}..."));
-
-            // Upload
-            await using var sourceStream = filePair.BinaryFile.OpenRead();
-            var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(
-                handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, cancellationToken);
-
-            // Get the current tier (tier was already set in UploadIfNotExistsAsync)
-            var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
-            var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
-
-            // Add to db
-            handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
+            // 3. Not yet uploaded - coordinate concurrent uploads
+            var (isOwner, uploadTask) = _uploadGate.Enter(hash);
+            if (isOwner)
             {
-                Hash         = hash,
-                OriginalSize = sourceStreamPosition,
-                ArchivedSize = targetStreamPosition,
-                StorageTier  = actualTier
-            });
+                // 3.1 Owner: perform the upload
+                try
+                {
+                    var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
+                    logger.LogInformation("Uploading large file {FileName} ({FileSize}, hash: {Hash})", filePair.FullName, fileSizeFormatted, hash.ToShortString());
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {fileSizeFormatted}..."));
 
-            var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
-            logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
+                    // Upload
+                    await using var sourceStream = filePair.BinaryFile.OpenRead();
+                    var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, cancellationToken);
 
-            // remove from temp
-            MarkAsUploaded(hash);
+                    // Get the current tier (tier was already set in UploadIfNotExistsAsync)
+                    var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
+                    var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
+
+                    // Add to db
+                    handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
+                    {
+                        Hash         = hash,
+                        OriginalSize = sourceStreamPosition,
+                        ArchivedSize = targetStreamPosition,
+                        StorageTier  = actualTier
+                    });
+
+                    var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
+                    logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
+
+                    // Signal completed upload
+                    _uploadGate.Complete(hash, Unit.Value);
+                }
+                catch (OperationCanceledException)
+                {
+                    _uploadGate.Cancel(hash, cancellationToken);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _uploadGate.Fault(hash, ex);
+                    throw;
+                }
+            }
+            else
+            {
+                // 3.2 Waiter: await the existing upload
+                logger.LogDebug("Awaiting existing upload for {Hash}", hash.ToShortString());
+                await uploadTask;
+            }
         }
         else
         {
-            logger.LogDebug("File {FileName} already uploaded or being uploaded (hash: {Hash})", filePair.FullName, hash.ToShortString());
-            await uploadTask;
+            // Already uploaded
+            logger.LogDebug("File {FileName} already uploaded (hash: {Hash})", filePair.FullName, hash.ToShortString());
         }
 
         // 4.Write the Pointer
@@ -442,33 +465,63 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 var (filePair, binaryHash) = filePairWithHash;
 
                 // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-                var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, binaryHash);
-
-                // 3. Upload the Binary, if needed
-                if (needsToBeUploaded)
+                var bp = handlerContext.StateRepository.GetBinaryProperty(binaryHash);
+                if (bp is null)
                 {
-                    var tarredEntry = await tarWriter.AddEntryAsync(filePair, binaryHash, cancellationToken);
+                    // 3. Not yet uploaded
+                    var (isOwner, waitTask) = _uploadGate.Enter(binaryHash);
+                    if (isOwner)
+                    {
+                        // 3.1 Owner: add entry to TAR
+                        var tarredEntry = await tarWriter.AddEntryAsync(filePair, binaryHash, cancellationToken);
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Queued in TAR..."));
+                        logger.LogInformation("Added small file {FileName} to TAR queue (original: {OriginalSize}, archived: {ArchivedSize}, hash: {Hash})", filePair.FullName, filePair.BinaryFile.Length.Bytes().Humanize(), tarredEntry.ArchivedSize.Bytes().Humanize(), binaryHash.ToShortString());
 
-                    logger.LogInformation("Added small file {FileName} to TAR queue (original: {OriginalSize}, archived: {ArchivedSize}, hash: {Hash})", filePair.FullName, filePair.BinaryFile.Length.Bytes().Humanize(), tarredEntry.ArchivedSize.Bytes().Humanize(), binaryHash.ToShortString());
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Queued in TAR..."));
+                        var shouldProcessTar = (tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
+                                                tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarWriter.TarredEntries.Any();
+                        if (shouldProcessTar)
+                        {
+                            logger.LogInformation("TAR archive size threshold reached ({TarSize}), processing archive with {FileCount} files", tarWriter.Position.Bytes().Humanize(), tarWriter.TarredEntries.Count);
+
+                            try
+                            {
+                                await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
+
+                                // Complete all entries after successful processing
+                                foreach (var entry in tarWriter.TarredEntries)
+                                    _uploadGate.Complete(entry.Hash, Unit.Value);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                foreach (var entry in tarWriter.TarredEntries)
+                                    _uploadGate.Cancel(entry.Hash, cancellationToken);
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                foreach (var entry in tarWriter.TarredEntries)
+                                    _uploadGate.Fault(entry.Hash, ex);
+                                throw;
+                            }
+
+                            // Reset for next batch
+                            tarWriter?.Dispose();
+                            tarWriter = null;
+                        }
+                    }
+                    else
+                    {
+                        // 3.2 Waiter: await the existing upload
+                        logger.LogInformation("Small file {FileName} is already in-flight (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
+                        await waitTask;
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
+                    }
                 }
                 else
                 {
+                    // Already uploaded
                     logger.LogInformation("Small file {FileName} already uploaded (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
-                }
-
-                var shouldProcessTar = (tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
-                     tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarWriter.TarredEntries.Any();
-                
-                if (shouldProcessTar)
-                {
-                    logger.LogInformation("TAR archive size threshold reached ({TarSize}), processing archive with {FileCount} files", tarWriter.Position.Bytes().Humanize(), tarWriter.TarredEntries.Count);
-                    await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
-
-                    // Reset for next batch
-                    tarWriter?.Dispose();
-                    tarWriter = null;
                 }
             }
 
@@ -476,7 +529,27 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             if (tarWriter?.TarredEntries.Any() == true)
             {
                 logger.LogInformation("Processing final TAR archive with {FileCount} files", tarWriter.TarredEntries.Count);
-                await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
+
+                try
+                {
+                    await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
+
+                    // Complete all entries after successful processing
+                    foreach (var entry in tarWriter.TarredEntries)
+                        _uploadGate.Complete(entry.Hash, Unit.Value);
+                }
+                catch (OperationCanceledException)
+                {
+                    foreach (var entry in tarWriter.TarredEntries)
+                        _uploadGate.Cancel(entry.Hash, cancellationToken);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    foreach (var entry in tarWriter.TarredEntries)
+                        _uploadGate.Fault(entry.Hash, ex);
+                    throw;
+                }
             }
             
             logger.LogInformation("Small file TAR processing completed");
@@ -536,9 +609,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         IEnumerable<BinaryProperties> bps = [.. tarBps, parentBp];
         handlerContext.StateRepository.AddBinaryProperties(bps.ToArray());
 
-        // Mark as uploaded
-        foreach (var entry in tarWriter.TarredEntries)
-            MarkAsUploaded(entry.Hash);
 
         // 4.Write the Pointers
         var pfes = new List<PointerFileEntry>();
@@ -561,44 +631,4 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 100, "Archive complete"));
     }
 
-    // -- UPLOAD STATUS HELPERS
-
-    private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(HandlerContext handlerContext, Hash h)
-    {
-        var bp = handlerContext.StateRepository.GetBinaryProperty(h);
-
-        lock (uploadingHashes)
-        {
-            if (bp is null)
-            {
-                if (uploadingHashes.TryGetValue(h, out var tcs))
-                {
-                    // Already uploading
-                    return (false, tcs.Task);
-                }
-                else
-                {
-                    // To be uploaded
-                    tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    uploadingHashes.Add(h, tcs);
-
-                    return (true, tcs.Task);
-                }
-            }
-            else
-            {
-                // Already uploaded
-                return (false, Task.CompletedTask);
-            }
-        }
-    }
-
-    private void MarkAsUploaded(Hash h)
-    {
-        lock (uploadingHashes)
-        {
-            uploadingHashes.Remove(h, out var tcs);
-            tcs.SetResult();
-        }
-    }
 }
