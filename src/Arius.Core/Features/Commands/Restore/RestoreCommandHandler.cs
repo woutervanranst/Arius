@@ -1,4 +1,5 @@
-﻿using Arius.Core.Shared.Extensions;
+﻿using Arius.Core.Shared.Concurrency;
+using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
@@ -37,6 +38,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
+
+    private readonly InFlightGate<Hash, FileEntry?> _tarCacheGate = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -369,32 +372,58 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         async Task<FileEntry?> GetCachedTarAsync()
         {
-            var cachedBinary = handlerContext.BinaryCache.GetFileEntry(parentHash.ToString());
-            if (!cachedBinary.Exists)
+            var (isOwner, waitTask) = _tarCacheGate.Enter(parentHash);
+            if (isOwner)
             {
-                logger.LogDebug("TAR archive not cached, downloading from blob storage (parent hash: {ParentHash})", parentHash.ToShortString());
-                
-                // The TAR was not yet downloaded from blob storage
-                await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
-
-                if (ss is null) // Chunk is not available (either archived or rehydrating)
+                try
                 {
-                    logger.LogDebug("TAR archive chunk stream not available for {ParentHash}", parentHash.ToShortString());
-                    return null;
-                }
+                    var cachedBinary = handlerContext.BinaryCache.GetFileEntry(parentHash.ToString());
+                    if (!cachedBinary.Exists)
+                    {
+                        // The TAR was not yet downloaded from blob storage
+                        logger.LogDebug("TAR archive not cached, downloading from blob storage (parent hash: {ParentHash})", parentHash.ToShortString());
 
-                await using var ts = cachedBinary.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                await ss.CopyToAsync(ts, cancellationToken);
-                await ts.FlushAsync(cancellationToken); // Explicitly flush
-                
-                logger.LogDebug("TAR archive cached successfully for {ParentHash}", parentHash.ToShortString());
+                        await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
+                        if (ss is null) 
+                        {
+                            // Chunk is not available (either archived or rehydrating)
+                            _tarCacheGate.Complete(parentHash, null);
+                            return null;
+                        }
+
+                        try
+                        {
+                            await using var ts = cachedBinary.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                            await ss.CopyToAsync(ts, cancellationToken);
+                            await ts.FlushAsync(cancellationToken); // Explicitly flush
+
+                            logger.LogDebug("TAR archive cached successfully for {ParentHash}", parentHash.ToShortString());
+                        }
+                        catch (IOException)
+                        {
+                            // Another writer raced in; file now exists — OK to continue
+                        }
+                    }
+
+                    _tarCacheGate.Complete(parentHash, cachedBinary);
+                    return cachedBinary;
+                }
+                catch (OperationCanceledException)
+                {
+                    _tarCacheGate.Cancel(parentHash, cancellationToken);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _tarCacheGate.Fault(parentHash, ex);
+                    throw;
+                }
             }
             else
             {
                 logger.LogDebug("Using cached TAR archive for {ParentHash}", parentHash.ToShortString());
+                return await waitTask;
             }
-
-            return cachedBinary;
         }
 
         async Task<TarEntry?> GetTarEntryAsync(Hash hash)
