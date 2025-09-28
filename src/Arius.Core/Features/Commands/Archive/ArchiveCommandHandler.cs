@@ -34,7 +34,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         this.config        = config;
     }
 
-    private readonly InFlightGate<Hash, Unit> _uploadGate = new();
+    private readonly InFlightGate<Hash, Unit> uploadGate = new();
 
     private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
@@ -372,7 +372,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         if (bp is null)
         {
             // 3. Not yet uploaded - coordinate concurrent uploads
-            var (isOwner, uploadTask) = _uploadGate.Enter(hash);
+            var (isOwner, uploadTask) = uploadGate.Enter(hash);
             if (isOwner)
             {
                 // 3.1 Owner: perform the upload
@@ -403,16 +403,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
 
                     // Signal completed upload
-                    _uploadGate.Complete(hash, Unit.Value);
+                    uploadGate.Complete(hash, Unit.Value);
                 }
                 catch (OperationCanceledException)
                 {
-                    _uploadGate.Cancel(hash, cancellationToken);
+                    uploadGate.Cancel(hash, cancellationToken);
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _uploadGate.Fault(hash, ex);
+                    uploadGate.Fault(hash, ex);
                     throw;
                 }
             }
@@ -469,7 +469,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 if (bp is null)
                 {
                     // 3. Not yet uploaded
-                    var (isOwner, waitTask) = _uploadGate.Enter(binaryHash);
+                    var (isOwner, waitTask) = uploadGate.Enter(binaryHash);
                     if (isOwner)
                     {
                         // 3.1 Owner: add entry to TAR
@@ -489,18 +489,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
                                 // Complete all entries after successful processing
                                 foreach (var entry in tarWriter.TarredEntries)
-                                    _uploadGate.Complete(entry.Hash, Unit.Value);
+                                    uploadGate.Complete(entry.Hash, Unit.Value);
                             }
                             catch (OperationCanceledException)
                             {
                                 foreach (var entry in tarWriter.TarredEntries)
-                                    _uploadGate.Cancel(entry.Hash, cancellationToken);
+                                    uploadGate.Cancel(entry.Hash, cancellationToken);
                                 throw;
                             }
                             catch (Exception ex)
                             {
                                 foreach (var entry in tarWriter.TarredEntries)
-                                    _uploadGate.Fault(entry.Hash, ex);
+                                    uploadGate.Fault(entry.Hash, ex);
                                 throw;
                             }
 
@@ -536,18 +536,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
                     // Complete all entries after successful processing
                     foreach (var entry in tarWriter.TarredEntries)
-                        _uploadGate.Complete(entry.Hash, Unit.Value);
+                        uploadGate.Complete(entry.Hash, Unit.Value);
                 }
                 catch (OperationCanceledException)
                 {
                     foreach (var entry in tarWriter.TarredEntries)
-                        _uploadGate.Cancel(entry.Hash, cancellationToken);
+                        uploadGate.Cancel(entry.Hash, cancellationToken);
                     throw;
                 }
                 catch (Exception ex)
                 {
                     foreach (var entry in tarWriter.TarredEntries)
-                        _uploadGate.Fault(entry.Hash, ex);
+                        uploadGate.Fault(entry.Hash, ex);
                     throw;
                 }
             }

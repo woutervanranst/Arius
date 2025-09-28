@@ -39,7 +39,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
-    private readonly InFlightGate<Hash, FileEntry?> _tarCacheGate = new();
+    private readonly InFlightGate<Hash, FileEntry?> tarCacheGate = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -372,7 +372,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         async Task<FileEntry?> GetCachedTarAsync()
         {
-            var (isOwner, waitTask) = _tarCacheGate.Enter(parentHash);
+            var (isOwner, waitTask) = tarCacheGate.Enter(parentHash);
             if (isOwner)
             {
                 try
@@ -387,35 +387,38 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                         if (ss is null) 
                         {
                             // Chunk is not available (either archived or rehydrating)
-                            _tarCacheGate.Complete(parentHash, null);
+                            tarCacheGate.Complete(parentHash, null);
                             return null;
                         }
-
-                        try
+                        else
                         {
+                            // Chunk is available - download it
+                            //try
+                            //{
                             await using var ts = cachedBinary.Open(FileMode.CreateNew, FileAccess.Write, FileShare.None);
                             await ss.CopyToAsync(ts, cancellationToken);
                             await ts.FlushAsync(cancellationToken); // Explicitly flush
 
                             logger.LogDebug("TAR archive cached successfully for {ParentHash}", parentHash.ToShortString());
-                        }
-                        catch (IOException)
-                        {
-                            // Another writer raced in; file now exists — OK to continue
+                            //}
+                            //catch (IOException)
+                            //{
+                            //    // Another writer raced in; file now exists — OK to continue
+                            //}
                         }
                     }
 
-                    _tarCacheGate.Complete(parentHash, cachedBinary);
+                    tarCacheGate.Complete(parentHash, cachedBinary);
                     return cachedBinary;
                 }
                 catch (OperationCanceledException)
                 {
-                    _tarCacheGate.Cancel(parentHash, cancellationToken);
+                    tarCacheGate.Cancel(parentHash, cancellationToken);
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _tarCacheGate.Fault(parentHash, ex);
+                    tarCacheGate.Fault(parentHash, ex);
                     throw;
                 }
             }
