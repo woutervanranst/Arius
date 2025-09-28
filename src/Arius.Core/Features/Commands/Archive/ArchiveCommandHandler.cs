@@ -631,8 +631,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 70, "Uploading TAR archive..."));
 
         // Upload the TAR archive
-        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(
-            handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, cancellationToken);
+        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, cancellationToken);
 
         // Get the current tier (tier was already set in UploadIfNotExistsAsync)
         var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(parentHash, cancellationToken);
