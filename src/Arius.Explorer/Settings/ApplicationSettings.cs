@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Configuration;
+using System.Reflection;
 
 namespace Arius.Explorer.Settings;
 
@@ -14,6 +15,8 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
 {
     private static ApplicationSettings? defaultInstance;
 
+    private bool upgradeChecked;
+
     public static ApplicationSettings Default
     {
         get
@@ -23,6 +26,34 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
                 defaultInstance = (ApplicationSettings)Synchronized(new ApplicationSettings());
             }
             return defaultInstance;
+        }
+    }
+
+    public ApplicationSettings()
+    {
+        EnsureUpgraded();
+    }
+
+    private void EnsureUpgraded()
+    {
+        if (upgradeChecked)
+        {
+            return;
+        }
+
+        upgradeChecked = true;
+
+        var currentVersion = typeof(ApplicationSettings)
+            .Assembly
+            .GetName()
+            .Version?
+            .ToString() ?? string.Empty;
+
+        if (!string.Equals(LastUpgradedVersion, currentVersion, StringComparison.Ordinal))
+        {
+            Upgrade();
+            LastUpgradedVersion = currentVersion;
+            Save();
         }
     }
 
@@ -41,6 +72,14 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
     {
         get => (int)this[nameof(RecentLimit)];
         set => this[nameof(RecentLimit)] = value;
+    }
+
+    [UserScopedSetting]
+    [DefaultSettingValue("")]
+    private string LastUpgradedVersion
+    {
+        get => (string)(this[nameof(LastUpgradedVersion)] ?? string.Empty);
+        set => this[nameof(LastUpgradedVersion)] = value;
     }
 }
 
