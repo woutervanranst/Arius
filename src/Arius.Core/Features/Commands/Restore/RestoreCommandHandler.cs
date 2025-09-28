@@ -344,9 +344,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         
         await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
         await using var tarReader = new TarReader(tarStream);
-        var tarEntry = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
+        var tarEntryData = await GetTarEntryDataAsync(pointerFileEntry.BinaryProperties.Hash);
 
-        if (tarEntry is null)
+        if (tarEntryData is null)
         {
             logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
             throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
@@ -358,7 +358,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         filePair.BinaryFile.Directory.Create();
         await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
         {
-            await tarEntry.DataStream!.CopyToAsync(ts, cancellationToken);
+            await ts.WriteAsync(tarEntryData, cancellationToken);
             await ts.FlushAsync(cancellationToken); // Explicitly flush
         }
 
@@ -429,7 +429,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             }
         }
 
-        async Task<TarEntry?> GetTarEntryAsync(Hash hash)
+        async Task<byte[]?> GetTarEntryDataAsync(Hash hash)
         {
             logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
             
@@ -439,16 +439,27 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 if (entry.Name == hash)
                 {
                     logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
-                    break;
+                    
+                    //if (entry.DataStream == null)
+                    //{
+                    //    logger.LogError("TAR entry found but DataStream is null for hash {Hash}. This may indicate a concurrent read issue.", hash.ToShortString());
+                    //    return null;
+                    //}
+
+                    // Read the entire entry data into a byte array to avoid stream lifecycle issues & to avoid race conditions when multiple restores are accessing the same tar
+                    //  When copyData: false is used, DataStream is only valid immediately after finding the entry.
+                    //  Multiple concurrent readers can cause the stream position to advance, making DataStream null.
+                    using var memoryStream = new MemoryStream();
+                    await entry.DataStream.CopyToAsync(memoryStream, cancellationToken);
+                    var data = memoryStream.ToArray();
+                    
+                    logger.LogDebug("Successfully read {ByteCount} bytes from TAR entry for hash {Hash}", data.Length, hash.ToShortString());
+                    return data;
                 }
             }
 
-            if (entry is null)
-            {
-                logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
-            }
-
-            return entry;
+            logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
+            return null;
         }
     }
 
