@@ -449,6 +449,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         logger.LogInformation("Starting small file TAR archive processing with boundary {SmallFileBoundary}", handlerContext.Request.SmallFileBoundary.Bytes().Humanize());
         
         InMemoryGzippedTarWriter tarWriter = null;
+        // Collect deferred pointer writes for duplicate small files (non-owners).
+        // We will await these once the owner has completed (i.e., after TAR batches are processed).
+        var deferredPointerWrites = new List<Task>();
 
         try
         {
@@ -469,7 +472,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 if (bp is null)
                 {
                     // 3. Not yet uploaded
-                    var (isOwner, waitTask) = uploadGate.Enter(binaryHash);
+                    var (isOwner, uploadTask) = uploadGate.Enter(binaryHash);
                     if (isOwner)
                     {
                         // 3.1 Owner: add entry to TAR
@@ -511,10 +514,27 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     }
                     else
                     {
-                        // 3.2 Waiter: await the existing upload
+                        // 3.2 Non-owner: await the existing upload without blocking the reader
                         logger.LogInformation("Small file {FileName} is already in-flight (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
-                        await waitTask;
-                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
+                        var deferred = uploadTask.ContinueWith(t =>
+                        {
+                            // Defer the pointer write until the owner completes and BinaryProperties exist.
+                            if (t.IsFaulted) throw t.Exception!.GetBaseException();
+                            if (t.IsCanceled) throw new OperationCanceledException();
+
+                            var pf = filePair.CreatePointerFile(binaryHash);
+                            handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
+                            {
+                                Hash             = binaryHash,
+                                RelativeName     = pf.Path.FullName,
+                                CreationTimeUtc  = pf.CreationTimeUtc,
+                                LastWriteTimeUtc = pf.LastWriteTimeUtc
+                            });
+
+                            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed (duplicate)"));
+                        }, TaskContinuationOptions.ExecuteSynchronously);
+
+                        deferredPointerWrites.Add(deferred);
                     }
                 }
                 else
@@ -550,6 +570,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                         uploadGate.Fault(entry.Hash, ex);
                     throw;
                 }
+            }
+
+            // Now that owners have completed, await all deferred pointer writes.
+            if (deferredPointerWrites.Count > 0)
+            {
+                logger.LogDebug("Awaiting {Count} deferred pointer writes", deferredPointerWrites.Count);
+                await Task.WhenAll(deferredPointerWrites);
             }
             
             logger.LogInformation("Small file TAR processing completed");
