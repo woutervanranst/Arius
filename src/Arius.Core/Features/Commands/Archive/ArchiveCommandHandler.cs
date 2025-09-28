@@ -53,23 +53,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
-        logger.LogDebug("Channel capacities: indexed={IndexedCapacity}, smallFiles={SmallFilesCapacity}, largeFiles={LargeFilesCapacity}", 20, 10, 10);
         
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
-        logger.LogDebug("Creating parallel tasks at {Timestamp}", DateTimeOffset.UtcNow);
         var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        logger.LogDebug("All tasks created successfully at {Timestamp}", DateTimeOffset.UtcNow);
 
         try
         {
-            logger.LogDebug("Starting Task.WhenAll with {TaskCount} tasks at {Timestamp}", 4, DateTimeOffset.UtcNow);
             await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
-            logger.LogDebug("All tasks completed successfully at {Timestamp}", DateTimeOffset.UtcNow);
 
             // 6. Remove PointerFileEntries that do not exist on disk
             logger.LogDebug("Cleaning up pointer file entries that no longer exist on disk");
@@ -219,15 +214,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                         logger.LogDebug("File {FileName} hashed to {Hash}, routing to {FileType} processing (size: {FileSize})", filePair.FullName, h.ToShortString(), isSmallFile ? "small" : "large", fileSizeFormatted);
 
                         if (isSmallFile)
-                        {
                             await hashedSmallFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
-                            logger.LogTrace("Small file {FileName} written to hashedSmallFilesChannel", filePair.FullName);
-                        }
                         else
-                        {
                             await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
-                            logger.LogTrace("Large file {FileName} written to hashedLargeFilesChannel", filePair.FullName);
-                        }
                     }
                 }
                 catch (IOException e)
@@ -249,12 +238,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
         t.ContinueWith(_ =>
         {
-            logger.LogInformation("File hashing completed at {Timestamp}, closing channels", DateTimeOffset.UtcNow);
-            logger.LogDebug("About to complete hashedSmallFilesChannel.Writer");
+            logger.LogDebug("File hashing completed, closing channels");
             hashedSmallFilesChannel.Writer.Complete();
-            logger.LogDebug("About to complete hashedLargeFilesChannel.Writer");
             hashedLargeFilesChannel.Writer.Complete();
-            logger.LogInformation("Both channels completed successfully at {Timestamp}", DateTimeOffset.UtcNow);
         }, TaskContinuationOptions.ExecuteSynchronously);
 
         return t;
@@ -286,18 +272,15 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         {
             try
             {
-                logger.LogDebug("Small files TAR archive task started at {Timestamp}", DateTimeOffset.UtcNow);
                 await UploadSmallFileAsync(handlerContext, cancellationToken);
-                logger.LogDebug("Small files TAR archive task completed at {Timestamp}", DateTimeOffset.UtcNow);
             }
             catch (OperationCanceledException)
             {
-                logger.LogDebug("Small files TAR archive task cancelled at {Timestamp}", DateTimeOffset.UtcNow);
                 throw;
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Small files TAR archive task failed at {Timestamp}", DateTimeOffset.UtcNow);
+                logger.LogError(e, "Small files TAR archive task failed");
                 errorCancellationTokenSource.Cancel();
                 throw;
             }
@@ -463,28 +446,14 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Starting small file TAR archive processing with boundary {SmallFileBoundary} at {Timestamp}", handlerContext.Request.SmallFileBoundary.Bytes().Humanize(), DateTimeOffset.UtcNow);
-        logger.LogDebug("hashedSmallFilesChannel initial state: IsCompleted={IsCompleted}", hashedSmallFilesChannel.Reader.Completion.IsCompleted);
-
-        // Create a periodic status logger to detect deadlocks
-        using var statusTimer = new System.Timers.Timer(30000); // Log every 30 seconds
-        statusTimer.Elapsed += (_, _) => {
-            ThreadPool.GetAvailableThreads(out var workerThreads, out var completionPortThreads);
-            logger.LogWarning("DEADLOCK DETECTION: Small file processing still active at {Timestamp}, channel state: IsCompleted={IsCompleted}, ThreadPool: Worker={WorkerThreads}, IO={IOThreads}",
-                DateTimeOffset.UtcNow, hashedSmallFilesChannel.Reader.Completion.IsCompleted, workerThreads, completionPortThreads);
-        };
-        statusTimer.Start();
+        logger.LogInformation("Starting small file TAR archive processing with boundary {SmallFileBoundary}", handlerContext.Request.SmallFileBoundary.Bytes().Humanize());
         
         InMemoryGzippedTarWriter tarWriter = null;
 
         try
         {
-            logger.LogDebug("Starting to read from hashedSmallFilesChannel at {Timestamp}", DateTimeOffset.UtcNow);
-            var fileProcessedCount = 0;
             await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
             {
-                fileProcessedCount++;
-                logger.LogTrace("Processing small file #{FileNumber}: {FileName} at {Timestamp}", fileProcessedCount, filePairWithHash.FilePair.FullName, DateTimeOffset.UtcNow);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 if (tarWriter is null)
@@ -500,51 +469,27 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 if (bp is null)
                 {
                     // 3. Not yet uploaded
-                    logger.LogDebug("Entering uploadGate for hash {Hash}, file {FileName} at {Timestamp}", binaryHash.ToShortString(), filePair.FullName, DateTimeOffset.UtcNow);
                     var (isOwner, waitTask) = uploadGate.Enter(binaryHash);
-                    logger.LogDebug("uploadGate.Enter result: isOwner={IsOwner} for hash {Hash}", isOwner, binaryHash.ToShortString());
                     if (isOwner)
                     {
                         // 3.1 Owner: add entry to TAR
-                        logger.LogDebug("Adding file {FileName} to TAR as owner of hash {Hash}", filePair.FullName, binaryHash.ToShortString());
                         var tarredEntry = await tarWriter.AddEntryAsync(filePair, binaryHash, cancellationToken);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Queued in TAR..."));
                         logger.LogInformation("Added small file {FileName} to TAR queue (original: {OriginalSize}, archived: {ArchivedSize}, hash: {Hash})", filePair.FullName, filePair.BinaryFile.Length.Bytes().Humanize(), tarredEntry.ArchivedSize.Bytes().Humanize(), binaryHash.ToShortString());
 
-                        var currentTarSize = tarWriter.Position;
-                        var smallFileBoundary = handlerContext.Request.SmallFileBoundary;
-                        var channelIsCompleted = hashedSmallFilesChannel.Reader.Completion.IsCompleted;
-                        var hasTarredEntries = tarWriter.TarredEntries.Any();
-
-                        logger.LogDebug("TAR decision check: currentSize={CurrentSize}, boundary={Boundary}, channelCompleted={ChannelCompleted}, hasEntries={HasEntries} at {Timestamp}",
-                            currentTarSize.Bytes().Humanize(), smallFileBoundary.Bytes().Humanize(), channelIsCompleted, hasTarredEntries, DateTimeOffset.UtcNow);
-
-                        var shouldProcessTar = (currentTarSize > smallFileBoundary ||
-                                                currentTarSize <= smallFileBoundary && channelIsCompleted) && hasTarredEntries;
-
-                        logger.LogInformation("TAR processing decision: shouldProcess={ShouldProcess} (size>{Boundary}: {SizeCheck}, size<={Boundary}&&channelCompleted: {FinalCheck}, hasEntries: {HasEntries})",
-                            shouldProcessTar, smallFileBoundary.Bytes().Humanize(), currentTarSize > smallFileBoundary,
-                            smallFileBoundary.Bytes().Humanize(), currentTarSize <= smallFileBoundary && channelIsCompleted, hasTarredEntries);
-
+                        var shouldProcessTar = (tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
+                                                tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarWriter.TarredEntries.Any();
                         if (shouldProcessTar)
                         {
-                            logger.LogInformation("TAR archive size threshold reached ({TarSize}), processing archive with {FileCount} files at {Timestamp}", tarWriter.Position.Bytes().Humanize(), tarWriter.TarredEntries.Count, DateTimeOffset.UtcNow);
-                            logger.LogDebug("About to call ProcessTarArchive with {EntryCount} entries", tarWriter.TarredEntries.Count);
+                            logger.LogInformation("TAR archive size threshold reached ({TarSize}), processing archive with {FileCount} files", tarWriter.Position.Bytes().Humanize(), tarWriter.TarredEntries.Count);
 
                             try
                             {
-                                logger.LogDebug("Calling ProcessTarArchive for {EntryCount} entries at {Timestamp}", tarWriter.TarredEntries.Count, DateTimeOffset.UtcNow);
                                 await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
-                                logger.LogDebug("ProcessTarArchive completed successfully at {Timestamp}", DateTimeOffset.UtcNow);
 
                                 // Complete all entries after successful processing
-                                logger.LogDebug("Completing uploadGate for {EntryCount} entries after TAR processing", tarWriter.TarredEntries.Count);
                                 foreach (var entry in tarWriter.TarredEntries)
-                                {
-                                    logger.LogTrace("Completing uploadGate for hash {Hash}", entry.Hash.ToShortString());
                                     uploadGate.Complete(entry.Hash, Unit.Value);
-                                }
-                                logger.LogDebug("All uploadGate entries completed for current TAR batch");
                             }
                             catch (OperationCanceledException)
                             {
@@ -560,20 +505,15 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                             }
 
                             // Reset for next batch
-                            logger.LogDebug("Disposing tarWriter and resetting for next batch at {Timestamp}", DateTimeOffset.UtcNow);
                             tarWriter?.Dispose();
                             tarWriter = null;
-                            logger.LogDebug("TarWriter reset completed, ready for next batch");
                         }
                     }
                     else
                     {
                         // 3.2 Waiter: await the existing upload
-                        logger.LogWarning("Small file {FileName} is already in-flight (hash: {Hash}), waiting for completion at {Timestamp}", filePair.FullName, binaryHash.ToShortString(), DateTimeOffset.UtcNow);
-                        var waitStartTime = DateTimeOffset.UtcNow;
+                        logger.LogInformation("Small file {FileName} is already in-flight (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
                         await waitTask;
-                        var waitDuration = DateTimeOffset.UtcNow - waitStartTime;
-                        logger.LogInformation("Wait completed for {FileName} after {WaitDuration}ms at {Timestamp}", filePair.FullName, waitDuration.TotalMilliseconds, DateTimeOffset.UtcNow);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
                     }
                 }
@@ -585,32 +525,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 }
             }
 
-            logger.LogInformation("Exited hashedSmallFilesChannel.Reader.ReadAllAsync loop at {Timestamp}, processed {FileCount} files", DateTimeOffset.UtcNow, fileProcessedCount);
-            logger.LogDebug("Channel final state: IsCompleted={IsCompleted}", hashedSmallFilesChannel.Reader.Completion.IsCompleted);
-
             // Handle any remaining files in the final batch
-            var hasFinalTarEntries = tarWriter?.TarredEntries.Any() == true;
-            logger.LogInformation("Checking for final TAR batch: hasTarWriter={HasTarWriter}, hasTarredEntries={HasTarredEntries} at {Timestamp}",
-                tarWriter != null, hasFinalTarEntries, DateTimeOffset.UtcNow);
-
-            if (hasFinalTarEntries)
+            if (tarWriter?.TarredEntries.Any() == true)
             {
                 logger.LogInformation("Processing final TAR archive with {FileCount} files", tarWriter.TarredEntries.Count);
 
                 try
                 {
-                    logger.LogDebug("Processing final TAR batch with {EntryCount} entries at {Timestamp}", tarWriter.TarredEntries.Count, DateTimeOffset.UtcNow);
                     await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
-                    logger.LogDebug("Final TAR batch processing completed at {Timestamp}", DateTimeOffset.UtcNow);
 
                     // Complete all entries after successful processing
-                    logger.LogDebug("Completing uploadGate for final {EntryCount} entries", tarWriter.TarredEntries.Count);
                     foreach (var entry in tarWriter.TarredEntries)
-                    {
-                        logger.LogTrace("Completing final uploadGate for hash {Hash}", entry.Hash.ToShortString());
                         uploadGate.Complete(entry.Hash, Unit.Value);
-                    }
-                    logger.LogDebug("All final uploadGate entries completed");
                 }
                 catch (OperationCanceledException)
                 {
@@ -626,13 +552,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 }
             }
             
-            logger.LogInformation("Small file TAR processing completed successfully at {Timestamp}, total files processed: {FileCount}", DateTimeOffset.UtcNow, fileProcessedCount);
+            logger.LogInformation("Small file TAR processing completed");
         }
         finally
         {
             // Ensure cleanup of resources
             tarWriter?.Dispose();
-            logger.LogDebug("UploadSmallFileAsync cleanup completed at {Timestamp}", DateTimeOffset.UtcNow);
         }
     }
 
@@ -640,8 +565,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     {
         var fileCount = tarWriter.TarredEntries.Count;
         var totalOriginalSize = tarWriter.TotalOriginalSize;
-
-        logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {TotalSize}) at {Timestamp}", fileCount, totalOriginalSize.Bytes().Humanize(), DateTimeOffset.UtcNow);
+        
+        logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {TotalSize})", fileCount, totalOriginalSize.Bytes().Humanize());
         
         await using var sourceStream = tarWriter.GetCompletedArchive();
 
