@@ -2,88 +2,187 @@
 
 ## Overview
 
-The Archive Command handles the process of uploading files to Azure Blob Storage with client-side encryption and compression. It implements a tiered archival solution that optimizes storage costs through deduplication and intelligent storage tier management.
+The **Archive Command** is responsible for orchestrating the archival of files into Azure Blob Storage with client-side compression, encryption, and deduplication.
 
-## File Processing Strategy
+It implements a **multi-stage pipeline** with parallel processing, TAR batching for small files, and intelligent storage tier management.
+The process ensures that identical file content is uploaded only once, storage operations are minimized, and data is secure before leaving the local system.
 
-### When Files Are TARred vs Individual Upload
+### Key Features
 
-The system uses file size to determine the optimal upload strategy:
+* **Deduplication**: SHA256 hashes ensure identical files are stored only once.
+* **Optimized Storage**: TAR batching reduces blob transactions for small files.
+* **Tiering**: Storage tier policies applied automatically after upload.
+* **Client-Side Security**: Compression occurs before AES256 encryption, ensuring efficiency and privacy.
+* **Resilient Orchestration**: Linked cancellation, error handling, and per-hash gates prevent deadlocks and duplicate uploads.
 
-**Individual Upload (Large Files)**:
-- Files above a certain size threshold are uploaded individually
-- Each file becomes a separate chunk in blob storage
-- Suitable for large files where the overhead of TAR packaging isn't beneficial
+## Orchestration Flow
 
-**TAR Archive Upload (Small Files)**:
-- Multiple small files are grouped together into TAR archives
-- The TAR archive is compressed (gzipped) before encryption
-- Reduces the number of individual blob operations
-- More efficient for handling many small files
+The archive command coordinates four concurrent tasks:
 
-## Upload Flow
+1. **Indexing** files from the file system.
+2. **Hashing** files and routing them to either large or small pipelines.
+3. **Uploading large files** individually.
+4. **Batching small files** into compressed TAR archives.
 
-### Large Files (Individual Upload)
+Mermaid overview of the orchestrator:
 
-1. **Read** binary file from local disk
-2. **Compress** data using GZip compression
-3. **Encrypt** the compressed data using AES256
-4. **Upload** encrypted+compressed data to Azure Blob Storage
-5. **Create** pointer file locally referencing the stored chunk
-
-**Data transformation**: `Original File → GZip → AES256 → Blob Storage`
-
-### Small Files (TAR Archive Upload)
-
-1. **Create** TAR archive containing multiple small files
-2. **Compress** the entire TAR using GZip
-3. **Encrypt** the compressed TAR using AES256
-4. **Upload** encrypted TAR to Azure Blob Storage
-5. **Create** pointer files for each original file referencing their location within the TAR
-
-**Data transformation**: `Multiple Files → TAR → GZip → AES256 → Blob Storage`
-
-## Key Benefits
-
-**Compression Before Encryption**: Data is always compressed before encryption because compression algorithms work more effectively on unencrypted data. Encryption makes data appear random, which significantly reduces compression ratios.
-
-**Deduplication**: Files are deduplicated at the chunk level using SHA256 hashes, ensuring identical content is stored only once regardless of file names or locations.
-
-**Storage Optimization**: The TAR strategy for small files reduces the number of blob storage operations and improves cost efficiency by grouping related files together.
-
-**Client-Side Security**: All encryption occurs on the client side before data leaves the local system, ensuring data privacy and security.
-
-## Stream Processing Architecture
-
-The upload process uses a sophisticated stream chaining approach to handle compression, encryption, and position tracking:
-
-```
-Original Data → GZip Compression → AES256 Encryption → Azure Blob Storage
-                       ↓                    ↓                 ↓
-                 [GZipStream] → [CryptoStream] → [BlobStream]
-                       ↑                              ↓
-               Writes flow through here    Position read from here
-                       ↓                              ↑
-               [----------PositionTrackingStream----------]
-                                   ↓
-                          Returned to caller
+```mermaid
+flowchart TD
+%% ================= Orchestrator =================
+ORCH_START[Handle start] --> ORCH_LINKED[Create linked cancellation token]
+ORCH_LINKED --> ORCH_TASKS[Create tasks: index, hash, upload large, upload small]
+ORCH_TASKS --> ORCH_WAIT[Wait for all tasks]
+ORCH_WAIT --> ORCH_CLEAN[Delete pointer entries missing on disk]
+ORCH_CLEAN --> ORCH_HASCHANGES{State repo has changes}
+ORCH_HASCHANGES -->|Yes| ORCH_VACUUM[Vacuum state]
+ORCH_VACUUM --> ORCH_UPLOADSTATE[Upload state file]
+ORCH_UPLOADSTATE --> ORCH_DONE1[Report progress 100]
+ORCH_HASCHANGES -->|No| ORCH_DELETELOCAL[Delete local state file]
+ORCH_DONE1 --> ORCH_END[Handle completed]
+ORCH_DELETELOCAL --> ORCH_END
 ```
 
-### PositionTrackingStream Implementation
+After processing, the state repository is updated, cleaned, and uploaded if changes occurred. Otherwise, the local state is discarded.
 
-The system uses a custom `PositionTrackingStream` wrapper that:
-- **Delegates write operations** to the compression/encryption pipeline (GZipStream when compression is enabled)
-- **Reads position** from the underlying blob stream to track actual bytes written to Azure
-- **Maintains seekability** for position tracking while preserving the encryption pipeline
-- **Handles disposal** properly without interfering with the blob stream lifecycle
 
-### Compression Control
+## Pipeline Design
 
-Compression is explicitly controlled via a boolean parameter rather than content-type detection:
-- **Individual files**: `compress: true` - applies GZip compression before encryption
-- **TAR archives**: `compress: false` - skips additional compression since TAR files are already compressed
+The archival process is built around **channels** that pass work between stages.
 
-This architecture allows the caller to:
-1. Write data through the complete compression + encryption pipeline
-2. Track the actual compressed/encrypted bytes written to blob storage
-3. Use this information for storage tier optimization and database recording
+### Channels
+
+* **`indexedFilesChannel`** → Produced by the indexer, consumed by hashers.
+* **`hashedLargeFilesChannel`** → Produced by hashers, consumed by large file uploaders.
+* **`hashedSmallFilesChannel`** → Produced by hashers, consumed by the small file TAR pipeline.
+
+This design allows high throughput with controlled parallelism.
+
+
+## Index Task
+
+The **indexer** enumerates files from the file system and pushes `FilePair` objects into the `indexedFilesChannel`.
+
+```mermaid
+flowchart TD
+subgraph INDEX_TASK [Index task]
+  direction TB
+  IX_ENUM[Enumerate file entries] --> IX_WRITE[Write FilePair to indexed channel]
+  IX_WRITE --> IX_COMPLETE[Complete indexed channel at end]
+end
+```
+
+
+## Hash Task
+
+The **hasher** processes `FilePair`s in parallel:
+
+* Skips pointer-only files.
+* Computes hashes for binary files.
+* Routes small files to the small-file TAR path and large files to the large-file path.
+
+```mermaid
+flowchart TD
+subgraph HASH_TASK [Hash task]
+  direction TB
+  HS_READ[Read from indexed channel in parallel] --> HS_PTRONLY{File is pointer only}
+  HS_PTRONLY -->|Yes| HS_SKIP[Skip]
+  HS_PTRONLY -->|No| HS_HASH[Compute hash]
+  HS_HASH --> HS_SIZE{Small file boundary}
+  HS_SIZE -->|Small| HS_TO_SMALL[Write to hashed small channel]
+  HS_SIZE -->|Large| HS_TO_LARGE[Write to hashed large channel]
+  HS_TO_SMALL --> HS_ENDSMALL[Complete hashed small channel at end]
+  HS_TO_LARGE --> HS_ENDLARGE[Complete hashed large channel at end]
+end
+```
+
+
+## Large File Uploads
+
+Files above the **small file boundary** are uploaded individually:
+
+* Only the **first uploader per unique hash** performs the upload (`InFlightGate` ensures single ownership).
+* Deduplication ensures duplicates only wait for completion.
+
+```mermaid
+flowchart TD
+subgraph LARGE_PATH [Upload large files path]
+  direction TB
+  LG_READ[Read from hashed large channel in parallel] --> LG_HAVE_BP{BinaryProperties exists}
+  LG_HAVE_BP -->|Yes| LG_PTR[Create pointer file and upsert entry]
+  LG_HAVE_BP -->|No| LG_ENTER[Gate enter by hash]
+  LG_ENTER -->|Owner| LG_UPLOAD[Upload large blob now]
+  LG_UPLOAD --> LG_ADDBP[Add BinaryProperties and set tier]
+  LG_ADDBP --> LG_COMPLETE[Gate complete for hash]
+  LG_COMPLETE --> LG_PTR
+  LG_ENTER -->|Non owner| LG_WAIT[Await owner task]
+  LG_WAIT --> LG_PTR
+  LG_PTR --> LG_DONE[Report progress 100]
+end
+```
+
+**Transformation**:
+`Original File → GZip → AES256 → Blob Storage`
+
+
+## Small File Uploads (TAR Archives)
+
+Small files are aggregated into **TAR archives** to reduce blob operations:
+
+* Owners enqueue their file into the TAR.
+* Non-owners (duplicates) defer pointer creation until the owner completes.
+* When TAR size reaches threshold (or at end of input), the archive is flushed and uploaded as a **single blob**.
+
+```mermaid
+flowchart TD
+subgraph SMALL_PATH [Upload small files tar path]
+  direction TB
+  SM_READ[Read from hashed small channel single reader] --> SM_HAVE_BP{BinaryProperties exists}
+  SM_HAVE_BP -->|Yes| SM_PTR_NOW[Create pointer file and upsert entry]
+  SM_HAVE_BP -->|No| SM_ENTER[Gate enter by hash]
+  SM_ENTER -->|Owner| SM_ADD_TAR[Add entry to in memory tar]
+  SM_ADD_TAR --> SM_FLUSH_DECIDE{Flush tar decision}
+  SM_FLUSH_DECIDE -->|Yes| SM_PROCESS[Process tar archive]
+  SM_FLUSH_DECIDE -->|No| SM_READ
+
+  %% Process TAR results (owners only)
+  SM_PROCESS --> SM_CHILD_BP[Add BinaryProperties for children and parent]
+  SM_CHILD_BP --> SM_PTR_OWNER[Write pointer entries for owners]
+  SM_PTR_OWNER --> SM_COMPLETE_HASH[Gate complete for each owner hash]
+  SM_COMPLETE_HASH --> SM_RESET[Reset tar for next batch]
+  SM_RESET --> SM_READ
+
+  %% Non owner duplicates are deferred
+  SM_ENTER -->|Non owner| SM_DEFER[Defer pointer via continuation on owner task]
+  SM_DEFER --> SM_READ
+
+  %% Finalization after channel drains
+  SM_READ --> SM_FINAL_DECIDE{Channel complete and tar has entries}
+  SM_FINAL_DECIDE -->|Yes| SM_PROCESS
+  SM_FINAL_DECIDE -->|No| SM_AWAIT_DEFER[Await all deferred pointer tasks]
+  SM_AWAIT_DEFER --> SM_DONE[Report progress as needed]
+end
+```
+
+**Transformation**:
+`Multiple Files → TAR → GZip → AES256 → Blob Storage`
+
+
+### TAR Processing Details
+
+When a TAR flush occurs:
+
+* Parent TAR stream is hashed and uploaded.
+* `BinaryProperties` are recorded for both child files and parent TAR.
+* Pointers are written for all files.
+* Deferred duplicates are flushed afterward.
+
+```mermaid
+flowchart TD
+subgraph TAR_DETAILS [Process tar archive details]
+  direction TB
+  TAR_HASH[Compute hash for TAR] --> TAR_UPLOAD[Upload TAR]
+  TAR_UPLOAD --> TAR_TIER[Set storage tier]
+  TAR_TIER --> TAR_PARENT_BP[Add BinaryProperties for TAR]
+  TAR_PARENT_BP --> TAR_NOTE[Write Pointers & PointerFileEntries of TAR Entries]
+end
+```
