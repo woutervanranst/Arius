@@ -34,8 +34,22 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         this.config        = config;
     }
 
+    // Orchestrates "only-one-uploader-per-hash" across all pipelines.
+    // - Enter(hash) returns (isOwner, task):
+    //   - Owner: first entrant for a given hash; responsible for doing the upload
+    //   - Non-owner: anyone else for the same hash; must observe the owner's completion via task
     private readonly InFlightGate<Hash, Unit> uploadGate = new();
 
+    // Pipeline channels:
+    //
+    // 1) indexedFilesChannel:         producer = indexer (single),    consumers = hasher (parallel)
+    // 2) hashedLargeFilesChannel:     producer = hasher (parallel),    consumers = large uploader (parallel)
+    // 3) hashedSmallFilesChannel:     producer = hasher (parallel),    consumer  = small uploader (single)
+    //
+    // Notes:
+    // - small files: a single consumer batches entries into a TAR; only the "owner" of a hash adds to the TAR.
+    //   duplicates (non-owners) are *deferred* — we DO NOT block the reader.
+    // - large files: each owner uploads the blob directly; non-owners await the owner (safe here because it's in a parallel consumer).
     private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
@@ -367,15 +381,15 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     {
         var (filePair, hash) = filePairWithHash;
 
-        // 2. Check if the Binary is already present in the database
+        // LARGE FILES
+        // The first thread to claim 'hash' (owner) uploads the binary now. anyone else (non-owner) simply awaits the owner
         var bp = handlerContext.StateRepository.GetBinaryProperty(hash);
         if (bp is null)
         {
-            // 3. Not yet uploaded - coordinate concurrent uploads
             var (isOwner, uploadTask) = uploadGate.Enter(hash);
             if (isOwner)
             {
-                // 3.1 Owner: perform the upload
+                // OWNER (large): perform the actual upload, then Complete(hash)
                 try
                 {
                     var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
@@ -402,7 +416,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
                     logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
 
-                    // Signal completed upload
                     uploadGate.Complete(hash, Unit.Value);
                 }
                 catch (OperationCanceledException)
@@ -418,15 +431,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             }
             else
             {
-                // 3.2 Waiter: await the existing upload
-                logger.LogDebug("Awaiting existing upload for {Hash}", hash.ToShortString());
+                // NON-OWNER (large): wait for the owner to finish this hash
                 await uploadTask;
             }
-        }
-        else
-        {
-            // Already uploaded
-            logger.LogDebug("File {FileName} already uploaded (hash: {Hash})", filePair.FullName, hash.ToShortString());
         }
 
         // 4.Write the Pointer
@@ -447,10 +454,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting small file TAR archive processing with boundary {SmallFileBoundary}", handlerContext.Request.SmallFileBoundary.Bytes().Humanize());
-        
+
         InMemoryGzippedTarWriter tarWriter = null;
-        // Collect deferred pointer writes for duplicate small files (non-owners).
-        // We will await these once the owner has completed (i.e., after TAR batches are processed).
+
+        // Duplicates (non-owners) are *deferred* here:
+        // - We NEVER await the gate in the loop (that would block the single reader and risk deadlock).
+        // - Instead, we attach continuations to the owner's task and flush them after TAR batches are done.
         var deferredPointerWrites = new List<Task>();
 
         try
@@ -467,30 +476,39 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
                 var (filePair, binaryHash) = filePairWithHash;
 
-                // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
+                // SMALL FILES
+                // Rule: if BinaryProperties do not yet exist:
+                //   - OWNER (first entrant for hash): enqueue the file into the in-memory TAR.
+                //   - NON-OWNER: DO NOT block; create a deferred task to write the pointer once the owner completes.
                 var bp = handlerContext.StateRepository.GetBinaryProperty(binaryHash);
                 if (bp is null)
                 {
-                    // 3. Not yet uploaded
                     var (isOwner, uploadTask) = uploadGate.Enter(binaryHash);
+
                     if (isOwner)
                     {
-                        // 3.1 Owner: add entry to TAR
+                        // OWNER (small): stage entry into TAR; the actual upload happens when we flush the TAR.
                         var tarredEntry = await tarWriter.AddEntryAsync(filePair, binaryHash, cancellationToken);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Queued in TAR..."));
                         logger.LogInformation("Added small file {FileName} to TAR queue (original: {OriginalSize}, archived: {ArchivedSize}, hash: {Hash})", filePair.FullName, filePair.BinaryFile.Length.Bytes().Humanize(), tarredEntry.ArchivedSize.Bytes().Humanize(), binaryHash.ToShortString());
 
-                        var shouldProcessTar = (tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
-                                                tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted) && tarWriter.TarredEntries.Any();
+                        // Flush TAR when:
+                        // - accumulated TAR size exceeds boundary, OR
+                        // - channel is completed (no more input) and we still have staged entries
+                        var shouldProcessTar =
+                            (tarWriter.Position > handlerContext.Request.SmallFileBoundary ||
+                             (tarWriter.Position <= handlerContext.Request.SmallFileBoundary && hashedSmallFilesChannel.Reader.Completion.IsCompleted))
+                            && tarWriter.TarredEntries.Any();
+
                         if (shouldProcessTar)
                         {
+                            // Process TAR: upload parent TAR blob, add BinaryProperties for child + parent,
+                            // write pointer entries (OWNERS ONLY), then Complete(hash) for each owner entry.
                             logger.LogInformation("TAR archive size threshold reached ({TarSize}), processing archive with {FileCount} files", tarWriter.Position.Bytes().Humanize(), tarWriter.TarredEntries.Count);
 
                             try
                             {
                                 await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
-
-                                // Complete all entries after successful processing
                                 foreach (var entry in tarWriter.TarredEntries)
                                     uploadGate.Complete(entry.Hash, Unit.Value);
                             }
@@ -514,11 +532,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     }
                     else
                     {
-                        // 3.2 Non-owner: await the existing upload without blocking the reader
-                        logger.LogInformation("Small file {FileName} is already in-flight (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
+                        // NON-OWNER (small):
+                        // Do NOT await the gate here (single reader!). Defer pointer write until owner completes.
+                        // By the time this continuation runs, owner has uploaded & inserted BinaryProperties
                         var deferred = uploadTask.ContinueWith(t =>
                         {
-                            // Defer the pointer write until the owner completes and BinaryProperties exist.
                             if (t.IsFaulted) throw t.Exception!.GetBaseException();
                             if (t.IsCanceled) throw new OperationCanceledException();
 
@@ -541,20 +559,25 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 {
                     // Already uploaded
                     logger.LogInformation("Small file {FileName} already uploaded (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
+                    var pf = filePair.CreatePointerFile(binaryHash);
+                    handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
+                    {
+                        Hash             = binaryHash,
+                        RelativeName     = pf.Path.FullName,
+                        CreationTimeUtc  = pf.CreationTimeUtc,
+                        LastWriteTimeUtc = pf.LastWriteTimeUtc
+                    });
+
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
                 }
             }
 
-            // Handle any remaining files in the final batch
+            // Final partial TAR flush (owners only)
             if (tarWriter?.TarredEntries.Any() == true)
             {
-                logger.LogInformation("Processing final TAR archive with {FileCount} files", tarWriter.TarredEntries.Count);
-
                 try
                 {
                     await ProcessTarArchive(handlerContext, tarWriter, cancellationToken);
-
-                    // Complete all entries after successful processing
                     foreach (var entry in tarWriter.TarredEntries)
                         uploadGate.Complete(entry.Hash, Unit.Value);
                 }
@@ -572,12 +595,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 }
             }
 
-            // Now that owners have completed, await all deferred pointer writes.
+            // Now that all owners have completed, flush deferred duplicate pointers.
             if (deferredPointerWrites.Count > 0)
-            {
-                logger.LogDebug("Awaiting {Count} deferred pointer writes", deferredPointerWrites.Count);
                 await Task.WhenAll(deferredPointerWrites);
-            }
             
             logger.LogInformation("Small file TAR processing completed");
         }
@@ -590,9 +610,14 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, CancellationToken cancellationToken)
     {
+        // OWNER ENTRIES ONLY:
+        // - Upload the parent TAR blob (already gzipped)
+        // - Insert BinaryProperties for each child entry + parent TAR
+        // - Write pointer entries for owners (duplicates are handled by deferred tasks outside)
+        // - Progress for owners goes to 100% here; duplicates finalize via deferred tasks
         var fileCount = tarWriter.TarredEntries.Count;
         var totalOriginalSize = tarWriter.TotalOriginalSize;
-        
+
         logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {TotalSize})", fileCount, totalOriginalSize.Bytes().Humanize());
         
         await using var sourceStream = tarWriter.GetCompletedArchive();
