@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Configuration;
-using System.Reflection;
 
 namespace Arius.Explorer.Settings;
 
@@ -76,7 +75,7 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
 
     [UserScopedSetting]
     [DefaultSettingValue("")]
-    private string LastUpgradedVersion
+    public string LastUpgradedVersion
     {
         get => (string)(this[nameof(LastUpgradedVersion)] ?? string.Empty);
         set => this[nameof(LastUpgradedVersion)] = value;
