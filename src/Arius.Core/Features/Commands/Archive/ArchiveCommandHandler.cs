@@ -237,7 +237,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 catch (IOException e)
                 {
                     logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
-                    // TODO notify of warnings via ArchiveCommandResult and/or progressupdate
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, $"Error: {e.Message}"));
                 }
                 catch (OperationCanceledException)
                 {
