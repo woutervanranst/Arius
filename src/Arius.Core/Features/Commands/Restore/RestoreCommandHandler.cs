@@ -4,6 +4,7 @@ using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using AsyncKeyedLock;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
     private readonly InFlightGate<Hash, FileEntry?> tarCacheGate = new();
-    private readonly ConcurrentDictionary<Hash, SemaphoreSlim> tarReaderLocks = new();
+    private readonly AsyncKeyedLocker<Hash> tarReaderLocker = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -344,9 +345,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
 
         // Acquire exclusive lock for reading this TAR to prevent race conditions
-        var tarReaderLock = await AcquireTarReaderLockAsync(parentHash, cancellationToken);
-        try
+        using (await tarReaderLocker.LockAsync(parentHash, cancellationToken))
         {
+            logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
+
             await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
             await using var tarReader = new TarReader(tarStream);
             var tarEntry = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
@@ -366,6 +368,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 await ts.FlushAsync(cancellationToken); // Explicitly flush
             }
 
+            logger.LogDebug("Released TAR reader lock for {ParentHash}", parentHash.ToShortString());
+
             async Task<TarEntry?> GetTarEntryAsync(Hash hash)
             {
                 logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
@@ -383,10 +387,6 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
                 return null;
             }
-        }
-        finally
-        {
-            ReleaseTarReaderLock(parentHash, tarReaderLock);
         }
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
@@ -581,35 +581,5 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             }
         }, cancellationToken);
 
-    /// <summary>
-    /// Acquires an exclusive lock for reading from a specific TAR file to prevent race conditions
-    /// when multiple threads try to read from the same non-seekable TAR stream concurrently.
-    /// </summary>
-    private async Task<SemaphoreSlim> AcquireTarReaderLockAsync(Hash parentHash, CancellationToken cancellationToken = default)
-    {
-        var semaphore = tarReaderLocks.GetOrAdd(parentHash, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync(cancellationToken);
-        logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
-        return semaphore;
-    }
-
-    /// <summary>
-    /// Releases the exclusive lock for reading from a specific TAR file.
-    /// </summary>
-    private void ReleaseTarReaderLock(Hash parentHash, SemaphoreSlim semaphore)
-    {
-        logger.LogDebug("Releasing TAR reader lock for {ParentHash}", parentHash.ToShortString());
-        semaphore.Release();
-        
-        // Clean up unused semaphores to prevent memory leaks
-        // Only remove if no one is waiting and it's the same instance we added
-        if (semaphore.CurrentCount == 1 && tarReaderLocks.TryGetValue(parentHash, out var existingSemaphore) && ReferenceEquals(semaphore, existingSemaphore))
-        {
-            if (tarReaderLocks.TryRemove(parentHash, out _))
-            {
-                logger.LogDebug("Cleaned up TAR reader lock for {ParentHash}", parentHash.ToShortString());
-            }
-        }
-    }
 
 }
