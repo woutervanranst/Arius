@@ -3,6 +3,7 @@ using Arius.Core.Shared.Storage;
 using Mediator;
 using NSubstitute;
 using Shouldly;
+using System.Threading.Tasks;
 
 namespace Arius.Cli.Tests;
 
@@ -213,4 +214,25 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
             Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMediatorThrows_ReturnsNonZeroExitCode()
+    {
+        // Arrange
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<Unit>(Task.FromException<Unit>(new InvalidOperationException("boom"))));
+
+        var tempPath = Path.GetTempPath();
+        var command  = $"archive {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        // Act
+        var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+        // Assert
+        exitCode.ShouldBe(1);
+        error.ShouldContain("boom");
+    }
 }
+
