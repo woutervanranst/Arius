@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using System.IO;
 using System.Reflection;
 
 namespace Arius.Cli;
@@ -19,6 +20,8 @@ internal static class Program
         var logDirectory         = isRunningInContainer ? "/logs" : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "logs");
         var logPath              = Path.Combine(logDirectory, $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
+        Directory.CreateDirectory(logDirectory);
+
         // Configure the static logger instance
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug() // Capture all levels of logs
@@ -30,28 +33,47 @@ internal static class Program
                 outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{ShortSourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
+        var exitCode = 0;
+
         try
         {
             Log.Information("Starting Arius CLI...");
             Log.Information("Version: {Version}", GetVersion());
 
-            var exitCode = await CreateBuilder()
+            exitCode = await CreateBuilder()
                 .UseTypeActivator(CreateServiceProvider().GetService)
                 .Build()
                 .RunAsync(args);
-            
+
             if (exitCode == 0)
             {
                 Log.Information("Arius CLI finished successfully.");
             }
-            
-            return exitCode;
+            else
+            {
+                Log.Warning("Arius CLI completed with a non-zero exit code: {ExitCode}", exitCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            exitCode = exitCode == 0 ? 1 : exitCode;
+            Log.Fatal(ex, "A fatal error occurred while executing Arius CLI.");
         }
         finally
         {
-            // Ensure all buffered logs are written to the file before exiting
-            await Log.CloseAndFlushAsync();
+            try
+            {
+                // Ensure all buffered logs are written to the file before exiting
+                await Log.CloseAndFlushAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to flush logs: {ex.Message}");
+                exitCode = exitCode == 0 ? 1 : exitCode;
+            }
         }
+
+        return exitCode;
     }
 
     public static CliApplicationBuilder CreateBuilder()
