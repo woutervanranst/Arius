@@ -29,7 +29,8 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
 
     [Fact]
-    public async Task RunArchiveCommandTEMP() // NOTE TEMP this one is skipped in CI
+    [Trait("Category", "SkipCI")]
+    public async Task RunArchiveCommandTEMP() // NOTE TEMP this one is skipped in CI via the SkipCI category
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
 
