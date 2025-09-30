@@ -40,6 +40,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
     private readonly InFlightGate<Hash, FileEntry?> tarCacheGate = new();
+    private readonly ConcurrentDictionary<Hash, SemaphoreSlim> tarReaderLocks = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -341,25 +342,51 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         }
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
-        
-        await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-        await using var tarReader = new TarReader(tarStream);
-        var tarEntryData = await GetTarEntryDataAsync(pointerFileEntry.BinaryProperties.Hash);
 
-        if (tarEntryData is null)
+        // Acquire exclusive lock for reading this TAR to prevent race conditions
+        var tarReaderLock = await AcquireTarReaderLockAsync(parentHash, cancellationToken);
+        try
         {
-            logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
-            throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
+            await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+            await using var tarReader = new TarReader(tarStream);
+            var tarEntry = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
+            if (tarEntry is null)
+            {
+                logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
+                throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
+            }
+
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
+
+            // 2. Write to the target file
+            filePair.BinaryFile.Directory.Create();
+            await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+            {
+                await tarEntry.DataStream!.CopyToAsync(ts, cancellationToken);
+                await ts.FlushAsync(cancellationToken); // Explicitly flush
+            }
+
+            async Task<TarEntry?> GetTarEntryAsync(Hash hash)
+            {
+                logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
+
+                TarEntry? entry;
+                while ((entry = await tarReader.GetNextEntryAsync(copyData: true, cancellationToken)) != null)
+                {
+                    if (entry.Name == hash)
+                    {
+                        logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
+                        return entry;
+                    }
+                }
+
+                logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
+                return null;
+            }
         }
-
-        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
-
-        // 2. Write to the target file
-        filePair.BinaryFile.Directory.Create();
-        await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+        finally
         {
-            await ts.WriteAsync(tarEntryData, cancellationToken);
-            await ts.FlushAsync(cancellationToken); // Explicitly flush
+            ReleaseTarReaderLock(parentHash, tarReaderLock);
         }
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
@@ -429,38 +456,6 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             }
         }
 
-        async Task<byte[]?> GetTarEntryDataAsync(Hash hash)
-        {
-            logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
-            
-            TarEntry? entry;
-            while ((entry = await tarReader.GetNextEntryAsync(copyData: false, cancellationToken)) != null)
-            {
-                if (entry.Name == hash)
-                {
-                    logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
-                    
-                    //if (entry.DataStream == null)
-                    //{
-                    //    logger.LogError("TAR entry found but DataStream is null for hash {Hash}. This may indicate a concurrent read issue.", hash.ToShortString());
-                    //    return null;
-                    //}
-
-                    // Read the entire entry data into a byte array to avoid stream lifecycle issues & to avoid race conditions when multiple restores are accessing the same tar
-                    //  When copyData: false is used, DataStream is only valid immediately after finding the entry.
-                    //  Multiple concurrent readers can cause the stream position to advance, making DataStream null.
-                    using var memoryStream = new MemoryStream();
-                    await entry.DataStream.CopyToAsync(memoryStream, cancellationToken);
-                    var data = memoryStream.ToArray();
-                    
-                    logger.LogDebug("Successfully read {ByteCount} bytes from TAR entry for hash {Hash}", data.Length, hash.ToShortString());
-                    return data;
-                }
-            }
-
-            logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
-            return null;
-        }
     }
 
     private readonly ConcurrentBag<PointerFileEntry> toRehydrateList = new();
@@ -585,5 +580,36 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 throw;
             }
         }, cancellationToken);
+
+    /// <summary>
+    /// Acquires an exclusive lock for reading from a specific TAR file to prevent race conditions
+    /// when multiple threads try to read from the same non-seekable TAR stream concurrently.
+    /// </summary>
+    private async Task<SemaphoreSlim> AcquireTarReaderLockAsync(Hash parentHash, CancellationToken cancellationToken = default)
+    {
+        var semaphore = tarReaderLocks.GetOrAdd(parentHash, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync(cancellationToken);
+        logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
+        return semaphore;
+    }
+
+    /// <summary>
+    /// Releases the exclusive lock for reading from a specific TAR file.
+    /// </summary>
+    private void ReleaseTarReaderLock(Hash parentHash, SemaphoreSlim semaphore)
+    {
+        logger.LogDebug("Releasing TAR reader lock for {ParentHash}", parentHash.ToShortString());
+        semaphore.Release();
+        
+        // Clean up unused semaphores to prevent memory leaks
+        // Only remove if no one is waiting and it's the same instance we added
+        if (semaphore.CurrentCount == 1 && tarReaderLocks.TryGetValue(parentHash, out var existingSemaphore) && ReferenceEquals(semaphore, existingSemaphore))
+        {
+            if (tarReaderLocks.TryRemove(parentHash, out _))
+            {
+                logger.LogDebug("Cleaned up TAR reader lock for {ParentHash}", parentHash.ToShortString());
+            }
+        }
+    }
 
 }
