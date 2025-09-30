@@ -6,9 +6,9 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "Arius.Explorer/5.0.135": {
+      "Arius.Explorer/5.0.136": {
         "dependencies": {
-          "Arius.Core": "5.0.135",
+          "Arius.Core": "5.0.136-prerelease",
           "CommunityToolkit.Mvvm": "8.4.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.9",
           "Microsoft.Extensions.Configuration.UserSecrets": "9.0.9",
@@ -970,7 +970,7 @@
           }
         }
       },
-      "Arius.Core/5.0.135": {
+      "Arius.Core/5.0.136-prerelease": {
         "dependencies": {
           "AsyncKeyedLock": "7.1.6",
           "Azure.Storage.Blobs": "12.25.1",
@@ -988,15 +988,15 @@
         },
         "runtime": {
           "Arius.Core.dll": {
-            "assemblyVersion": "5.0.135.0",
-            "fileVersion": "5.0.135.0"
+            "assemblyVersion": "5.0.136.0",
+            "fileVersion": "5.0.136.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "Arius.Explorer/5.0.135": {
+    "Arius.Explorer/5.0.136": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1554,7 +1554,7 @@
       "path": "zio/0.21.2",
       "hashPath": "zio.0.21.2.nupkg.sha512"
     },
-    "Arius.Core/5.0.135": {
+    "Arius.Core/5.0.136-prerelease": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
