@@ -36,7 +36,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
     private readonly InFlightGate<Hash, FileEntry?> tarCacheGate = new();
-    private readonly AsyncKeyedLocker<Hash> tarReaderLocker = new();
+    //private readonly AsyncKeyedLocker<Hash> tarReaderLocker = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -340,9 +340,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
 
-        // Acquire exclusive lock for reading this TAR to prevent race conditions
-        using (await tarReaderLocker.LockAsync(parentHash, cancellationToken))
-        {
+        //// Acquire exclusive lock for reading this TAR to prevent race conditions
+        //using (await tarReaderLocker.LockAsync(parentHash, cancellationToken))
+        //{
             logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
 
             await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -389,7 +389,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
                 return null;
             }
-        }
+        //}
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
