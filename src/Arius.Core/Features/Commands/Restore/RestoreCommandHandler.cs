@@ -25,16 +25,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
-    private readonly IOptions<AriusConfiguration>   config;
 
-    public RestoreCommandHandler(
-        ILogger<RestoreCommandHandler> logger,
-        ILoggerFactory loggerFactory,
-        IOptions<AriusConfiguration> config)
+    public RestoreCommandHandler(ILogger<RestoreCommandHandler> logger, ILoggerFactory loggerFactory, IOptions<AriusConfiguration> config)
     {
         this.logger        = logger;
         this.loggerFactory = loggerFactory;
-        this.config        = config;
     }
 
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);

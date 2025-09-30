@@ -22,16 +22,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
-    private readonly IOptions<AriusConfiguration>   config;
 
-    public ArchiveCommandHandler(
-        ILogger<ArchiveCommandHandler> logger,
-        ILoggerFactory loggerFactory,
-        IOptions<AriusConfiguration> config)
+    public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger, ILoggerFactory loggerFactory, IOptions<AriusConfiguration> config)
     {
         this.logger        = logger;
         this.loggerFactory = loggerFactory;
-        this.config        = config;
     }
 
     // Orchestrates "only-one-uploader-per-hash" across all pipelines.
