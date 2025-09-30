@@ -5,7 +5,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AsyncKeyedLock" />
 		<PackageReference Include="Azure.Storage.Blobs" />
 		<PackageReference Include="EFCore.BulkExtensions.Sqlite" />
 		<PackageReference Include="FluentResults" />

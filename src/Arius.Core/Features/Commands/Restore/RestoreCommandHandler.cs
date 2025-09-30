@@ -4,7 +4,6 @@ using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
-using AsyncKeyedLock;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -36,7 +35,6 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
     private readonly InFlightGate<Hash, FileEntry?> tarCacheGate = new();
-    //private readonly AsyncKeyedLocker<Hash> tarReaderLocker = new();
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
@@ -324,7 +322,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
     {
         var (filePair, pointerFileEntry) = filePairWithPointerFileEntry;
         var fileSizeFormatted = pointerFileEntry.BinaryProperties.OriginalSize.Bytes().Humanize();
-        var parentHash = pointerFileEntry.BinaryProperties.ParentHash!;
+        var parentHash        = pointerFileEntry.BinaryProperties.ParentHash!;
 
         logger.LogDebug("Starting small file download for {FileName} from TAR (size: {FileSize}, parent hash: {ParentHash})", filePair.BinaryFile.FullName, fileSizeFormatted, parentHash.ToShortString());
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 30, "Getting TAR archive..."));
@@ -340,56 +338,31 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Extracting from TAR..."));
 
-        //// Acquire exclusive lock for reading this TAR to prevent race conditions
-        //using (await tarReaderLocker.LockAsync(parentHash, cancellationToken))
-        //{
-            logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
+        logger.LogDebug("Acquired TAR reader lock for {ParentHash}", parentHash.ToShortString());
 
-            await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-            await using var tarReader = new TarReader(tarStream);
-            var tarEntry = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
-            if (tarEntry is null)
+        await using var tarStream = tar.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var tarReader = new TarReader(tarStream);
+        var             tarEntry  = await GetTarEntryAsync(pointerFileEntry.BinaryProperties.Hash);
+        if (tarEntry is null)
+        {
+            logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
+            throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
+        }
+
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
+
+        // 2. Write to the target file
+        filePair.BinaryFile.Directory.Create();
+        await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
+        {
+            if (tarEntry.DataStream is not null)
             {
-                logger.LogError("TAR entry not found for file {FileName} (hash: {Hash}) in TAR archive {ParentHash}", filePair.BinaryFile.FullName, pointerFileEntry.BinaryProperties.Hash.ToShortString(), parentHash.ToShortString());
-                throw new InvalidOperationException($"TAR entry not found for file {filePair.BinaryFile.FullName}"); // TODO handle more graceful?
+                // NOTE: an empty file (0 byte) has a DataStream null.
+                await tarEntry.DataStream.CopyToAsync(ts, cancellationToken);
             }
 
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 70, "Writing file..."));
-
-            // 2. Write to the target file
-            filePair.BinaryFile.Directory.Create();
-            await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
-            {
-                if (tarEntry.DataStream is not null)
-                {
-                    // NOTE: an empty file (0 byte) has a DataStream null.
-                    await tarEntry.DataStream.CopyToAsync(ts, cancellationToken);
-                }
-                
-                await ts.FlushAsync(cancellationToken); // Explicitly flush
-            }
-
-            logger.LogDebug("Released TAR reader lock for {ParentHash}", parentHash.ToShortString());
-
-
-            async Task<TarEntry?> GetTarEntryAsync(Hash hash)
-            {
-                logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
-
-                TarEntry? entry;
-                while ((entry = await tarReader.GetNextEntryAsync(copyData: true, cancellationToken)) != null)
-                {
-                    if (entry.Name == hash)
-                    {
-                        logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
-                        return entry;
-                    }
-                }
-
-                logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
-                return null;
-            }
-        //}
+            await ts.FlushAsync(cancellationToken); // Explicitly flush
+        }
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
@@ -413,7 +386,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                         logger.LogDebug("TAR archive not cached, downloading from blob storage (parent hash: {ParentHash})", parentHash.ToShortString());
 
                         await using var ss = await GetChunkStreamAsync(handlerContext, pointerFileEntry, cancellationToken);
-                        if (ss is null) 
+                        if (ss is null)
                         {
                             // Chunk is not available (either archived or rehydrating)
                             tarCacheGate.Complete(parentHash, null);
@@ -458,6 +431,23 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             }
         }
 
+        async Task<TarEntry?> GetTarEntryAsync(Hash hash)
+        {
+            logger.LogDebug("Searching for TAR entry with hash {Hash}", hash.ToShortString());
+
+            TarEntry? entry;
+            while ((entry = await tarReader.GetNextEntryAsync(copyData: false, cancellationToken)) != null)
+            {
+                if (entry.Name == hash)
+                {
+                    logger.LogDebug("Found TAR entry for hash {Hash}", hash.ToShortString());
+                    return entry;
+                }
+            }
+
+            logger.LogError("TAR entry not found for hash {Hash}", hash.ToShortString());
+            return null;
+        }
     }
 
     private readonly ConcurrentBag<PointerFileEntry> toRehydrateList = new();
