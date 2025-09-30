@@ -134,11 +134,11 @@ internal class FilePairFileSystem : ComposeFileSystem
     }
 
     static bool ShouldSkipDirectory(DirectoryEntry dir) =>
-        (dir.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        (dir.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
         ExcludedDirectories.Contains(dir.Name);
 
     static bool ShouldSkipFile(FileEntry file) =>
-        (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        (file.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
         ExcludedFiles.Contains(Path.GetFileName(file.FullName));
 
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };

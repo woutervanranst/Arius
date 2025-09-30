@@ -39,6 +39,7 @@ public class FilePairFileSystemTests
             "/subdir/file3.txt",
             "/subdir/file4.txt",
             "/subdir/file5.txt",
+            "/.file5_hidden.txt",
             "/subdir2/file9.txt"
         };
 
@@ -58,7 +59,8 @@ public class FilePairFileSystemTests
         var expectedRelativePaths = new[]
         {
             "/file1.txt",
-            "/file2.txt"
+            "/file2.txt",
+            "/.file5_hidden.txt",
         };
 
         // Act
