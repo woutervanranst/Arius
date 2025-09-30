@@ -216,6 +216,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                         // TODO implement 'var latentPointers = new ConcurrentQueue<PointerFile>();'
 
                         logger.LogWarning("File {FileName} is a pointer file without an associated binary, skipping", filePair.FullName);
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, "Error: pointer file without binary"));
                     }
                     else
                     {

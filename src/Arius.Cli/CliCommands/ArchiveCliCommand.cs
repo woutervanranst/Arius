@@ -91,18 +91,22 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                         // Handle different types of progress updates
                         if (u is TaskProgressUpdate tpu)
                         {
-                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
+                            var isError = tpu.Percentage < 0;
+                            var color = isError ? "red" : "blue";
+                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
                             if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                                task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                            if (tpu.Percentage >= 100)
+                                task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                            if (tpu.Percentage >= 100/* || isError*/)
                                 task.StopTask();
                         }
                         else if (u is FileProgressUpdate fpu)
                         {
-                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
-                            task.Description = $"[blue]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
-                            task.Value       = fpu.Percentage;
-                            if (fpu.Percentage >= 100)
+                            var isError = fpu.Percentage < 0;
+                            var color = isError ? "red" : "blue";
+                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
+                            task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Value       = isError ? 0 : fpu.Percentage;
+                            if (fpu.Percentage >= 100/* || isError*/)
                                 task.StopTask();
                         }
                         else
