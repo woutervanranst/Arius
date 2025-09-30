@@ -37,11 +37,11 @@ public class StateRepositoryBenchmark
     [GlobalSetup]
     public void GlobalSetup()
     {
-        tempDir = Path.Combine(Path.GetTempPath(), "AriusBenchmarks", Guid.NewGuid().ToString());
+        tempDir = Path.Join(Path.GetTempPath(), "AriusBenchmarks", Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempDir);
         
-        v50DatabaseFile = new FileInfo(Path.Combine(tempDir, "v50_state.db"));
-        v51DatabaseFile = FileSystemExtensions.CreateTempSubdirectory("benchmark", false).GetFileEntry(Path.Combine(tempDir, "v51_state.db"));
+        v50DatabaseFile = new FileInfo(Path.Join(tempDir, "v50_state.db"));
+        v51DatabaseFile = FileSystemExtensions.CreateTempSubdirectory("benchmark", false).GetFileEntry(Path.Join(tempDir, "v51_state.db"));
 
         var logger = NullLogger<V5StateRepository>.Instance;
         var v51Logger = NullLogger<StateRepositoryDbContextPool>.Instance;

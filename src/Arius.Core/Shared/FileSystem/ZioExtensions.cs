@@ -91,9 +91,9 @@ internal static class FileSystemExtensions
         var path = (purpose, persistent) switch
         {
             (null, true)      => throw new ArgumentException("If purpose is not specified, ephemeral must be true", nameof(purpose)),
-            (not null, true)  => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", purpose),
-            (null, false)     => Path.Combine(Path.GetTempPath(), $"arius-{Guid.CreateVersion7()}"),
-            (not null, false) => Path.Combine(Path.GetTempPath(), $"arius-{purpose}-{Guid.CreateVersion7()}"),
+            (not null, true)  => Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", purpose),
+            (null, false)     => Path.Join(Path.GetTempPath(), $"arius-{Guid.CreateVersion7()}"),
+            (not null, false) => Path.Join(Path.GetTempPath(), $"arius-{purpose}-{Guid.CreateVersion7()}"),
         };
 
         path = Path.GetFullPath(path); // we need full paths on linux with the Env.SpecialFolder

@@ -49,10 +49,10 @@ internal static class DirectoryInfoExtensions
         Directory.CreateDirectory(targetDir);
 
         foreach (var file in Directory.GetFiles(sourceDir))
-            File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+            File.Copy(file, Path.Join(targetDir, Path.GetFileName(file)));
 
         foreach (var directory in Directory.GetDirectories(sourceDir))
-            directory.CopyTo(Path.Combine(targetDir, Path.GetFileName(directory)));
+            directory.CopyTo(Path.Join(targetDir, Path.GetFileName(directory)));
     }
 
 

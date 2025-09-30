@@ -49,8 +49,8 @@ namespace Arius.Core.DbMigrationV3V5
             if (v3BlobClient.GetProperties().Value.Metadata.TryGetValue("DatabaseVersion", out var version) && version == "5")
                 return;
 
-            var v3LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v3.sqlite");
-            var v5LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v5.sqlite");
+            var v3LocalDbPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v3.sqlite");
+            var v5LocalDbPath = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v5.sqlite");
 
             if (!File.Exists(v3LocalDbPath))
             {
