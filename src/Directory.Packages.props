@@ -2,10 +2,8 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
-
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-
     <Authors>Wouter Van Ranst</Authors>
     <Company>Blue Software</Company>
     <Copyright>Blue Software</Copyright>
@@ -14,8 +12,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="AsyncKeyedLock" Version="7.1.6" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.25.0" />
-    <PackageVersion Include="BenchmarkDotNet" Version="0.15.3" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.25.1" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.4" />
     <PackageVersion Include="CliFx" Version="2.3.6" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
@@ -49,10 +47,10 @@
     <PackageVersion Include="Spectre.Console" Version="0.51.1" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.3" />
     <PackageVersion Include="System.Reactive" Version="6.0.2" />
-    <PackageVersion Include="TngTech.ArchUnitNET" Version="0.12.1" />
-    <PackageVersion Include="WouterVanRanst.Utils" Version="2.0.8" />
-    <PackageVersion Include="xunit.v3" Version="3.0.1" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageVersion Include="TngTech.ArchUnitNET" Version="0.12.3" />
+    <PackageVersion Include="WouterVanRanst.Utils" Version="2.0.10" />
+    <PackageVersion Include="xunit.v3" Version="3.1.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="Zio" Version="0.21.2" />
     <PackageVersion Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
   </ItemGroup>
