@@ -6,9 +6,9 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "Arius.Explorer/5.0.139": {
+      "Arius.Explorer/5.0.140": {
         "dependencies": {
-          "Arius.Core": "5.0.139",
+          "Arius.Core": "5.0.140",
           "CommunityToolkit.Mvvm": "8.4.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.9",
           "Microsoft.Extensions.Configuration.UserSecrets": "9.0.9",
@@ -23,14 +23,6 @@
         },
         "runtime": {
           "Arius.Explorer.dll": {}
-        }
-      },
-      "AsyncKeyedLock/7.1.6": {
-        "runtime": {
-          "lib/net9.0/AsyncKeyedLock.dll": {
-            "assemblyVersion": "7.1.6.0",
-            "fileVersion": "7.1.6.0"
-          }
         }
       },
       "Azure.Core/1.44.1": {
@@ -970,9 +962,8 @@
           }
         }
       },
-      "Arius.Core/5.0.139": {
+      "Arius.Core/5.0.140": {
         "dependencies": {
-          "AsyncKeyedLock": "7.1.6",
           "Azure.Storage.Blobs": "12.25.1",
           "EFCore.BulkExtensions.Sqlite": "9.0.1",
           "FluentResults": "4.0.0",
@@ -988,25 +979,18 @@
         },
         "runtime": {
           "Arius.Core.dll": {
-            "assemblyVersion": "5.0.139.0",
-            "fileVersion": "5.0.139.0"
+            "assemblyVersion": "5.0.140.0",
+            "fileVersion": "5.0.140.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "Arius.Explorer/5.0.139": {
+    "Arius.Explorer/5.0.140": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
-    },
-    "AsyncKeyedLock/7.1.6": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-zoYk4WqHuTxU/OMAaMfy+1Jgvg4K8wlxU13P/AOHXcX4POOVNRLBgB0o15cUH2ixRScdKX8YXOQGsJ5piJlx6w==",
-      "path": "asynckeyedlock/7.1.6",
-      "hashPath": "asynckeyedlock.7.1.6.nupkg.sha512"
     },
     "Azure.Core/1.44.1": {
       "type": "package",
@@ -1554,7 +1538,7 @@
       "path": "zio/0.21.2",
       "hashPath": "zio.0.21.2.nupkg.sha512"
     },
-    "Arius.Core/5.0.139": {
+    "Arius.Core/5.0.140": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

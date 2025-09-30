@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">
-  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="5.0.139.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
+  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="5.0.140.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
   <description asmv2:iconFile="Resources\iceberg.ico" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <application />
   <entryPoint>
@@ -60,16 +60,16 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>UOKrS2S96khMTXaw8WFYCftjxgSYLKOHYhxqd2PQ8TA=</dsig:DigestValue>
+      <dsig:DigestValue>VYQnk7BZzxXQqIWse23Wru5WEFFRWBYNxYRbFPTha0c=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.deps.json" size="64020">
+  <file name="Arius.Explorer.deps.json" size="63463">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>E5VjRVkytA/wDLyQzJYiyD9vZ3oRnfcg3waEkTzP+3w=</dsig:DigestValue>
+      <dsig:DigestValue>di1lcZDzlOvidrsa2XeXYvNPMktGANeDpo1CM27yPI0=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll" size="253952">
@@ -78,7 +78,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>KVFdrZrRa4zi/WH1eOt36hVOVeyRGuwpD+Pqd8Z0W94=</dsig:DigestValue>
+      <dsig:DigestValue>eK2AnJNf/uvdM24uv3KRhq9+yX1RhGMx43j+FSTe7xc=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.exe" size="341504">
@@ -87,7 +87,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>IhOABPoHcfAmYOwxesd/OovgDKvwsQBMdLI7Fz67wEk=</dsig:DigestValue>
+      <dsig:DigestValue>/DCnmwPrJitY/xBK7fyCQEmeng5QwixedFGzG/Vvq0w=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.runtimeconfig.json" size="652">
@@ -97,15 +97,6 @@
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
       <dsig:DigestValue>DVAVy456xPiZMwKy8apXJ8kTDTfLlx7SOKLQMCXCpO4=</dsig:DigestValue>
-    </hash>
-  </file>
-  <file name="AsyncKeyedLock.dll" size="147456">
-    <hash>
-      <dsig:Transforms>
-        <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
-      </dsig:Transforms>
-      <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>74imwagip9IOwrt/mvMVUtNlUVjpbIAqwYMHRWSi35k=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Azure.Core.dll" size="426552">
