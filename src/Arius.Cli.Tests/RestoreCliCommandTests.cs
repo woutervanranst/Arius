@@ -2,6 +2,7 @@ using Arius.Core.Features.Commands.Restore;
 using Mediator;
 using NSubstitute;
 using Shouldly;
+using System.Threading.Tasks;
 
 namespace Arius.Cli.Tests;
 
@@ -283,5 +284,33 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.Targets.ShouldBe(["./"]);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenMediatorThrows_ReturnsNonZeroExitCode()
+    {
+        // Arrange
+        var mediatorMock = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(_ => new ValueTask<RestoreCommandResult>(Task.FromException<RestoreCommandResult>(new InvalidOperationException("boom"))));
+
+        Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
+        var tempPath = Path.GetTempPath();
+        var command  = $"restore --root {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(1);
+            error.ShouldContain("boom");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ARIUS_ACCOUNT_KEY", null);
+        }
     }
 }
