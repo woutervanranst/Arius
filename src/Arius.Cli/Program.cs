@@ -17,8 +17,8 @@ internal static class Program
     {
         // --- Serilog Configuration ---
         var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-        var logDirectory         = isRunningInContainer ? "/logs" : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "logs");
-        var logPath              = Path.Combine(logDirectory, $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
+        var logDirectory         = isRunningInContainer ? "/logs" : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "logs");
+        var logPath              = Path.Join(logDirectory, $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
         Directory.CreateDirectory(logDirectory);
 
