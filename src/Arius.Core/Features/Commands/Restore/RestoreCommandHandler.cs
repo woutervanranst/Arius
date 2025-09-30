@@ -131,6 +131,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                     if (!pfes.Any())
                     {
                         logger.LogWarning("Target {TargetPath} was specified but no matching PointerFileEntry found", targetPath);
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(targetPath.FullName, -1, "Error: no matching entry found"));
                     }
                     else
                     {

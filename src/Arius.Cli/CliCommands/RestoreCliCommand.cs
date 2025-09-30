@@ -92,19 +92,23 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                         // Handle different types of progress updates
                         if (u is TaskProgressUpdate tpu)
                         {
-                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[cyan1]{taskName}[/]").IsIndeterminate());
+                            var isError = tpu.Percentage < 0;
+                            var color = isError ? "red" : "cyan1";
+                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
                             if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                                task.Description = $"[cyan1]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                            task.Value = tpu.Percentage;
-                            if (tpu.Percentage >= 100)
+                                task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                            task.Value = isError ? 0 : tpu.Percentage;
+                            if (tpu.Percentage >= 100/* || isError*/)
                                 task.StopTask();
                         }
                         else if (u is FileProgressUpdate fpu)
                         {
-                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[cyan3]{fileName}[/]"));
-                            task.Description = $"[cyan3]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
-                            task.Value       = fpu.Percentage;
-                            if (fpu.Percentage >= 100)
+                            var isError = fpu.Percentage < 0;
+                            var color = isError ? "red" : "cyan3";
+                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
+                            task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Value       = isError ? 0 : fpu.Percentage;
+                            if (fpu.Percentage >= 100/* || isError*/)
                                 task.StopTask();
                         }
                         else
