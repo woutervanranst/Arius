@@ -360,11 +360,17 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
             filePair.BinaryFile.Directory.Create();
             await using (var ts = filePair.BinaryFile.OpenWrite(pointerFileEntry.BinaryProperties.OriginalSize))
             {
-                await tarEntry.DataStream!.CopyToAsync(ts, cancellationToken);
+                if (tarEntry.DataStream is not null)
+                {
+                    // NOTE: an empty file (0 byte) has a DataStream null.
+                    await tarEntry.DataStream.CopyToAsync(ts, cancellationToken);
+                }
+                
                 await ts.FlushAsync(cancellationToken); // Explicitly flush
             }
 
             logger.LogDebug("Released TAR reader lock for {ParentHash}", parentHash.ToShortString());
+
 
             async Task<TarEntry?> GetTarEntryAsync(Hash hash)
             {

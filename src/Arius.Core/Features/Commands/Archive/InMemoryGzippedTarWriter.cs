@@ -39,7 +39,7 @@ internal sealed class InMemoryGzippedTarWriter : IDisposable
         {
             var entry = new PaxTarEntry(TarEntryType.RegularFile, hash.ToString())
             {
-                DataStream = ss
+                DataStream = ss //NOTE that a file can be zero length
             };
 
             await tarWriter.WriteEntryAsync(entry, cancellationToken);

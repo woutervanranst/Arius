@@ -205,4 +205,55 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         // Verify no other calls were made to storageMock
         storageMock.ReceivedCalls().Count().ShouldBe(6);
     }
+
+    [Fact]
+    public async Task Restore_ZeroLengthFile_InTarArchive_ShouldHandleGracefully()
+    {
+        // Arrange
+        var EMPTYFILE = new FakeFileBuilder(fixture)
+            .WithNonExistingFile("/empty.txt")
+            .WithContent(Array.Empty<byte>())
+            .WithCreationTimeUtc(StateRepositoryBuilder.DEFAULTUTCTIME)
+            .WithLastWriteTimeUtc(StateRepositoryBuilder.DEFAULTUTCTIME)
+            .Build();
+
+        var storageMock = new MockArchiveStorageBuilder(fixture)
+            .AddTarChunk(out var TARHASH, t =>
+            {
+                t.AddBinary(EMPTYFILE.OriginalHash, EMPTYFILE.OriginalContent);
+            })
+            .Build();
+
+        var sr = new StateRepositoryBuilder()
+            .WithBinaryProperty(EMPTYFILE.OriginalHash, TARHASH, EMPTYFILE.OriginalContent.Length, pfes =>
+            {
+                pfes.WithPointerFileEntry(EMPTYFILE.OriginalPath, EMPTYFILE.OriginalCreationDateTimeUtc, EMPTYFILE.OriginalLastWriteTimeUtc);
+            })
+            .BuildFake();
+
+        var command = new RestoreCommandBuilder(fixture)
+            .WithTargets($".{EMPTYFILE.OriginalPath}")
+            .WithIncludePointers(true)
+            .Build();
+
+        var hc = await new HandlerContextBuilder(command, fakeLoggerFactory)
+            .WithArchiveStorage(storageMock)
+            .WithStateRepository(sr)
+            .WithBaseFileSystem(fixture.FileSystem)
+            .BuildAsync();
+
+        // Act
+        var result = await handler.Handle(hc, CancellationToken.None);
+
+        // Assert
+        result.ShouldNotBeNull();
+
+        // The empty file should be extracted from the TAR chunk
+        await storageMock.Received(1).OpenReadChunkAsync(TARHASH, Arg.Any<CancellationToken>());
+        EMPTYFILE.FilePair.BinaryFile.Exists.ShouldBeTrue();
+        EMPTYFILE.FilePair.BinaryFile.Length.ShouldBe(0);
+        EMPTYFILE.FilePair.BinaryFile.ReadAllBytes().ShouldBeEmpty();
+        (await hc.Hasher.GetHashAsync(EMPTYFILE.FilePair)).ShouldBe(EMPTYFILE.OriginalHash);
+        EMPTYFILE.FilePair.PointerFile.ReadHash().ShouldBe(EMPTYFILE.OriginalHash);
+    }
 }
