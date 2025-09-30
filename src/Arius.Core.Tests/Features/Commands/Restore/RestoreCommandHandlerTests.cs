@@ -22,7 +22,8 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     }
 
     [Fact]
-    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI
+    [Trait("Category", "SkipCI")]
+    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI via the SkipCI category
     {
         // Arrange
         var command = new RestoreCommandBuilder(fixture)
