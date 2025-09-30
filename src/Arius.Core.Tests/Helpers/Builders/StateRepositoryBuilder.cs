@@ -10,7 +10,7 @@ namespace Arius.Core.Tests.Helpers.Builders;
 
 internal class StateRepositoryBuilder
 {
-    public static DateTime DEFAULTUTCTIME = new DateTime(2001, 05, 23, 21, 49, 51, DateTimeKind.Utc);
+    public static readonly DateTime DEFAULTUTCTIME = new (2001, 05, 23, 21, 49, 51, DateTimeKind.Utc);
 
     private readonly List<BinaryProperties> binaryProperties = [];
 
