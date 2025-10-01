@@ -40,14 +40,25 @@ public abstract class ProgressCliCommand<TCommand, TResult, TProgressUpdate> : C
                 )
                 .StartAsync(async ctx =>
                 {
+                    var progressUpdates = Channel.CreateUnbounded<TProgressUpdate>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false, AllowSynchronousContinuations = false });
+
+                    // Create the Mediator command from the CLI arguments
+                    var command = CreateCommand(new Progress<TProgressUpdate>(u => progressUpdates.Writer.TryWrite(u)));
+
+                    // Send the command and start the progress display loop
+                    var cancellationToken = console.RegisterCancellationHandler();
+                    var commandTask = mediator.Send(command, cancellationToken).AsTask();
+                    commandTask.ContinueWith(_ => progressUpdates.Writer.Complete());
+
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                    // Create the Mediator command from the CLI arguments with inline progress handler
-                    var command = CreateCommand(ctx, taskDictionary);
+                    // Process progress updates as they arrive
+                    await foreach (var u in progressUpdates.Reader.ReadAllAsync(cancellationToken))
+                    {
+                        HandleProgressUpdate(u, ctx, taskDictionary);
+                    }
 
-                    // Send the command and execute
-                    var cancellationToken = console.RegisterCancellationHandler();
-                    await mediator.Send(command, cancellationToken);
+                    await commandTask; // Propagate any exceptions from the command handler
 
                     AnsiConsole.MarkupLine("[green]All files processed![/]");
                 });
@@ -59,5 +70,7 @@ public abstract class ProgressCliCommand<TCommand, TResult, TProgressUpdate> : C
         }
     }
 
-    protected abstract TCommand CreateCommand(ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary);
+    protected abstract TCommand CreateCommand(IProgress<TProgressUpdate> progressReporter);
+
+    protected abstract void HandleProgressUpdate(TProgressUpdate update, ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary);
 }

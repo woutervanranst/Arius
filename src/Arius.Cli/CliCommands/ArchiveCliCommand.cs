@@ -34,44 +34,49 @@ public abstract class ArchiveCliCommandBase : ProgressCliCommand<ArchiveCommand,
     [CommandOption("remove-local", Description = "Remove local files after a successful upload.")]
     public bool RemoveLocal { get; init; } = false;
 
-    protected override ArchiveCommand CreateCommand(ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary) => new()
+    protected override ArchiveCommand CreateCommand(IProgress<ProgressUpdate> progressReporter)
     {
-        AccountName      = AccountName,
-        AccountKey       = AccountKey,
-        ContainerName    = ContainerName,
-        Passphrase       = Passphrase,
-        RemoveLocal      = RemoveLocal,
-        Tier             = Tier,
-        LocalRoot        = LocalRoot,
-        ProgressReporter = new Progress<ProgressUpdate>(update =>
+        return new ArchiveCommand
         {
-            if (update is TaskProgressUpdate tpu)
-            {
-                var isError = tpu.Percentage < 0;
-                var color = isError ? "red" : "blue";
-                var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
-                if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                    task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                task.Value = isError ? 0 : tpu.Percentage;
-                if (tpu.Percentage >= 100)
-                    task.StopTask();
-            }
-            else if (update is FileProgressUpdate fpu)
-            {
-                var isError = fpu.Percentage < 0;
-                var color = isError ? "red" : "blue";
-                var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
-                task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
-                task.Value = isError ? 0 : fpu.Percentage;
-                if (fpu.Percentage >= 100)
-                    task.StopTask();
-            }
-            else
-            {
-                AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {update.GetType().Name}[/]");
-            }
-        })
-    };
+            AccountName      = AccountName,
+            AccountKey       = AccountKey,
+            ContainerName    = ContainerName,
+            Passphrase       = Passphrase,
+            RemoveLocal      = RemoveLocal,
+            Tier             = Tier,
+            LocalRoot        = LocalRoot,
+            ProgressReporter = progressReporter
+        };
+    }
+
+    protected override void HandleProgressUpdate(ProgressUpdate update, ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary)
+    {
+        if (update is TaskProgressUpdate tpu)
+        {
+            var isError = tpu.Percentage < 0;
+            var color = isError ? "red" : "blue";
+            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
+            if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+            task.Value = isError ? 0 : tpu.Percentage;
+            if (tpu.Percentage >= 100)
+                task.StopTask();
+        }
+        else if (update is FileProgressUpdate fpu)
+        {
+            var isError = fpu.Percentage < 0;
+            var color = isError ? "red" : "blue";
+            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
+            task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+            task.Value = isError ? 0 : fpu.Percentage;
+            if (fpu.Percentage >= 100)
+                task.StopTask();
+        }
+        else
+        {
+            AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {update.GetType().Name}[/]");
+        }
+    }
 }
 
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
