@@ -36,50 +36,45 @@ public abstract class RestoreCliCommandBase : ProgressCliCommand<RestoreCommand,
     [CommandOption("include-pointers", Description = "Create respective pointer files alongside the binaries.")]
     public bool IncludePointers { get; init; } = false;
 
-    protected override RestoreCommand CreateCommand(ProgressContext ctx)
+    protected override RestoreCommand CreateCommand(ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary) => new()
     {
-        var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
-
-        return new RestoreCommand
+        AccountName      = AccountName,
+        AccountKey       = AccountKey,
+        ContainerName    = ContainerName,
+        Passphrase       = Passphrase,
+        LocalRoot        = LocalRoot,
+        Targets          = Targets,
+        Download         = Download,
+        IncludePointers  = IncludePointers,
+        ProgressReporter = new Progress<ProgressUpdate>(update =>
         {
-            AccountName      = AccountName,
-            AccountKey       = AccountKey,
-            ContainerName    = ContainerName,
-            Passphrase       = Passphrase,
-            LocalRoot        = LocalRoot,
-            Targets          = Targets,
-            Download         = Download,
-            IncludePointers  = IncludePointers,
-            ProgressReporter = new Progress<ProgressUpdate>(update =>
+            if (update is TaskProgressUpdate tpu)
             {
-                if (update is TaskProgressUpdate tpu)
-                {
-                    var isError = tpu.Percentage < 0;
-                    var color = isError ? "red" : "cyan1";
-                    var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
-                    if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                        task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                    task.Value = isError ? 0 : tpu.Percentage;
-                    if (tpu.Percentage >= 100)
-                        task.StopTask();
-                }
-                else if (update is FileProgressUpdate fpu)
-                {
-                    var isError = fpu.Percentage < 0;
-                    var color = isError ? "red" : "cyan3";
-                    var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
-                    task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
-                    task.Value = isError ? 0 : fpu.Percentage;
-                    if (fpu.Percentage >= 100)
-                        task.StopTask();
-                }
-                else
-                {
-                    AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {update.GetType().Name}[/]");
-                }
-            })
-        };
-    }
+                var isError = tpu.Percentage < 0;
+                var color = isError ? "red" : "cyan1";
+                var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[{color}]{taskName}[/]").IsIndeterminate());
+                if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                    task.Description = $"[{color}]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                task.Value = isError ? 0 : tpu.Percentage;
+                if (tpu.Percentage >= 100)
+                    task.StopTask();
+            }
+            else if (update is FileProgressUpdate fpu)
+            {
+                var isError = fpu.Percentage < 0;
+                var color = isError ? "red" : "cyan3";
+                var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
+                task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                task.Value = isError ? 0 : fpu.Percentage;
+                if (fpu.Percentage >= 100)
+                    task.StopTask();
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[yellow]Unknown progress update type: {update.GetType().Name}[/]");
+            }
+        })
+    };
 }
 
 [Command("restore", Description = "Restores a directory from Azure Blob Storage.")]
