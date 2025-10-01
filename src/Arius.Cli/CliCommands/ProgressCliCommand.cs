@@ -40,10 +40,8 @@ public abstract class ProgressCliCommand<TCommand, TResult, TProgressUpdate> : C
                 )
                 .StartAsync(async ctx =>
                 {
-                    var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
-
                     // Create the Mediator command from the CLI arguments with inline progress handler
-                    var command = CreateCommand(ctx, taskDictionary);
+                    var command = CreateCommand(ctx);
 
                     // Send the command and execute
                     var cancellationToken = console.RegisterCancellationHandler();
@@ -59,5 +57,5 @@ public abstract class ProgressCliCommand<TCommand, TResult, TProgressUpdate> : C
         }
     }
 
-    protected abstract TCommand CreateCommand(ProgressContext ctx, ConcurrentDictionary<string, ProgressTask> taskDictionary);
+    protected abstract TCommand CreateCommand(ProgressContext ctx);
 }
