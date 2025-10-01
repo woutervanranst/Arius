@@ -78,6 +78,10 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                         ProgressReporter = new Progress<ProgressUpdate>(u => progressUpdates.Writer.TryWrite(u))
                     };
 
+                    /* NOTE: There is no 'elegant/compact' way to reduce the verbosity of the AnsiConsole.Progress updates here, given the vertically sliced Commands.
+                     * The best alternative is with a ProgressPump<T> but is not a code decrease. See https://chatgpt.com/s/t_68dd7739bea48191ab058d5680d8c438
+                     */
+
                     // Send the command and start the progress display loop
                     var cancellationToken = console.RegisterCancellationHandler();
                     var commandTask       = mediator.Send(command, cancellationToken).AsTask();
