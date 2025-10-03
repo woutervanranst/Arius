@@ -3,6 +3,7 @@ using Arius.Core.Shared.Storage;
 using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
+using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -52,7 +53,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                     .LeftJustified()
                     .Color(Color.Red));
 
-            await AnsiConsole.Progress()
+            var result = await AnsiConsole.Progress()
                 .AutoRefresh(true)
                 .AutoClear(false)
                 .HideCompleted(true)
@@ -119,10 +120,19 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                         }
                     }
 
-                    await commandTask; // Propagate any exceptions from the command handler
-
-                    AnsiConsole.MarkupLine("[green]All files processed![/]");
+                    return await commandTask; // Propagate any exceptions from the command handler
                 });
+
+            if (result.IsSuccess)
+            {
+            }
+            else
+            {
+            }
+        }
+        catch (CommandException)
+        {
+            throw;
         }
         catch (Exception e)
         {

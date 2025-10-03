@@ -32,10 +32,11 @@ public class PublicClassTests
             typeof(Core.Features.RepositoryCommandProperties).FullName,
 
             typeof(Core.Features.Commands.Archive.ArchiveCommand).FullName,
+            typeof(Core.Features.Commands.Archive.ArchiveCommandResult).FullName,
             typeof(Core.Features.Commands.Archive.ProgressUpdate).FullName,
             typeof(Core.Features.Commands.Archive.TaskProgressUpdate).FullName,
             typeof(Core.Features.Commands.Archive.FileProgressUpdate).FullName,
-            
+
             typeof(Core.Features.Commands.Restore.RestoreCommand).FullName,
             typeof(Core.Features.Commands.Restore.RestoreCommandResult).FullName,
             typeof(Core.Features.Commands.Restore.RehydrationDetail).FullName,

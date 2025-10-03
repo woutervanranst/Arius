@@ -4,6 +4,7 @@ using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using FluentResults;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -18,7 +19,7 @@ public abstract record ProgressUpdate;
 public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public sealed record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
-internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
+internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<ArchiveCommandResult>>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
@@ -34,6 +35,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
     //   - Owner: first entrant for a given hash; responsible for doing the upload
     //   - Non-owner: anyone else for the same hash; must observe the owner's completion via task
     private readonly InFlightGate<Hash, Unit> uploadGate = new();
+
+    // Statistics tracking
+    private int  filesIndexed;
+    private int  filesUploaded;
+    private int  filesSkipped;
+    private long bytesOriginal;
+    private long bytesArchived;
 
     // Pipeline channels:
     //
@@ -51,7 +59,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
 
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
-    public async ValueTask<Unit> Handle(ArchiveCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Result<ArchiveCommandResult>> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
             .BuildAsync();
@@ -59,10 +67,17 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         return await Handle(handlerContext, cancellationToken);
     }
 
-    internal async ValueTask<Unit> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    internal async ValueTask<Result<ArchiveCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
-        
+
+        // Reset statistics for this operation
+        filesIndexed = 0;
+        filesUploaded = 0;
+        filesSkipped = 0;
+        bytesOriginal = 0;
+        bytesArchived = 0;
+
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
@@ -80,30 +95,45 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             handlerContext.StateRepository.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
 
             // 7. Upload the new state file to blob storage
+            bool stateUploaded = false;
             if (handlerContext.StateRepository.HasChanges)
             {
                 var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepository.StateDatabaseFile.Name);
                 logger.LogInformation("Changes detected in database, uploading state file {StateFileName}", stateFileName);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading state file...", 0));
-                
+
                 handlerContext.StateRepository.Vacuum();
                 await handlerContext.ArchiveStorage.UploadStateAsync(stateFileName, handlerContext.StateRepository.StateDatabaseFile, cancellationToken);
-                
+
                 logger.LogInformation("Successfully uploaded state file {StateFileName}", stateFileName);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading state file...", 100, "Completed"));
+                stateUploaded = true;
             }
             else
             {
                 logger.LogInformation("No changes to the database. Skipping upload and deleting local state file.");
                 handlerContext.StateRepository.Delete();
             }
+
+            logger.LogInformation("Archive operation completed successfully for path {LocalRoot}", handlerContext.Request.LocalRoot);
+
+            return Result.Ok(new ArchiveCommandResult
+            {
+                FilesIndexed  = filesIndexed,
+                FilesUploaded = filesUploaded,
+                FilesSkipped  = filesSkipped,
+                BytesOriginal = bytesOriginal,
+                BytesArchived = bytesArchived,
+                StateUploaded = stateUploaded
+            });
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
-            // User-triggered cancellation - just re-throw
-            throw;
+            // User-triggered cancellation
+            logger.LogInformation("Archive operation cancelled by user");
+            return Result.Fail("Archive operation was cancelled by user");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Either a task failed with an exception or error-triggered cancellation occurred
             // Wait for all tasks to complete gracefully
@@ -137,23 +167,25 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             {
                 if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
                 {
-                    // Single faulted task - log the exception
+                    // Single faulted task - return the exception
                     var baseException = faultedTask.Exception!.GetBaseException();
                     logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", taskNames[faultedTask], baseException.Message);
+                    return Result.Fail($"Archive operation failed: {baseException.Message}").WithError(new ExceptionalError(baseException));
                 }
                 else
                 {
-                    // Multiple faulted tasks - log the exceptions
+                    // Multiple faulted tasks - return aggregate exception
                     var exceptions = faultedTasks.Select(t => t.Exception!.GetBaseException()).ToArray();
-                    logger.LogError(new AggregateException("Multiple tasks failed during archive operation", exceptions), "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
+                    var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
+                    logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
+                    return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
                 }
             }
 
-            throw;
+            // Unexpected error path - return generic failure
+            logger.LogError(ex, "Archive operation failed with unexpected error");
+            return Result.Fail($"Archive operation failed: {ex.Message}").WithError(new ExceptionalError(ex));
         }
-
-        logger.LogInformation("Archive operation completed successfully for path {LocalRoot}", handlerContext.Request.LocalRoot);
-        return Unit.Value;
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
@@ -164,18 +196,17 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                 logger.LogInformation("Starting file indexing in path {LocalRoot}", handlerContext.Request.LocalRoot);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 0));
 
-                int fileCount = 0;
                 foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Interlocked.Increment(ref fileCount);
+                    Interlocked.Increment(ref filesIndexed);
                     await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
                 }
 
                 indexedFilesChannel.Writer.Complete();
 
-                logger.LogInformation("File indexing completed: found {FileCount} files in {LocalRoot}", fileCount, handlerContext.Request.LocalRoot);
-                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 100, $"Found {fileCount} files"));
+                logger.LogInformation("File indexing completed: found {FileCount} files in {LocalRoot}", filesIndexed, handlerContext.Request.LocalRoot);
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 100, $"Found {filesIndexed} files"));
             }
             catch (OperationCanceledException)
             {
@@ -412,6 +443,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                     var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
                     logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
 
+                    Interlocked.Increment(ref filesUploaded);
+                    Interlocked.Add(ref bytesOriginal, sourceStreamPosition);
+                    Interlocked.Add(ref bytesArchived, targetStreamPosition);
+
                     uploadGate.Complete(hash, Unit.Value);
                 }
                 catch (OperationCanceledException)
@@ -429,7 +464,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
             {
                 // NON-OWNER (large): wait for the owner to finish this hash
                 await uploadTask;
+                Interlocked.Increment(ref filesSkipped);
             }
+        }
+        else
+        {
+            // File already uploaded previously
+            Interlocked.Increment(ref filesSkipped);
         }
 
         // 4.Write the Pointer
@@ -564,6 +605,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
                         LastWriteTimeUtc = pf.LastWriteTimeUtc
                     });
 
+                    Interlocked.Increment(ref filesSkipped);
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
                 }
             }
@@ -634,8 +676,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Unit>
         var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
         var compressionRatio = totalOriginalSize > 0 ? (double)finalArchivedSize / totalOriginalSize : 1.0;
         
-        logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})", 
+        logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})",
             fileCount, totalOriginalSize.Bytes().Humanize(), finalArchivedSize.Bytes().Humanize(), compressionRatio, actualTier, parentHash.ToShortString());
+
+        Interlocked.Add(ref filesUploaded, fileCount);
+        Interlocked.Add(ref bytesOriginal, totalOriginalSize);
+        Interlocked.Add(ref bytesArchived, finalArchivedSize);
 
         // Add BinaryProperties
         var tarBps = tarWriter.TarredEntries.Select(e => new BinaryProperties
