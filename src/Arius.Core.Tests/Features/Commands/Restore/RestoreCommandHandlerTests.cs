@@ -136,6 +136,8 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         // Assert
         result.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Rehydrating.ShouldBeEmpty();
 
             // The NOTEXISTINGFILE should be downloaded from storage and created on disk
         await storageMock.Received(1).OpenReadChunkAsync(NOTEXISTINGFILE.OriginalHash, Arg.Any<CancellationToken>());
@@ -248,6 +250,8 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         // Assert
         result.ShouldNotBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Rehydrating.ShouldBeEmpty();
 
         // The empty file should be extracted from the TAR chunk
         await storageMock.Received(1).OpenReadChunkAsync(TARHASH, Arg.Any<CancellationToken>());

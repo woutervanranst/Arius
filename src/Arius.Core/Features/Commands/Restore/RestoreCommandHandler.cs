@@ -4,6 +4,7 @@ using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using FluentResults;
 using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
@@ -20,7 +21,7 @@ public abstract record ProgressUpdate;
 public sealed record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public sealed record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate; // TODO better/more consistent FileProgressUpdate
 
-internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCommandResult>
+internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<RestoreCommandResult>>
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
@@ -38,7 +39,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
 
     private record FilePairWithPointerFileEntry(FilePair FilePair, PointerFileEntry PointerFileEntry);
 
-    public async ValueTask<RestoreCommandResult> Handle(RestoreCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Result<RestoreCommandResult>> Handle(RestoreCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await new HandlerContextBuilder(request, loggerFactory)
             .BuildAsync();
@@ -46,7 +47,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         return await Handle(handlerContext, cancellationToken);
     }
 
-    internal async ValueTask<RestoreCommandResult> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
+    internal async ValueTask<Result<RestoreCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting restore operation for {TargetCount} targets with hashing parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
         
@@ -73,13 +74,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
-            logger.LogDebug("Restore operation cancelled by user");
-            throw;
+            logger.LogInformation("Restore operation cancelled by user");
+            return Result.Fail("Restore operation was cancelled by user");
         }
         catch (Exception e)
         {
             logger.LogError(e, "Restore operation failed with exception");
-            
+
             // Wait for all tasks to complete gracefully
             var allTasks = new[] { indexTask, hashTask, downloadBinariesTask };
             await Task.WhenAll(allTasks.Select(async t =>
@@ -87,8 +88,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
                 try { await t; }
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
-            
-            throw;
+
+            return Result.Fail($"Restore operation failed: {e.Message}").WithError(new ExceptionalError(e));
         }
 
         var rehydratingFiles = stillRehydratingList.Select(pfe => new RehydrationDetail
@@ -98,13 +99,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, RestoreCo
         }).ToArray();
 
         logger.LogInformation("Restore operation completed with {RehydratingCount} files still rehydrating", rehydratingFiles.Length);
-        
-        var r = new RestoreCommandResult
+
+        return Result.Ok(new RestoreCommandResult
         {
             Rehydrating = rehydratingFiles
-        };
-
-        return r;
+        });
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>

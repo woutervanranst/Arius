@@ -53,7 +53,7 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                     .LeftJustified()
                     .Color(Color.Red));
 
-            await AnsiConsole.Progress()
+            var result = await AnsiConsole.Progress()
                 .AutoRefresh(true)
                 .AutoClear(false)
                 .HideCompleted(true)
@@ -117,10 +117,28 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
                         }
                     }
 
-                    await commandTask; // Propagate any exceptions from the command handler
-
-                    AnsiConsole.MarkupLine("[green]All files processed![/]");
+                    return await commandTask;
                 });
+
+            if (result.IsSuccess)
+            {
+                var restoreResult = result.Value;
+                AnsiConsole.MarkupLine("[green]Restore completed successfully![/]");
+                if (restoreResult.Rehydrating.Any())
+                {
+                    AnsiConsole.MarkupLine($"[yellow]{restoreResult.Rehydrating.Count} files are still rehydrating and were not downloaded[/]");
+                }
+            }
+            else
+            {
+                var errorMessage = string.Join("; ", result.Errors.Select(e => e.Message));
+                AnsiConsole.MarkupLine($"[red]Restore operation failed: {errorMessage.EscapeMarkup()}[/]");
+                throw new CommandException(errorMessage, showHelp: false);
+            }
+        }
+        catch (CommandException)
+        {
+            throw;
         }
         catch (Exception e)
         {

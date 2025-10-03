@@ -69,7 +69,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that no binaries are rehydrating
-        result.Rehydrating.ShouldBeEmpty();
+        result.Value.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
         await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
@@ -128,14 +128,14 @@ public class RestoreCommandHandlerHydrationTests
         if (rehydrate != RehydrationDecision.DoNotRehydrate)
         {
             // -- The command result shows that this binary is rehydrating
-            result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+            result.Value.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
             // -- We started the rehydration
             await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         }
         else
         {
             // -- The command result shows that no binaries are rehydrating
-            result.Rehydrating.ShouldBeEmpty();
+            result.Value.Rehydrating.ShouldBeEmpty();
             await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         }
 
@@ -189,7 +189,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that this binary is rehydrating
-        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        result.Value.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration not started - already ongoing
         await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
@@ -241,7 +241,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that no binaries are rehydrating
-        result.Rehydrating.ShouldBeEmpty();
+        result.Value.Rehydrating.ShouldBeEmpty();
         // -- No rehydrations started
         await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
@@ -298,7 +298,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that no binaries are rehydrating
-        result.Rehydrating.ShouldBeEmpty();
+        result.Value.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
         await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
@@ -357,14 +357,14 @@ public class RestoreCommandHandlerHydrationTests
         if (rehydrate != RehydrationDecision.DoNotRehydrate)
         {
             // -- The command result shows that this binary is rehydrating
-            result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+            result.Value.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
             // -- We started the rehydration
             await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         }
         else
         {
             // -- The command result shows that no binaries are rehydrating
-            result.Rehydrating.ShouldBeEmpty();
+            result.Value.Rehydrating.ShouldBeEmpty();
             await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         }
 
@@ -419,7 +419,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that this binary is rehydrating
-        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        result.Value.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration not started - already ongoing
         await storageMock.ReceivedWithAnyArgs(0).StartHydrationAsync(default, default);
         // -- The Binary is not restored
@@ -471,7 +471,7 @@ public class RestoreCommandHandlerHydrationTests
             .GetLogRecordByTemplate("Blob {BlobName} for '{RelativeName}' is unexpectedly in the Archive tier. Hydrating it.")
             .ShouldNotBeNull();
         // -- The command result shows that this binary is rehydrating
-        result.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
+        result.Value.Rehydrating.ShouldContain(d => d.RelativeName == BINARY.FilePair.FullName);
         // -- Rehydration started without asking
         await storageMock.Received(1).StartHydrationAsync(BINARY.OriginalHash, RehydratePriority.Standard);
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
@@ -551,7 +551,7 @@ public class RestoreCommandHandlerHydrationTests
         // -- The rehydration question handler was NOT called
         rehydrationQuestionHandlerMock.Received(0)(Arg.Any<IReadOnlyList<RehydrationDetail>>());
         // -- The command result shows that no binaries are rehydrating
-        result.Rehydrating.ShouldBeEmpty();
+        result.Value.Rehydrating.ShouldBeEmpty();
         // -- We did NOT start the rehydration
         await storageMock.DidNotReceiveWithAnyArgs().StartHydrationAsync(default, default);
         // -- The Binary is successfully restored
