@@ -32,6 +32,14 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
         this.loggerFactory = loggerFactory;
     }
 
+    // Statistics tracking
+    private int  totalTargetFiles;
+    private int  verifiedFilesAlreadyExisting;
+    private int  chunksDownloaded;
+    private long bytesDownloaded;
+    private int  filesWrittenToDisk;
+    private long bytesWrittenToDisk;
+
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
 
@@ -50,7 +58,16 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
     internal async ValueTask<Result<RestoreCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting restore operation for {TargetCount} targets with hashing parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
-        
+
+        // Reset statistics for this operation
+        totalTargetFiles             = 0;
+        verifiedFilesAlreadyExisting = 0;
+        chunksDownloaded             = 0;
+        bytesDownloaded              = 0;
+        filesWrittenToDisk           = 0;
+        bytesWrittenToDisk           = 0;
+
+
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
 
@@ -102,7 +119,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
 
         return Result.Ok(new RestoreCommandResult
         {
-            Rehydrating = rehydratingFiles
+            TotalTargetFiles             = totalTargetFiles,
+            FilesWrittenToDisk           = filesWrittenToDisk,
+            VerifiedFilesAlreadyExisting = verifiedFilesAlreadyExisting,
+            BytesDownloaded              = bytesDownloaded,
+            BytesWrittenToDisk           = bytesWrittenToDisk,
+            ChunksDownloaded             = chunksDownloaded,
+            Rehydrating                  = rehydratingFiles
         });
     }
 
@@ -133,6 +156,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                     else
                     {
                         logger.LogDebug("Found {FileCount} pointer file entries for target {TargetPath}", pfes.Length, targetPath);
+                        Interlocked.Add(ref totalTargetFiles, pfes.Length);
                         totalFilesFound += pfes.Length;
                     }
 
@@ -213,6 +237,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                     {
                         // The hash matches - this binaryfile is already restored
                         logger.LogDebug("File {FileName} hash verified, already restored", filePair.BinaryFile.FullName);
+                        Interlocked.Increment(ref verifiedFilesAlreadyExisting);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Already restored"));
                     }
                     else
@@ -312,7 +337,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
 
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
-        
+
+        Interlocked.Increment(ref filesWrittenToDisk);
+        Interlocked.Add(ref bytesDownloaded, pointerFileEntry.BinaryProperties.ArchivedSize);
+        Interlocked.Add(ref bytesWrittenToDisk, pointerFileEntry.BinaryProperties.OriginalSize);
+
         logger.LogInformation("Large file download completed: {FileName} ({FileSize})", filePair.BinaryFile.FullName, fileSizeFormatted);
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
     }
@@ -366,6 +395,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
         filePair.BinaryFile.CreationTimeUtc  = pointerFileEntry.CreationTimeUtc!.Value;
         filePair.BinaryFile.LastWriteTimeUtc = pointerFileEntry.LastWriteTimeUtc!.Value;
 
+        Interlocked.Increment(ref filesWrittenToDisk);
+        Interlocked.Add(ref bytesWrittenToDisk, pointerFileEntry.BinaryProperties.OriginalSize);
+
         logger.LogInformation("Small file download completed: {FileName} ({FileSize}) from TAR", filePair.BinaryFile.FullName, fileSizeFormatted);
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 100, "Downloaded"));
         return;
@@ -400,7 +432,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                             await ss.CopyToAsync(ts, cancellationToken);
                             await ts.FlushAsync(cancellationToken); // Explicitly flush
 
-                            logger.LogDebug("TAR archive cached successfully for {ParentHash}", parentHash.ToShortString());
+                            var bytesWritten = ts.Position;
+                            Interlocked.Add(ref bytesDownloaded, bytesWritten);
+
+                            logger.LogDebug("TAR archive cached successfully for {ParentHash} ({BytesDownloaded} bytes)", parentHash.ToShortString(), bytesWritten);
                             //}
                             //catch (IOException)
                             //{
@@ -464,6 +499,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
             {
                 case { IsSuccess: true }:
                     logger.LogInformation("Reading from hydrated blob {BlobName} for '{RelativeName}'.", hash, pointerFileEntry.RelativeName);
+                    Interlocked.Increment(ref chunksDownloaded);
                     return result.Value;
                 case { Errors: [BlobArchivedError { BlobName: var name }, ..] }:
                     // Blob is unexpectedly archived. Update the StateRepository with the correct state
@@ -493,6 +529,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
             {
                 case { IsSuccess: true }:
                     logger.LogInformation("Reading from rehydrated blob {BlobName} for '{RelativeName}'.", hash, pointerFileEntry.RelativeName);
+                    Interlocked.Increment(ref chunksDownloaded);
                     return result.Value;
                 case { Errors: [BlobNotFoundError { BlobName: var name }, ..] }:
                     // Blob not found in chunks-rehydrated --> add it to the rehydration list

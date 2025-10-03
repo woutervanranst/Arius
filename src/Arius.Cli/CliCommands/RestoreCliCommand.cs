@@ -2,6 +2,7 @@ using Arius.Core.Features.Commands.Restore;
 using CliFx.Attributes;
 using CliFx.Exceptions;
 using CliFx.Infrastructure;
+using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -124,6 +125,8 @@ public abstract class RestoreCliCommandBase : CliFx.ICommand
             {
                 var restoreResult = result.Value;
                 AnsiConsole.MarkupLine("[green]Restore completed successfully![/]");
+                AnsiConsole.MarkupLine($"[green]Binaries downloaded: {restoreResult.ChunksDownloaded} ({restoreResult.BytesDownloaded.Bytes().Humanize()} downloaded, {restoreResult.BytesWrittenToDisk.Bytes().Humanize()} written to disk)[/]");
+                AnsiConsole.MarkupLine($"[green]Files: {restoreResult.TotalTargetFiles} total, {restoreResult.FilesWrittenToDisk} written to disk, {restoreResult.VerifiedFilesAlreadyExisting} verified & already existing[/]");
                 if (restoreResult.Rehydrating.Any())
                 {
                     AnsiConsole.MarkupLine($"[yellow]{restoreResult.Rehydrating.Count} files are still rehydrating and were not downloaded[/]");

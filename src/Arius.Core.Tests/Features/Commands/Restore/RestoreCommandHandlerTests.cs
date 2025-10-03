@@ -137,6 +137,12 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         // Assert
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeTrue();
+        result.Value.TotalTargetFiles.ShouldBe(8); // All files found by the targets
+        result.Value.FilesWrittenToDisk.ShouldBe(7); // All except EXISTINGFILE (which already exists and has correct hash)
+        result.Value.VerifiedFilesAlreadyExisting.ShouldBe(1); // 1 EXISTINGFILE (already exists and hash matches)
+        result.Value.BytesDownloaded.ShouldBeGreaterThan(168); // NOTEXISTINGFILE(42) + DUPLICATEBINARIES(42*2) + EXISTINGFILEWITHWRONGHASH(42) + TAR bytes (TAR has headers, so > 30 bytes for 3x10 byte files)
+        result.Value.BytesWrittenToDisk.ShouldBeGreaterThan(0);
+        result.Value.ChunksDownloaded.ShouldBe(5); // NOTEXISTINGFILE(1) + DUPLICATEBINARIES(2 downloads, same hash) + EXISTINGFILEWITHWRONGHASH(1) + TARHASH(1)
         result.Value.Rehydrating.ShouldBeEmpty();
 
             // The NOTEXISTINGFILE should be downloaded from storage and created on disk
@@ -251,6 +257,12 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         // Assert
         result.ShouldNotBeNull();
         result.IsSuccess.ShouldBeTrue();
+        result.Value.TotalTargetFiles.ShouldBe(1); // 1 EMPTYFILE
+        result.Value.FilesWrittenToDisk.ShouldBe(1); // 1 EMPTYFILE (downloaded from TAR)
+        result.Value.VerifiedFilesAlreadyExisting.ShouldBe(0);
+        result.Value.BytesDownloaded.ShouldBeGreaterThan(0); // TAR bytes are downloaded (TAR has headers even for empty file)
+        result.Value.BytesWrittenToDisk.ShouldBe(0); // Empty file has 0 bytes
+        result.Value.ChunksDownloaded.ShouldBe(1); // TARHASH (1 TAR containing the empty file)
         result.Value.Rehydrating.ShouldBeEmpty();
 
         // The empty file should be extracted from the TAR chunk
