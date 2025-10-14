@@ -38,7 +38,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
     // Statistics tracking
     private int  totalLocalFiles;
-    private int  uniqueFilesUploaded;
+    private int  uniqueBinariesUploaded;
     private int  uniqueChunksUploaded;
     private long bytesUploadedUncompressed;
     private long bytesUploadedCompressed;
@@ -78,7 +78,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         totalLocalFiles      = 0;
         existingPointerFiles = 0;
 
-        uniqueFilesUploaded       = 0;
+        uniqueBinariesUploaded    = 0;
         uniqueChunksUploaded      = 0;
         bytesUploadedUncompressed = 0;
         bytesUploadedCompressed   = 0;
@@ -129,7 +129,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 TotalLocalFiles      = totalLocalFiles,
                 ExistingPointerFiles = existingPointerFiles,
 
-                UniqueFilesUploaded       = uniqueFilesUploaded,
+                UniqueBinariesUploaded    = uniqueBinariesUploaded,
                 UniqueChunksUploaded      = uniqueChunksUploaded,
                 BytesUploadedUncompressed = bytesUploadedUncompressed,
                 BytesUploadedCompressed   = bytesUploadedCompressed,
@@ -460,7 +460,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                     var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
                     logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
 
-                    Interlocked.Increment(ref uniqueFilesUploaded);
+                    Interlocked.Increment(ref uniqueBinariesUploaded);
                     Interlocked.Increment(ref uniqueChunksUploaded);
                     Interlocked.Add(ref bytesUploadedUncompressed, sourceStreamPosition);
                     Interlocked.Add(ref bytesUploadedCompressed, targetStreamPosition);
@@ -703,7 +703,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         
         logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})", fileCount, totalOriginalSize.Bytes().Humanize(), finalArchivedSize.Bytes().Humanize(), compressionRatio, actualTier, parentHash.ToShortString());
 
-        Interlocked.Add(ref uniqueFilesUploaded, fileCount);
+        Interlocked.Add(ref uniqueBinariesUploaded, fileCount);
         Interlocked.Increment(ref uniqueChunksUploaded);
         Interlocked.Add(ref bytesUploadedUncompressed, totalOriginalSize);
         Interlocked.Add(ref bytesUploadedCompressed, finalArchivedSize);

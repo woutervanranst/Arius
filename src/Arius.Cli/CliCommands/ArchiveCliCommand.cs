@@ -125,12 +125,25 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
             if (result.IsSuccess)
             {
-                var stats = result.Value;
+                var s = result.Value;
+
+                RenderArchiveTable(
+                    $"{s.TotalLocalFiles}",    "?",     "?",
+                    "?",    "?",     "?",
+                    "?",    $"+{s.BytesUploadedUncompressed.Bytes().Humanize()}",     "?",
+                    $"{s.ExistingPointerFiles}",    $"+{s.PointerFilesCreated}",     "?",
+
+                    "?",    "?",     "?",
+                    "?",    $"{s.UniqueBinariesUploaded} binaries in {s.UniqueChunksUploaded} chunks",     "?",
+                    "?",    $"+{s.BytesUploadedCompressed.Bytes().Humanize()}",     "?",
+                    "?",    $"+ ? - {s.PointerFileEntriesDeleted}",     "?"
+                );
+
                 AnsiConsole.MarkupLine("[green]Archive completed successfully![/]");
-                AnsiConsole.MarkupLine($"[green]Total files scanned: {stats.TotalFiles}, {stats.UniqueFilesUploaded} unique uploaded, in {stats.UniqueChunksUploaded} chunks[/]");
-                AnsiConsole.MarkupLine($"[green]Bytes uploaded: {stats.BytesOriginal.Bytes().Humanize()} -> {stats.BytesArchived.Bytes().Humanize()} (compression: {(stats.BytesOriginal > 0 ? ((double)stats.BytesArchived / stats.BytesOriginal).ToString("P1") : "N/A")})[/]");
-                if (stats.NewStateName is not null)
-                    AnsiConsole.MarkupLine($"[green]State file uploaded: {stats.NewStateName}[/]");
+                AnsiConsole.MarkupLine($"[green]Total files scanned: {s.TotalLocalFiles}, {s.UniqueBinariesUploaded} unique uploaded, in {s.UniqueChunksUploaded} chunks[/]");
+                AnsiConsole.MarkupLine($"[green]Bytes uploaded: {s.BytesUploadedUncompressed.Bytes().Humanize()} -> {s.BytesUploadedCompressed.Bytes().Humanize()} (compression: {(s.BytesUploadedUncompressed > 0 ? ((double)s.BytesUploadedCompressed / s.BytesUploadedUncompressed).ToString("P1") : "N/A")})[/]");
+                if (s.NewStateName is not null)
+                    AnsiConsole.MarkupLine($"[green]State file uploaded: {s.NewStateName}[/]");
             }
             else
             {
@@ -156,6 +169,64 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         //{
         //    AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
         //}
+    }
+
+    private void RenderArchiveTable(
+        // Local (Before, Operation, After) × 4 rows
+        string localFilesBefore, string localFilesOp, string localFilesAfter,
+        string localBinariesBefore, string localBinariesOp, string localBinariesAfter,
+        string localSizeBefore, string localSizeOp, string localSizeAfter,
+        string localPointersBefore, string localPointersOp, string localPointersAfter,
+
+        // Remote (Before, Operation, After) × 4 rows
+        string remoteFilesBefore, string remoteFilesOp, string remoteFilesAfter,
+        string remoteBinariesBefore, string remoteBinariesOp, string remoteBinariesAfter,
+        string remoteSizeBefore, string remoteSizeOp, string remoteSizeAfter,
+        string remotePointersBefore, string remotePointersOp, string remotePointersAfter
+    )
+    {
+        var table = new Table().Border(TableBorder.None);
+
+        Table MakeSubTable(string title)
+        {
+            var sub = new Table()
+                .AddColumn(new TableColumn("[grey]Before[/]").Centered())
+                .AddColumn(new TableColumn("[grey]Operation[/]").Centered())
+                .AddColumn(new TableColumn("[grey]After[/]").Centered());
+            sub.Title(title);
+            return sub;
+        }
+
+        var local  = MakeSubTable("Local");
+        var remote = MakeSubTable("Remote");
+
+        local.AddRow(localFilesBefore,    localFilesOp,    localFilesAfter);
+        local.AddRow(localBinariesBefore, localBinariesOp, localBinariesAfter);
+        local.AddRow(localSizeBefore,     localSizeOp,     localSizeAfter);
+        local.AddRow(localPointersBefore, localPointersOp, localPointersAfter);
+
+        remote.AddRow(remoteFilesBefore,    remoteFilesOp,    remoteFilesAfter);
+        remote.AddRow(remoteBinariesBefore, remoteBinariesOp, remoteBinariesAfter);
+        remote.AddRow(remoteSizeBefore,     remoteSizeOp,     remoteSizeAfter);
+        remote.AddRow(remotePointersBefore, remotePointersOp, remotePointersAfter);
+
+        var legend = new Table()
+            .Border(TableBorder.None)
+            .AddColumn("")
+            .AddRow("")
+            .AddRow("")
+            .AddRow("")
+            .AddRow("[bold]Files[/]")
+            .AddRow("[bold]Binaries[/]")
+            .AddRow("[bold]Size[/]")
+            .AddRow("[bold]Pointers[/]");
+
+        // assemble
+        table.AddColumn(new TableColumn(legend.LeftAligned()));
+        table.AddColumn(new TableColumn(local).Centered());
+        table.AddColumn(new TableColumn(remote).Centered());
+
+        AnsiConsole.Write(table);
     }
 }
 

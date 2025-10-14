@@ -18,9 +18,9 @@ public sealed record ArchiveCommandResult
     // Operation
 
     /// <summary>
-    /// The total number of unique files uploaded (includes individual files in TAR archives)
+    /// The total number of unique binaries (files) uploaded (includes individual files in TAR archives)
     /// </summary>
-    public int UniqueFilesUploaded { get; init; }
+    public int UniqueBinariesUploaded { get; init; }
 
     /// <summary>
     /// The total number of unique chunks (blobs) uploaded to storage.
