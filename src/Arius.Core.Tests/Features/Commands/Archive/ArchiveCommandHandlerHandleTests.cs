@@ -91,10 +91,10 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         largeChunk.Metadata.ShouldContainKey("OriginalContentLength");
         largeChunk.Metadata["OriginalContentLength"].ShouldBe(largeFile.OriginalContent.Length.ToString());
 
-        var smallPointerPath = Path.Combine(fixture.TestRunSourceFolder.FullName, "small.txt.pointer.arius");
+        var smallPointerPath = Path.Join(fixture.TestRunSourceFolder.FullName, "small.txt.pointer.arius");
         File.Exists(smallPointerPath).ShouldBeTrue();
 
-        var largePointerPath = Path.Combine(fixture.TestRunSourceFolder.FullName, "large.bin.pointer.arius");
+        var largePointerPath = Path.Join(fixture.TestRunSourceFolder.FullName, "large.bin.pointer.arius");
         File.Exists(largePointerPath).ShouldBeTrue();
 
         handlerContext.StateRepository.GetPointerFileEntry("/small.txt.pointer.arius", includeBinaryProperties: true)
