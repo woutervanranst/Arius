@@ -125,9 +125,18 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
 
             if (result.IsSuccess)
             {
+                var stats = result.Value;
+                AnsiConsole.MarkupLine("[green]Archive completed successfully![/]");
+                AnsiConsole.MarkupLine($"[green]Total files scanned: {stats.TotalFiles}, {stats.UniqueFilesUploaded} unique uploaded, in {stats.UniqueChunksUploaded} chunks[/]");
+                AnsiConsole.MarkupLine($"[green]Bytes uploaded: {stats.BytesOriginal.Bytes().Humanize()} -> {stats.BytesArchived.Bytes().Humanize()} (compression: {(stats.BytesOriginal > 0 ? ((double)stats.BytesArchived / stats.BytesOriginal).ToString("P1") : "N/A")})[/]");
+                if (stats.NewStateName is not null)
+                    AnsiConsole.MarkupLine($"[green]State file uploaded: {stats.NewStateName}[/]");
             }
             else
             {
+                var errorMessage = string.Join("; ", result.Errors.Select(e => e.Message));
+                AnsiConsole.MarkupLine($"[red]Archive operation failed: {errorMessage.EscapeMarkup()}[/]");
+                throw new CommandException(errorMessage, showHelp: false);
             }
         }
         catch (CommandException)

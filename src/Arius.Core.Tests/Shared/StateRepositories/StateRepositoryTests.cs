@@ -405,9 +405,10 @@ public class StateRepositoryTests : IDisposable
         newStateRepository.HasChanges.ShouldBeFalse();
 
         // Act - Delete entries with hash1
-        newStateRepository.DeletePointerFileEntries(entry => entry.Hash == hash1);
+        var deletedCount = newStateRepository.DeletePointerFileEntries(entry => entry.Hash == hash1);
 
         // Assert
+        deletedCount.ShouldBe(1);
         newStateRepository.HasChanges.ShouldBeTrue();
 
         var remainingEntries = newStateRepository.GetPointerFileEntries("/test/", false, false).ToList();
@@ -443,9 +444,10 @@ public class StateRepositoryTests : IDisposable
 
         // Act - Try to delete non-matching entries
         var nonExistentHash = FakeHashBuilder.GenerateValidHash(999);
-        newStateRepository.DeletePointerFileEntries(entry => entry.Hash == nonExistentHash);
+        var deletedCount = newStateRepository.DeletePointerFileEntries(entry => entry.Hash == nonExistentHash);
 
         // Assert
+        deletedCount.ShouldBe(0);
         newStateRepository.HasChanges.ShouldBeFalse();
 
         var allEntries = newStateRepository.GetPointerFileEntries("/", false).ToList();

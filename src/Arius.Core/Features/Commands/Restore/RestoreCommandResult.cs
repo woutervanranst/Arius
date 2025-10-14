@@ -36,7 +36,7 @@ public sealed record RestoreCommandResult
 
 
     /// <summary>
-    /// Details about the chunks that are still hydrating
+    /// Details about the files that are still hydrating
     /// </summary>
     public IReadOnlyList<RehydrationDetail> Rehydrating { get; init; } = [];
 }

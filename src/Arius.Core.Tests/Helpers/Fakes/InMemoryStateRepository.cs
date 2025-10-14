@@ -120,10 +120,10 @@ internal class InMemoryStateRepository : IStateRepository
         return null;
     }
 
-    public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
+    public int DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
         var keysToRemove = new List<(Hash Hash, string RelativeName)>();
-        
+
         foreach (var kvp in pointerFileEntries)
         {
             if (shouldBeDeleted(kvp.Value))
@@ -141,6 +141,8 @@ internal class InMemoryStateRepository : IStateRepository
         {
             SetHasChanges();
         }
+
+        return keysToRemove.Count;
     }
 
     private void SetHasChanges()

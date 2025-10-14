@@ -260,7 +260,7 @@ internal class StateRepository : IStateRepository
             return context.PointerFileEntries.AsNoTracking().SingleOrDefault(pfe => pfe.RelativeName == relativeName);
     }
 
-    public void DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
+    public int DeletePointerFileEntries(Func<PointerFileEntry, bool> shouldBeDeleted)
     {
         using var context = contextPool.CreateContext();
 
@@ -269,5 +269,7 @@ internal class StateRepository : IStateRepository
 
         if (entriesToDelete.Any())
             contextPool.SetHasChanges();
+
+        return entriesToDelete.Length;
     }
 }

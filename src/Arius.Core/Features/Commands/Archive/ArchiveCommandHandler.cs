@@ -37,11 +37,14 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     private readonly InFlightGate<Hash, Unit> uploadGate = new();
 
     // Statistics tracking
-    private int  filesIndexed;
-    private int  filesUploaded;
-    private int  filesSkipped;
-    private long bytesOriginal;
-    private long bytesArchived;
+    private int  totalLocalFiles;
+    private int  uniqueFilesUploaded;
+    private int  uniqueChunksUploaded;
+    private long bytesUploadedUncompressed;
+    private long bytesUploadedCompressed;
+    private int  existingPointerFiles;
+    private int  pointerFilesCreated;
+    private int  pointerFileEntriesDeleted;
 
     // Pipeline channels:
     //
@@ -72,11 +75,15 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
 
         // Reset statistics for this operation
-        filesIndexed = 0;
-        filesUploaded = 0;
-        filesSkipped = 0;
-        bytesOriginal = 0;
-        bytesArchived = 0;
+        totalLocalFiles      = 0;
+        existingPointerFiles = 0;
+
+        uniqueFilesUploaded       = 0;
+        uniqueChunksUploaded      = 0;
+        bytesUploadedUncompressed = 0;
+        bytesUploadedCompressed   = 0;
+        pointerFilesCreated       = 0;
+        pointerFileEntriesDeleted = 0;
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
@@ -92,10 +99,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
             // 6. Remove PointerFileEntries that do not exist on disk
             logger.LogDebug("Cleaning up pointer file entries that no longer exist on disk");
-            handlerContext.StateRepository.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+            pointerFileEntriesDeleted = handlerContext.StateRepository.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
 
             // 7. Upload the new state file to blob storage
-            bool stateUploaded = false;
+            string? newStateName = null;
             if (handlerContext.StateRepository.HasChanges)
             {
                 var stateFileName = Path.GetFileNameWithoutExtension(handlerContext.StateRepository.StateDatabaseFile.Name);
@@ -107,7 +114,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
                 logger.LogInformation("Successfully uploaded state file {StateFileName}", stateFileName);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Uploading state file...", 100, "Completed"));
-                stateUploaded = true;
+                newStateName = stateFileName;
             }
             else
             {
@@ -119,12 +126,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
             return Result.Ok(new ArchiveCommandResult
             {
-                FilesIndexed  = filesIndexed,
-                FilesUploaded = filesUploaded,
-                FilesSkipped  = filesSkipped,
-                BytesOriginal = bytesOriginal,
-                BytesArchived = bytesArchived,
-                StateUploaded = stateUploaded
+                TotalLocalFiles      = totalLocalFiles,
+                ExistingPointerFiles = existingPointerFiles,
+
+                UniqueFilesUploaded       = uniqueFilesUploaded,
+                UniqueChunksUploaded      = uniqueChunksUploaded,
+                BytesUploadedUncompressed = bytesUploadedUncompressed,
+                BytesUploadedCompressed   = bytesUploadedCompressed,
+                PointerFilesCreated       = pointerFilesCreated,
+                PointerFileEntriesDeleted = pointerFileEntriesDeleted,
+                NewStateName              = newStateName
             });
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
@@ -199,14 +210,14 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Interlocked.Increment(ref filesIndexed);
+                    Interlocked.Increment(ref totalLocalFiles);
                     await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
                 }
 
                 indexedFilesChannel.Writer.Complete();
 
-                logger.LogInformation("File indexing completed: found {FileCount} files in {LocalRoot}", filesIndexed, handlerContext.Request.LocalRoot);
-                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 100, $"Found {filesIndexed} files"));
+                logger.LogInformation("File indexing completed: found {FileCount} files in {LocalRoot}", totalLocalFiles, handlerContext.Request.LocalRoot);
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 100, $"Found {totalLocalFiles} files"));
             }
             catch (OperationCanceledException)
             {
@@ -233,6 +244,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             {
                 try
                 {
+                    // Track if pointer file already exists
+                    if (filePair.PointerFile.Exists)
+                        Interlocked.Increment(ref existingPointerFiles);
+
                     var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 10, $"Hashing {fileSizeFormatted}..."));
 
@@ -443,9 +458,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                     var compressionRatio = sourceStreamPosition > 0 ? (double)targetStreamPosition / sourceStreamPosition : 1.0;
                     logger.LogInformation("Large file upload completed: {FileName} (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier})", filePair.FullName, sourceStreamPosition.Bytes().Humanize(), targetStreamPosition.Bytes().Humanize(), compressionRatio, actualTier);
 
-                    Interlocked.Increment(ref filesUploaded);
-                    Interlocked.Add(ref bytesOriginal, sourceStreamPosition);
-                    Interlocked.Add(ref bytesArchived, targetStreamPosition);
+                    Interlocked.Increment(ref uniqueFilesUploaded);
+                    Interlocked.Increment(ref uniqueChunksUploaded);
+                    Interlocked.Add(ref bytesUploadedUncompressed, sourceStreamPosition);
+                    Interlocked.Add(ref bytesUploadedCompressed, targetStreamPosition);
 
                     uploadGate.Complete(hash, Unit.Value);
                 }
@@ -464,17 +480,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             {
                 // NON-OWNER (large): wait for the owner to finish this hash
                 await uploadTask;
-                Interlocked.Increment(ref filesSkipped);
             }
-        }
-        else
-        {
-            // File already uploaded previously
-            Interlocked.Increment(ref filesSkipped);
         }
 
         // 4.Write the Pointer
-        var pf = filePair.CreatePointerFile(hash);
+        var pf = WritePointerFile(filePair, hash);
 
         // 5. Write the PointerFileEntry
         handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
@@ -577,7 +587,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                             if (t.IsFaulted) throw t.Exception!.GetBaseException();
                             if (t.IsCanceled) throw new OperationCanceledException();
 
-                            var pf = filePair.CreatePointerFile(binaryHash);
+                            var pf = WritePointerFile(filePair, binaryHash);
+
                             handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
                             {
                                 Hash             = binaryHash,
@@ -596,7 +607,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 {
                     // Already uploaded
                     logger.LogInformation("Small file {FileName} already uploaded (hash: {Hash})", filePair.FullName, binaryHash.ToShortString());
-                    var pf = filePair.CreatePointerFile(binaryHash);
+
+                    var pf = WritePointerFile(filePair, binaryHash);
+
                     handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
                     {
                         Hash             = binaryHash,
@@ -605,7 +618,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                         LastWriteTimeUtc = pf.LastWriteTimeUtc
                     });
 
-                    Interlocked.Increment(ref filesSkipped);
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Already uploaded"));
                 }
             }
@@ -646,6 +658,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         }
     }
 
+    private PointerFile WritePointerFile(FilePair filePair, Hash hash)
+    {
+        if (!filePair.PointerFile.Exists) // NOTE: this is semi-h4x0r; we could have CreatePointerFile return a value whether it has created the file or not, or not write the pointerfile if it already exists, but just writing it anyway is cheap & defensive
+            Interlocked.Increment(ref pointerFilesCreated);
+        return filePair.CreatePointerFile(hash);
+    }
+
     private async Task ProcessTarArchive(HandlerContext handlerContext, InMemoryGzippedTarWriter tarWriter, CancellationToken cancellationToken)
     {
         // OWNER ENTRIES ONLY:
@@ -679,9 +698,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})",
             fileCount, totalOriginalSize.Bytes().Humanize(), finalArchivedSize.Bytes().Humanize(), compressionRatio, actualTier, parentHash.ToShortString());
 
-        Interlocked.Add(ref filesUploaded, fileCount);
-        Interlocked.Add(ref bytesOriginal, totalOriginalSize);
-        Interlocked.Add(ref bytesArchived, finalArchivedSize);
+        Interlocked.Add(ref uniqueFilesUploaded, fileCount);
+        Interlocked.Increment(ref uniqueChunksUploaded);
+        Interlocked.Add(ref bytesUploadedUncompressed, totalOriginalSize);
+        Interlocked.Add(ref bytesUploadedCompressed, finalArchivedSize);
 
         // Add BinaryProperties
         var tarBps = tarWriter.TarredEntries.Select(e => new BinaryProperties
@@ -708,6 +728,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         foreach (var entry in tarWriter.TarredEntries)
         {
             var pf = entry.FilePair.CreatePointerFile(entry.Hash);
+            Interlocked.Increment(ref pointerFilesCreated);
+
             pfes.Add(new PointerFileEntry
             {
                 Hash             = entry.Hash,
