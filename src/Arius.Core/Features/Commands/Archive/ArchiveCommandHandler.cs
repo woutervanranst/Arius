@@ -695,8 +695,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         var actualTier = properties?.StorageTier ?? handlerContext.Request.Tier;
         var compressionRatio = totalOriginalSize > 0 ? (double)finalArchivedSize / totalOriginalSize : 1.0;
         
-        logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})",
-            fileCount, totalOriginalSize.Bytes().Humanize(), finalArchivedSize.Bytes().Humanize(), compressionRatio, actualTier, parentHash.ToShortString());
+        logger.LogInformation("TAR archive upload completed: {FileCount} files (original: {OriginalSize}, archived: {ArchivedSize}, compression: {CompressionRatio:P1}, tier: {StorageTier}, hash: {ParentHash})", fileCount, totalOriginalSize.Bytes().Humanize(), finalArchivedSize.Bytes().Humanize(), compressionRatio, actualTier, parentHash.ToShortString());
 
         Interlocked.Add(ref uniqueFilesUploaded, fileCount);
         Interlocked.Increment(ref uniqueChunksUploaded);
