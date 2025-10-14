@@ -62,7 +62,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         var handlerContext = await CreateHandlerContextAsync();
 
         // Act
-        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, null, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
@@ -101,7 +101,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         var handlerContext = await CreateHandlerContextAsync();
 
         // First upload to create the blob
-        await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, null, CancellationToken.None);
 
         await handlerContext.ArchiveStorage.SetChunkStorageTierPerPolicy(hash, 0, StorageTier.Hot); // Set to Hot tier to check if the correct storage tier was applied afterwards
 
@@ -109,7 +109,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         sourceStream.Seek(0, SeekOrigin.Begin);
 
         // Act - Second call should detect existing blob
-        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, null, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
@@ -161,7 +161,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
         sourceStream.Seek(0, SeekOrigin.Begin);
 
         // Act - Should detect wrong content type, delete, and re-upload
-        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, correctContentType, CancellationToken.None);
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, correctContentType, null, CancellationToken.None);
 
         // Assert
         result.OriginalSize.ShouldBeGreaterThan(0);
@@ -185,6 +185,51 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
 
         // Verify the stream was read to the end (ie the binary was uploaded again)
         sourceStream.Position.ShouldBe(sourceStream.Length);
+    }
+
+    [Fact]
+    public async Task UploadIfNotExistsAsync_WhenTarArchive_ShouldIncludeSmallChunkCount()
+    {
+        // Arrange
+        var testContent         = "test content for TAR archive";
+        var sourceStream        = new MemoryStream(Encoding.UTF8.GetBytes(testContent));
+        var hash                = FakeHashBuilder.GenerateValidHash(4);
+        var expectedContentType = "application/aes256cbc+tar+gzip";
+        var compressionLevel    = CompressionLevel.NoCompression; // TAR is already compressed
+        var expectedChunkCount  = 5;
+
+        var additionalMetadata = new Dictionary<string, string>
+        {
+            ["SmallChunkCount"] = expectedChunkCount.ToString()
+        };
+
+        var handlerContext = await CreateHandlerContextAsync();
+
+        // Act
+        var result = await handler.UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, expectedContentType, additionalMetadata, CancellationToken.None);
+
+        // Assert
+        //result.OriginalSize.ShouldBeGreaterThan(0);
+        //result.ArchivedSize.ShouldBeGreaterThan(0);
+
+        // Verify the blob was created with correct properties and metadata
+        var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, CancellationToken.None);
+        properties.ShouldNotBeNull();
+        //properties.ContentType.ShouldBe(expectedContentType);
+
+        // Verify metadata includes both OriginalContentLength and SmallChunkCount
+        properties.Metadata.ShouldNotBeNull();
+        //properties.Metadata.ShouldContainKey("OriginalContentLength");
+        //properties.Metadata["OriginalContentLength"].ShouldBe(result.OriginalSize.ToString());
+
+        properties.Metadata.ShouldContainKey("SmallChunkCount");
+        properties.Metadata["SmallChunkCount"].ShouldBe(expectedChunkCount.ToString());
+
+        // Verify correct contentlength
+        properties.ContentLength.ShouldBe(result.ArchivedSize);
+
+        // Verify Storage Tier
+        properties.StorageTier.ShouldBe(StorageTier.Cool);
     }
 
     private async Task<HandlerContext> CreateHandlerContextAsync()

@@ -345,7 +345,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
-    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string contentType, CancellationToken cancellationToken)
+    internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string contentType, Dictionary<string, string>? additionalMetadata = null, CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Attempting to upload chunk with hash {Hash} using content type {ContentType}", hash.ToShortString(), contentType);
 
@@ -370,10 +370,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
 
             // Write Metadata
-            var metadata = new Dictionary<string, string>
-            {
-                ["OriginalContentLength"] = originalSize.ToString(),
-            };
+            var metadata = new Dictionary<string, string>(
+            [
+                new("OriginalContentLength", originalSize.ToString()),
+                ..additionalMetadata ?? []
+            ]);
+
             await handlerContext.ArchiveStorage.SetChunkMetadataAsync(hash, metadata);
 
             // Ensure correct storage tier
@@ -409,7 +411,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             await handlerContext.ArchiveStorage.DeleteChunkAsync(hash, cancellationToken);
 
             // Recursive call to upload
-            return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, contentType, cancellationToken);
+            return await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, compressionLevel, contentType, additionalMetadata, cancellationToken);
         }
         else
         {
@@ -440,7 +442,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
                     // Upload
                     await using var sourceStream = filePair.BinaryFile.OpenRead();
-                    var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, cancellationToken);
+                    var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, null, cancellationToken);
 
                     // Get the current tier (tier was already set in UploadIfNotExistsAsync)
                     var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
@@ -688,7 +690,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 70, "Uploading TAR archive..."));
 
         // Upload the TAR archive
-        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, cancellationToken);
+        var tarMetadata = new Dictionary<string, string>
+        {
+            ["SmallChunkCount"] = fileCount.ToString()
+        };
+        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, tarMetadata, cancellationToken);
 
         // Get the current tier (tier was already set in UploadIfNotExistsAsync)
         var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(parentHash, cancellationToken);
