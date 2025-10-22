@@ -13,13 +13,13 @@ using System.Text;
 
 namespace Arius.Core.Tests.Features.Commands.Archive;
 
-public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
+public class ArchiveCommandHandlerUploadIfNotExistsTests : IClassFixture<FixtureWithFileSystem>
 {
     private readonly FixtureWithFileSystem             fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
 
-    public ArchiveCommandHandlerTests(FixtureWithFileSystem fixture)
+    public ArchiveCommandHandlerUploadIfNotExistsTests(FixtureWithFileSystem fixture)
     {
         this.fixture = fixture;
         logger       = new();
@@ -43,12 +43,7 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     //    await handler.Handle(c, CancellationToken.None);
     //}
 
-    [Fact(Skip = "TODO")]
-    public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
-    {
-    }
 
-    // --- UPLOADIFNOTEXIST
 
     [Fact]
     public async Task UploadIfNotExistsAsync_WhenChunkDoesNotExist_ShouldUpload()

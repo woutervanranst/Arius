@@ -91,6 +91,11 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         return (command, handlerContext, storageBuilder, loggerFactory);
     }
 
+    [Fact(Skip = "TODO")]
+    public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
+    {
+    }
+
     [Fact]
     public async Task Single_LargeFile_FirstUpload_ShouldUploadBinaryAndPointer()
     {
