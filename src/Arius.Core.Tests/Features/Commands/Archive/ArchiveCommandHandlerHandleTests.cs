@@ -49,7 +49,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             Directory.Delete(stateCacheRoot, recursive: true);
     }
 
-    private static async Task<HandlerContext> BuildHandlerContextAsync(ArchiveCommand command, FakeArchiveStorage archiveStorage, FakeLoggerFactory loggerFactory) =>
+    private static async Task<HandlerContext> BuildHandlerContextAsync(ArchiveCommand command, IArchiveStorage archiveStorage, FakeLoggerFactory loggerFactory) =>
         await new HandlerContextBuilder(command, loggerFactory)
             .WithArchiveStorage(archiveStorage)
             .BuildAsync();
@@ -66,14 +66,14 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         return (entries.Count, existingPointerFileCount);
     }
 
-    private async Task<(ArchiveCommand Command, HandlerContext Context, FakeArchiveStorage Storage, FakeLoggerFactory LoggerFactory)>
+    private async Task<(ArchiveCommand Command, HandlerContext Context, MockArchiveStorageBuilder StorageBuilder, FakeLoggerFactory LoggerFactory)>
         CreateHandlerContextAsync(
             string containerName,
             Action<ArchiveCommandBuilder>? configureCommand = null,
-            FakeArchiveStorage? archiveStorage = null,
+            MockArchiveStorageBuilder? storageBuilder = null,
             FakeLoggerFactory? loggerFactory = null)
     {
-        archiveStorage ??= new FakeArchiveStorage();
+        storageBuilder ??= new MockArchiveStorageBuilder(fixture);
         loggerFactory  ??= new FakeLoggerFactory();
 
         var commandBuilder = new ArchiveCommandBuilder(fixture)
@@ -85,9 +85,10 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         configureCommand?.Invoke(commandBuilder);
 
         var command        = commandBuilder.Build();
+        var archiveStorage = storageBuilder.Build();
         var handlerContext = await BuildHandlerContextAsync(command, archiveStorage, loggerFactory);
 
-        return (command, handlerContext, archiveStorage, loggerFactory);
+        return (command, handlerContext, storageBuilder, loggerFactory);
     }
 
     [Fact]
@@ -103,7 +104,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(4096, seed: 10)
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -123,8 +124,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(largeFile.OriginalContent.LongLength);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        var chunk = archiveStorage.StoredChunks.Single().Value;
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        var chunk = storageBuilder.StoredChunks.Single().Value;
         chunk.ContentType.ShouldBe("application/aes256cbc+gzip");
         chunk.Metadata.ShouldContainKey("OriginalContentLength");
         chunk.Metadata["OriginalContentLength"].ShouldBe(largeFile.OriginalContent.Length.ToString());
@@ -158,7 +159,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(512, seed: 2)
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -178,8 +179,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(smallFile.OriginalContent.LongLength);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        var tarChunk = archiveStorage.StoredChunks.Single().Value;
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        var tarChunk = storageBuilder.StoredChunks.Single().Value;
         tarChunk.ContentType.ShouldBe("application/aes256cbc+tar+gzip");
         tarChunk.Metadata.ShouldContainKey("OriginalContentLength");
         tarChunk.Metadata.ShouldContainKey("SmallChunkCount");
@@ -219,7 +220,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -239,8 +240,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(0);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        var tarChunk = archiveStorage.StoredChunks.Single().Value;
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        var tarChunk = storageBuilder.StoredChunks.Single().Value;
         tarChunk.ContentType.ShouldBe("application/aes256cbc+tar+gzip");
         tarChunk.Metadata.ShouldContainKey("SmallChunkCount");
         tarChunk.Metadata["SmallChunkCount"].ShouldBe("1");
@@ -276,7 +277,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         var stalePointer = binaryWithPointer.FilePair.CreatePointerFile(staleHash);
         stalePointer.ReadHash().ShouldBe(staleHash);
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -296,7 +297,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(binaryWithPointer.OriginalContent.LongLength);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
 
         var pointerPath = ToAbsolutePointerPath(fixture, binaryPath);
         File.Exists(pointerPath).ShouldBeTrue();
@@ -334,7 +335,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         var progressUpdates = new List<ProgressUpdate>();
         var progressReporter = new Progress<ProgressUpdate>(progressUpdates.Add);
 
-        var (command, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(
+        var (command, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
             containerName,
             builder => builder
                 .WithProgressReporter(progressReporter)
@@ -360,15 +361,15 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(smallFile.OriginalContent.Length + largeFile.OriginalContent.Length);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(2);
-        archiveStorage.UploadedStates.ShouldContain(summary.NewStateName!);
+        storageBuilder.StoredChunks.Count.ShouldBe(2);
+        storageBuilder.UploadedStates.ShouldContain(summary.NewStateName!);
 
-        var tarChunk = archiveStorage.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+tar+gzip");
+        var tarChunk = storageBuilder.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+tar+gzip");
         tarChunk.Metadata.ShouldContainKey("OriginalContentLength");
         tarChunk.Metadata.ShouldContainKey("SmallChunkCount");
         tarChunk.Metadata["SmallChunkCount"].ShouldBe("1");
 
-        var largeChunk = archiveStorage.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+gzip");
+        var largeChunk = storageBuilder.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+gzip");
         largeChunk.Metadata.ShouldContainKey("OriginalContentLength");
         largeChunk.Metadata["OriginalContentLength"].ShouldBe(largeFile.OriginalContent.Length.ToString());
 
@@ -409,7 +410,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithDuplicate(originalSmallFile, UPath.Root / "texts" / "archive" / "note-copy.txt")
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -427,15 +428,15 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(
             originalLargeFile.OriginalContent.Length + originalSmallFile.OriginalContent.Length);
 
-        archiveStorage.StoredChunks.Count.ShouldBe(2);
-        archiveStorage.StoredChunks.Values.Count(c => c.ContentType == "application/aes256cbc+gzip").ShouldBe(1);
-        archiveStorage.StoredChunks.Values.Count(c => c.ContentType == "application/aes256cbc+tar+gzip").ShouldBe(1);
+        storageBuilder.StoredChunks.Count.ShouldBe(2);
+        storageBuilder.StoredChunks.Values.Count(c => c.ContentType == "application/aes256cbc+gzip").ShouldBe(1);
+        storageBuilder.StoredChunks.Values.Count(c => c.ContentType == "application/aes256cbc+tar+gzip").ShouldBe(1);
 
-        var largeChunk = archiveStorage.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+gzip");
+        var largeChunk = storageBuilder.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+gzip");
         largeChunk.Metadata.ShouldContainKey("OriginalContentLength");
         largeChunk.Metadata["OriginalContentLength"].ShouldBe(originalLargeFile.OriginalContent.Length.ToString());
 
-        var tarChunk = archiveStorage.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+tar+gzip");
+        var tarChunk = storageBuilder.StoredChunks.Values.Single(c => c.ContentType == "application/aes256cbc+tar+gzip");
         tarChunk.Metadata.ShouldContainKey("SmallChunkCount");
         tarChunk.Metadata["SmallChunkCount"].ShouldBe("1");
 
@@ -475,7 +476,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
                 .Build())
             .ToArray();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -493,8 +494,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.BytesUploadedUncompressed.ShouldBe(smallFiles.Sum(f => f.OriginalContent.Length));
         summary.PointerFileEntriesDeleted.ShouldBe(0);
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        var tarChunk = archiveStorage.StoredChunks.Single().Value;
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        var tarChunk = storageBuilder.StoredChunks.Single().Value;
         tarChunk.ContentType.ShouldBe("application/aes256cbc+tar+gzip");
         tarChunk.Metadata.ShouldContainKey("SmallChunkCount");
         tarChunk.Metadata["SmallChunkCount"].ShouldBe(paths.Length.ToString());
@@ -531,7 +532,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
                 .Build())
             .ToArray();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -549,7 +550,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.PointerFileEntriesDeleted.ShouldBe(0);
         summary.BytesUploadedUncompressed.ShouldBe(smallFiles.Sum(f => f.OriginalContent.Length));
 
-        var tarChunks = archiveStorage.StoredChunks.Values
+        var tarChunks = storageBuilder.StoredChunks.Values
             .Where(c => c.ContentType == "application/aes256cbc+tar+gzip")
             .ToList();
         tarChunks.Count.ShouldBe(2);
@@ -595,7 +596,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithDuplicate(ownerOmega, UPath.Root / "tar" / "zzz-duplicate.txt")
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -612,7 +613,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.PointerFilesCreated.ShouldBe(5);
         summary.PointerFileEntriesDeleted.ShouldBe(0);
 
-        var tarChunks = archiveStorage.StoredChunks.Values
+        var tarChunks = storageBuilder.StoredChunks.Values
             .Where(c => c.ContentType == "application/aes256cbc+tar+gzip")
             .ToList();
         tarChunks.Count.ShouldBe(2);
@@ -647,9 +648,9 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(4096, seed: 501)
             .Build();
 
-        var archiveStorage = new FakeArchiveStorage();
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (initialFileCount, _) = GetInitialFileStatistics(initialContext);
 
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
@@ -662,7 +663,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         staleHash.ShouldNotBe(originalHash);
         largeFile.FilePair.CreatePointerFile(staleHash);
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -683,8 +684,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
 
         largeFile.FilePair.PointerFile.ReadHash().ShouldBe(originalHash);
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        archiveStorage.UploadedStates.Count.ShouldBe(1);
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.UploadedStates.Count.ShouldBe(1);
 
         var pointerEntry = incrementalContext.StateRepository
             .GetPointerFileEntry(ToRelativePointerPath(binaryPath), includeBinaryProperties: true);
@@ -704,9 +705,9 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(4096, seed: 2001)
             .Build();
 
-        var archiveStorage = new FakeArchiveStorage();
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
@@ -715,7 +716,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(512, seed: 2002)
             .Build();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -734,7 +735,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.PointerFileEntriesDeleted.ShouldBe(0);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Values.Count().ShouldBe(2);
+        storageBuilder.StoredChunks.Values.Count().ShouldBe(2);
 
         var pointerEntry = incrementalContext.StateRepository
             .GetPointerFileEntry(ToRelativePointerPath(newSmallFile.OriginalPath), includeBinaryProperties: true);
@@ -755,16 +756,16 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(2048, seed: 3001)
             .Build();
 
-        var archiveStorage = new FakeArchiveStorage();
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt"));
         File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt.pointer.arius"));
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -784,8 +785,8 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .GetPointerFileEntry("/docs/to-delete.txt.pointer.arius", includeBinaryProperties: true);
         pointerEntry.ShouldBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        archiveStorage.UploadedStates.Count.ShouldBe(2);
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.UploadedStates.Count.ShouldBe(2);
     }
 
     [Fact]
@@ -801,9 +802,9 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(3072, seed: 4001)
             .Build();
 
-        var archiveStorage = new FakeArchiveStorage();
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
@@ -816,7 +817,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(3584, seed: 4002)
             .Build();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -842,7 +843,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         var oldBinaryProperties = incrementalContext.StateRepository.GetBinaryProperty(originalHash);
         oldBinaryProperties.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(2);
+        storageBuilder.StoredChunks.Count.ShouldBe(2);
     }
 
     [Fact]
@@ -857,13 +858,13 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(2048, seed: 5001)
             .Build();
 
-        var archiveStorage = new FakeArchiveStorage();
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -881,7 +882,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.PointerFileEntriesDeleted.ShouldBe(0);
         summary.NewStateName.ShouldBeNull();
 
-        archiveStorage.UploadedStates.Count.ShouldBe(1);
+        storageBuilder.UploadedStates.Count.ShouldBe(1);
         File.Exists(incrementalContext.StateRepository.StateDatabaseFile.FullName).ShouldBeFalse();
     }
 
@@ -902,7 +903,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(4096, seed: 6002)
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -915,7 +916,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         result.Errors.ShouldNotBeEmpty();
         result.Errors.First().Message.ShouldContain("cancelled by user");
 
-        archiveStorage.StoredChunks.Count.ShouldBe(0);
+        storageBuilder.StoredChunks.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -953,7 +954,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             }
         }
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
             containerName,
             builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(HandleProgress)));
 
@@ -975,7 +976,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         File.Exists(failingAbsolutePath).ShouldBeFalse();
         File.Exists(Path.Combine(fixture.TestRunSourceFolder.FullName, "hash", "will-fail.bin.pointer.arius")).ShouldBeFalse();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
 
         progressUpdates.OfType<FileProgressUpdate>()
             .Any(p => p.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true)
@@ -994,9 +995,10 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(4096, seed: 6201)
             .Build();
 
-        var archiveStorage = new ThrowingArchiveStorage(failureCount: 1);
+        var storageBuilder = new MockArchiveStorageBuilder(fixture)
+            .WithThrowOnWrite(failureCount: 1);
 
-        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
 
         // Act
         var result = await handler.Handle(handlerContext, CancellationToken.None);
@@ -1004,7 +1006,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.First().Message.ShouldContain("failed");
-        archiveStorage.StoredChunks.Count.ShouldBe(0);
+        storageBuilder.StoredChunks.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -1024,9 +1026,10 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(256, seed: 6302)
             .Build();
 
-        var archiveStorage = new ThrowingArchiveStorage(failureCount: 2);
+        var storageBuilder = new MockArchiveStorageBuilder(fixture)
+            .WithThrowOnWrite(failureCount: 2);
 
-        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, archiveStorage: archiveStorage);
+        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
 
         // Act
         var result = await handler.Handle(handlerContext, CancellationToken.None);
@@ -1034,7 +1037,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         // Assert
         result.IsFailed.ShouldBeTrue();
         result.Errors.First().Message.ShouldContain("multiple tasks failed");
-        archiveStorage.StoredChunks.Count.ShouldBe(0);
+        storageBuilder.StoredChunks.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -1049,7 +1052,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .Build();
 
         var progressUpdates = new List<ProgressUpdate>();
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
             containerName,
             builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(progressUpdates.Add)));
 
@@ -1067,7 +1070,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.UniqueBinariesUploaded.ShouldBe(0);
         summary.PointerFilesCreated.ShouldBe(0);
 
-        archiveStorage.StoredChunks.Count.ShouldBe(0);
+        storageBuilder.StoredChunks.Count.ShouldBe(0);
 
         handlerContext.StateRepository.GetPointerFileEntry("/orphans/lonely.bin.pointer.arius", includeBinaryProperties: true)
             .ShouldBeNull();
@@ -1089,7 +1092,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
             .WithRandomContent(256, seed: 7)
             .Build();
 
-        var (_, handlerContext, archiveStorage, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -1121,38 +1124,9 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         handlerContext.StateRepository.GetPointerFileEntry("/stale.bin.pointer.arius")
             .ShouldBeNull();
 
-        archiveStorage.StoredChunks.Count.ShouldBe(1);
-        archiveStorage.UploadedStates.ShouldNotBeEmpty();
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.UploadedStates.ShouldNotBeEmpty();
 
         File.Exists(Path.Combine(fixture.TestRunSourceFolder.FullName, "active.txt.pointer.arius")).ShouldBeTrue();
-    }
-
-    private sealed class ThrowingArchiveStorage : FakeArchiveStorage
-    {
-        private int remainingFailures;
-        private readonly Func<Hash, bool>? predicate;
-
-        public ThrowingArchiveStorage(int failureCount, Func<Hash, bool>? predicate = null)
-        {
-            remainingFailures = failureCount;
-            this.predicate    = predicate;
-        }
-
-        public override Task<Result<Stream>> OpenWriteChunkAsync(
-            Hash h,
-            CompressionLevel compressionLevel,
-            string contentType,
-            IDictionary<string, string>? metadata = null,
-            IProgress<long>? progress = null,
-            bool overwrite = false,
-            CancellationToken cancellationToken = default)
-        {
-            if ((predicate is null || predicate(h)) && Interlocked.Decrement(ref remainingFailures) >= 0)
-            {
-                return Task.FromResult(Result.Fail<Stream>(new ExceptionalError(new IOException("Simulated upload failure"))));
-            }
-
-            return base.OpenWriteChunkAsync(h, compressionLevel, contentType, metadata, progress, overwrite, cancellationToken);
-        }
     }
 }
