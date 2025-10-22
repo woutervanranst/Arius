@@ -750,7 +750,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         summary.PointerFileEntriesDeleted.ShouldBe(0);
         summary.NewStateName.ShouldNotBeNull();
 
-        archiveStorage.StoredChunks.Values.Count.ShouldBe(2);
+        archiveStorage.StoredChunks.Values.Count().ShouldBe(2);
 
         var pointerEntry = incrementalContext.StateRepository
             .GetPointerFileEntry(ToRelativePointerPath(newSmallFile.OriginalPath), includeBinaryProperties: true);
