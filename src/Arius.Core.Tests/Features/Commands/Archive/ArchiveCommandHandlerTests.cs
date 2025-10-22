@@ -9,7 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
 using System.IO.Compression;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Arius.Core.Tests.Features.Commands.Archive;
@@ -48,6 +47,8 @@ public class ArchiveCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     public void UpdatedCreationTimeOrLastWriteTimeShouldBeUpdatedInStateDatabase()
     {
     }
+
+    // --- UPLOADIFNOTEXIST
 
     [Fact]
     public async Task UploadIfNotExistsAsync_WhenChunkDoesNotExist_ShouldUpload()

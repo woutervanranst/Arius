@@ -37,7 +37,7 @@ public class FixtureWithFileSystem : Fixture, IDisposable
     public IFileSystem   FileSystem          { get; }
     public DirectoryInfo TestRunSourceFolder { get; }
 
-    public FixtureWithFileSystem() : base()
+    public FixtureWithFileSystem()
     {
         TestRunSourceFolder = Directory.CreateTempSubdirectory($"arius-core-tests-{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}");
         TestRunSourceFolder.Create();
