@@ -5,7 +5,7 @@ using FluentResults;
 using NSubstitute;
 using System.Formats.Tar;
 
-namespace Arius.Core.Tests.Helpers.Builders;
+namespace Arius.Core.Tests.Features.Commands.Restore;
 
 internal class MockArchiveStorageBuilder
 {

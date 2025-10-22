@@ -2,6 +2,7 @@ using Arius.Core.Features.Queries.PointerFileEntries;
 using Arius.Core.Shared.FileSystem;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
+using Arius.Core.Tests.Features.Commands.Restore;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
