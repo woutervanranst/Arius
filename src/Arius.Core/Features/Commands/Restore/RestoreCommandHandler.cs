@@ -34,12 +34,13 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
     }
 
     // Statistics tracking
-    private int  totalTargetFiles;
-    private int  verifiedFilesAlreadyExisting;
-    private int  chunksDownloaded;
-    private long bytesDownloaded;
-    private int  filesWrittenToDisk;
-    private long bytesWrittenToDisk;
+    private readonly ConcurrentBag<string> warnings                     = [];
+    private          int                   totalTargetFiles             = 0;
+    private          int                   verifiedFilesAlreadyExisting = 0;
+    private          int                   chunksDownloaded             = 0;
+    private          long                  bytesDownloaded              = 0;
+    private          int                   filesWrittenToDisk           = 0;
+    private          long                  bytesWrittenToDisk           = 0;
 
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToRestoreChannel = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithPointerFileEntry> filePairsToHashChannel    = ChannelExtensions.CreateBounded<FilePairWithPointerFileEntry>(capacity: 25, singleWriter: true, singleReader: false);
@@ -121,7 +122,8 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
             BytesDownloaded              = bytesDownloaded,
             BytesWrittenToDisk           = bytesWrittenToDisk,
             ChunksDownloaded             = chunksDownloaded,
-            Rehydrating                  = rehydratingFiles
+            Rehydrating                  = rehydratingFiles,
+            Warnings                     = warnings.ToArray()
         });
     }
 
@@ -148,6 +150,9 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                     {
                         logger.LogWarning("Target {TargetPath} was specified but no matching PointerFileEntry found", targetPath);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(targetPath.FullName, -1, "Error: no matching entry found"));
+
+                        var warningMessage = $"Target '{targetPath}' was specified but no matching PointerFileEntry found";
+                        warnings.Add(warningMessage);
                     }
                     else
                     {
@@ -241,6 +246,10 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                         // The hash does not match - we need to restore this binaryfile
                         logger.LogWarning("File {FileName} hash mismatch (expected: {ExpectedHash}, actual: {ActualHash}), queued for restore", filePair.BinaryFile.FullName, pointerFileEntry.Hash.ToShortString(), h.ToShortString());
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 50, "Hash mismatch, restoring..."));
+
+                        var warningMessage = $"File '{filePair.BinaryFile.FullName}' hash mismatch (expected: {pointerFileEntry.Hash.ToShortString()}, actual: {h.ToShortString()}), queued for restore";
+                        warnings.Add(warningMessage);
+
                         await filePairsToRestoreChannel.Writer.WriteAsync(filePairWithPointerFileEntry, innerCancellationToken);
                     }
                 }

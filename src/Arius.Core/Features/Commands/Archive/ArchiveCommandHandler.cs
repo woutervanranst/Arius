@@ -9,6 +9,7 @@ using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
@@ -38,14 +39,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     private readonly InFlightGate<Hash, Unit> uploadGate = new();
 
     // Statistics tracking
-    private int  totalLocalFiles;
-    private int  uniqueBinariesUploaded;
-    private int  uniqueChunksUploaded;
-    private long bytesUploadedUncompressed;
-    private long bytesUploadedCompressed;
-    private int  existingPointerFiles;
-    private int  pointerFilesCreated;
-    private int  pointerFileEntriesDeleted;
+    private          int                   totalLocalFiles           = 0;
+    private          int                   existingPointerFiles      = 0;
+    private          int                   uniqueBinariesUploaded    = 0;
+    private          int                   uniqueChunksUploaded      = 0;
+    private          long                  bytesUploadedUncompressed = 0;
+    private          long                  bytesUploadedCompressed   = 0;
+    private          int                   pointerFilesCreated       = 0;
+    private          int                   pointerFileEntriesDeleted = 0;
+    private readonly ConcurrentBag<string> warnings                  = [];
+    private          int                   filesSkipped              = 0;
 
     // Pipeline channels:
     //
@@ -129,7 +132,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 BytesUploadedCompressed   = bytesUploadedCompressed,
                 PointerFilesCreated       = pointerFilesCreated,
                 PointerFileEntriesDeleted = pointerFileEntriesDeleted,
-                NewStateName              = newStateName
+                NewStateName              = newStateName,
+                Warnings                  = warnings.ToArray(),
+                FilesSkipped              = filesSkipped
             });
         }
         catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
@@ -252,6 +257,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
                         logger.LogWarning("File {FileName} is a pointer file without an associated binary, skipping", filePair.FullName);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, "Error: pointer file without binary"));
+
+                        var warningMessage = $"File '{filePair.FullName}' is a pointer file without an associated binary, skipping";
+                        warnings.Add(warningMessage);
+                        Interlocked.Increment(ref filesSkipped);
                     }
                     else
                     {
@@ -273,6 +282,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 {
                     logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, $"Error: {e.Message}"));
+
+                    var warningMessage = $"Error when hashing file '{filePair.FullName}': {e.Message}, skipping";
+                    warnings.Add(warningMessage);
+                    Interlocked.Increment(ref filesSkipped);
                 }
                 catch (OperationCanceledException)
                 {

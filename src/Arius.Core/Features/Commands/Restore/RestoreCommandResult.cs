@@ -39,6 +39,8 @@ public sealed record RestoreCommandResult
     /// Details about the files that are still hydrating
     /// </summary>
     public IReadOnlyList<RehydrationDetail> Rehydrating { get; init; } = [];
+
+    public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
 public sealed record RehydrationDetail
