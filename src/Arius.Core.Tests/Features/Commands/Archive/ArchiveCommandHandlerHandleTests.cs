@@ -1,30 +1,27 @@
 using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.FileSystem;
-using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
 using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
-using FluentResults;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
-using System.IO.Compression;
 using Zio;
 
 namespace Arius.Core.Tests.Features.Commands.Archive;
 
-public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSystem>
+public class ArchiveCommandHandlerHandleTests
 {
     private readonly FixtureWithFileSystem             fixture;
     private readonly FakeLogger<ArchiveCommandHandler> logger;
     private readonly ArchiveCommandHandler             handler;
 
-    public ArchiveCommandHandlerHandleTests(FixtureWithFileSystem fixture)
+    public ArchiveCommandHandlerHandleTests()
     {
-        this.fixture = fixture;
+        this.fixture = new();
         logger       = new FakeLogger<ArchiveCommandHandler>();
         handler      = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
@@ -34,20 +31,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     private static string ToRelativePointerPath(UPath binaryPath) => binaryPath.GetPointerFilePath().ToString();
 
     private static string ToAbsolutePointerPath(FixtureWithFileSystem fixture, UPath binaryPath) => Path.Combine(fixture.TestRunSourceFolder.FullName, binaryPath.GetPointerFilePath().ToString().TrimStart('/'));
-
-    private static void ResetTestRoot(FixtureWithFileSystem fixture, string containerName)
-    {
-        foreach (var directory in Directory.EnumerateDirectories(fixture.TestRunSourceFolder.FullName))
-            Directory.Delete(directory, recursive: true);
-
-        foreach (var file in Directory.EnumerateFiles(fixture.TestRunSourceFolder.FullName))
-            File.Delete(file);
-
-        var stateCacheRoot = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "statecache", fixture.RepositoryOptions?.AccountName ?? "testaccount", containerName);
-
-        if (Directory.Exists(stateCacheRoot))
-            Directory.Delete(stateCacheRoot, recursive: true);
-    }
 
     private static async Task<HandlerContext> BuildHandlerContextAsync(ArchiveCommand command, IArchiveStorage archiveStorage, FakeLoggerFactory loggerFactory) =>
         await new HandlerContextBuilder(command, loggerFactory)
@@ -101,7 +84,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-large-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var binaryPath = UPath.Root / "documents" / "presentation.pptx";
         var largeFile = new FakeFileBuilder(fixture)
@@ -156,7 +138,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-small-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var binaryPath = UPath.Root / "notes" / "small.txt";
         var smallFile = new FakeFileBuilder(fixture)
@@ -218,7 +199,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-empty-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var binaryPath = UPath.Root / "empty" / "file.bin";
         var emptyFile = new FakeFileBuilder(fixture)
@@ -269,7 +249,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-existing-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var binaryPath = UPath.Root / "existing" / "document.pdf";
         var binaryWithPointer = new FakeFileBuilder(fixture)
@@ -325,7 +304,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-mixed-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var smallFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "small.txt")
@@ -395,7 +373,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-duplicates-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var originalLargeFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "shared.bin")
@@ -465,7 +442,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-small-batch-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var paths = new[]
         {
@@ -519,7 +495,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-multi-tar-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var paths = new[]
         {
@@ -576,7 +551,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-small-duplicates-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var ownerAlpha = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "alpha-owner.txt")
@@ -645,7 +619,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-incremental-existing-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var binaryPath = UPath.Root / "incremental" / "presentation.pptx";
         var largeFile = new FakeFileBuilder(fixture)
@@ -703,7 +676,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-incremental-mixed-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var existingFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "existing.pdf")
@@ -754,7 +726,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-incremental-deleted-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var deletedFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "to-delete.txt")
@@ -799,7 +770,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-incremental-modified-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var filePath = UPath.Root / "docs" / "mutable.bin";
         var originalFile = new FakeFileBuilder(fixture)
@@ -856,7 +826,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-incremental-nochanges-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var baselineFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "baseline.txt")
@@ -896,7 +865,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-error-cancel-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "cancel" / "large1.bin")
@@ -929,7 +897,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-error-hash-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         var failingPath = UPath.Root / "hash" / "will-fail.bin";
         _ = new FakeFileBuilder(fixture)
@@ -993,7 +960,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-error-upload-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "uploads" / "large.bin")
@@ -1019,7 +985,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-error-multi-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "multi" / "large.bin")
@@ -1050,7 +1015,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-error-pointer-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.PointerFileOnly, UPath.Root / "orphans" / "lonely.bin")
@@ -1090,7 +1054,6 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
     {
         // Arrange
         var containerName = $"test-container-stale-{Guid.CreateVersion7()}";
-        ResetTestRoot(fixture, containerName);
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "active.txt")
@@ -1104,16 +1067,16 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         var staleHash = FakeHashBuilder.GenerateValidHash(99);
         handlerContext.StateRepository.AddBinaryProperties(new BinaryProperties
         {
-            Hash         = staleHash,
+            Hash = staleHash,
             OriginalSize = 1,
             ArchivedSize = 1,
-            StorageTier  = StorageTier.Cool
+            StorageTier = StorageTier.Cool
         });
         handlerContext.StateRepository.UpsertPointerFileEntries(new PointerFileEntry
         {
-            Hash             = staleHash,
-            RelativeName     = "/stale.bin.pointer.arius",
-            CreationTimeUtc  = DateTime.UtcNow,
+            Hash = staleHash,
+            RelativeName = "/stale.bin.pointer.arius",
+            CreationTimeUtc = DateTime.UtcNow,
             LastWriteTimeUtc = DateTime.UtcNow
         });
 
