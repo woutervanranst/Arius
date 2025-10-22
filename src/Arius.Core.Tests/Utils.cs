@@ -27,7 +27,8 @@ public class Utils : IClassFixture<Fixture>
     {
         var cutoff = DateTime.UtcNow.AddDays(-2);
 
-        foreach (var dir in Directory.EnumerateDirectories(Path.GetTempPath(), "Arius.Core.Tests*"))
+        foreach (var dir in Directory.EnumerateDirectories(Path.GetTempPath(), "Arius.Core.Tests*").Union(
+                                  Directory.EnumerateDirectories(Path.GetTempPath(), "arius-*")))
         {
             var info = new DirectoryInfo(dir);
 
