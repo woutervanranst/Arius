@@ -4,21 +4,14 @@ using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
+using Arius.Core.Tests.Helpers.FakeLogger;
 using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
-using Arius.Core.Tests.Helpers.FakeLogger;
 using FluentResults;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
 using Shouldly;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Zio;
 
 namespace Arius.Core.Tests.Features.Commands.Archive;
@@ -40,8 +33,7 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
 
     private static string ToRelativePointerPath(UPath binaryPath) => binaryPath.GetPointerFilePath().ToString();
 
-    private static string ToAbsolutePointerPath(FixtureWithFileSystem fixture, UPath binaryPath) =>
-        Path.Combine(fixture.TestRunSourceFolder.FullName, binaryPath.GetPointerFilePath().ToString().TrimStart('/'));
+    private static string ToAbsolutePointerPath(FixtureWithFileSystem fixture, UPath binaryPath) => Path.Combine(fixture.TestRunSourceFolder.FullName, binaryPath.GetPointerFilePath().ToString().TrimStart('/'));
 
     private static void ResetTestRoot(FixtureWithFileSystem fixture, string containerName)
     {
@@ -51,21 +43,13 @@ public class ArchiveCommandHandlerHandleTests : IClassFixture<FixtureWithFileSys
         foreach (var file in Directory.EnumerateFiles(fixture.TestRunSourceFolder.FullName))
             File.Delete(file);
 
-        var stateCacheRoot = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Arius",
-            "statecache",
-            fixture.RepositoryOptions?.AccountName ?? "testaccount",
-            containerName);
+        var stateCacheRoot = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "statecache", fixture.RepositoryOptions?.AccountName ?? "testaccount", containerName);
 
         if (Directory.Exists(stateCacheRoot))
             Directory.Delete(stateCacheRoot, recursive: true);
     }
 
-    private static async Task<HandlerContext> BuildHandlerContextAsync(
-        ArchiveCommand command,
-        FakeArchiveStorage archiveStorage,
-        FakeLoggerFactory loggerFactory) =>
+    private static async Task<HandlerContext> BuildHandlerContextAsync(ArchiveCommand command, FakeArchiveStorage archiveStorage, FakeLoggerFactory loggerFactory) =>
         await new HandlerContextBuilder(command, loggerFactory)
             .WithArchiveStorage(archiveStorage)
             .BuildAsync();
