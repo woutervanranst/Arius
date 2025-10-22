@@ -32,11 +32,6 @@ public class ArchiveCommandHandlerHandleTests
 
     private static string ToAbsolutePointerPath(FixtureWithFileSystem fixture, UPath binaryPath) => Path.Combine(fixture.TestRunSourceFolder.FullName, binaryPath.GetPointerFilePath().ToString().TrimStart('/'));
 
-    private static async Task<HandlerContext> BuildHandlerContextAsync(ArchiveCommand command, IArchiveStorage archiveStorage, FakeLoggerFactory loggerFactory) =>
-        await new HandlerContextBuilder(command, loggerFactory)
-            .WithArchiveStorage(archiveStorage)
-            .BuildAsync();
-
     private static (int FileCount, int ExistingPointerCount) GetInitialFileStatistics(HandlerContext handlerContext)
     {
         var entries = handlerContext.FileSystem
@@ -65,7 +60,9 @@ public class ArchiveCommandHandlerHandleTests
 
         var command        = commandBuilder.Build();
         var archiveStorage = storageBuilder.Build();
-        var handlerContext = await BuildHandlerContextAsync(command, archiveStorage, loggerFactory);
+        var handlerContext = await new HandlerContextBuilder(command, loggerFactory)
+            .WithArchiveStorage(archiveStorage)
+            .BuildAsync();
 
         return (command, handlerContext, storageBuilder, loggerFactory);
     }
