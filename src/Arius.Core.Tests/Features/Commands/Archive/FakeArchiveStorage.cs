@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 using System.IO.Compression;
 using Zio;
 
-namespace Arius.Core.Tests.Helpers.Fakes;
+namespace Arius.Core.Tests.Features.Commands.Archive;
 
 internal class FakeArchiveStorage : IArchiveStorage
 {
