@@ -49,18 +49,14 @@ public class ArchiveCommandHandlerHandleTests
         return (entries.Count, existingPointerFileCount);
     }
 
-    private async Task<(ArchiveCommand Command, HandlerContext Context, MockArchiveStorageBuilder StorageBuilder, FakeLoggerFactory LoggerFactory)>
-        CreateHandlerContextAsync(
-            string containerName,
-            Action<ArchiveCommandBuilder>? configureCommand = null,
-            MockArchiveStorageBuilder? storageBuilder = null,
-            FakeLoggerFactory? loggerFactory = null)
+    private async Task<(ArchiveCommand Command, HandlerContext Context, MockArchiveStorageBuilder StorageBuilder, FakeLoggerFactory LoggerFactory)> CreateHandlerContextAsync(Action<ArchiveCommandBuilder>? configureCommand = null,
+        MockArchiveStorageBuilder? storageBuilder = null,
+        FakeLoggerFactory? loggerFactory = null)
     {
         storageBuilder ??= new MockArchiveStorageBuilder(fixture);
         loggerFactory  ??= new FakeLoggerFactory();
 
         var commandBuilder = new ArchiveCommandBuilder(fixture)
-            .WithContainerName(containerName)
             .WithSmallFileBoundary(DefaultSmallFileBoundary)
             .WithHashingParallelism(1)
             .WithUploadParallelism(1);
@@ -83,15 +79,13 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Single_LargeFile_FirstUpload_ShouldUploadBinaryAndPointer()
     {
         // Arrange
-        var containerName = $"test-container-large-{Guid.CreateVersion7()}";
-
         var binaryPath = UPath.Root / "documents" / "presentation.pptx";
         var largeFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
             .WithRandomContent(4096, seed: 10)
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -137,15 +131,13 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Single_SmallFile_FirstUpload_ShouldCreateTarParentAndChildBinaryProperties()
     {
         // Arrange
-        var containerName = $"test-container-small-{Guid.CreateVersion7()}";
-
         var binaryPath = UPath.Root / "notes" / "small.txt";
         var smallFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
             .WithRandomContent(512, seed: 2)
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -198,14 +190,12 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Single_EmptyFile_ShouldUploadZeroLengthBinary()
     {
         // Arrange
-        var containerName = $"test-container-empty-{Guid.CreateVersion7()}";
-
         var binaryPath = UPath.Root / "empty" / "file.bin";
         var emptyFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -248,8 +238,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Single_BinaryWithExistingPointer_ShouldOverwritePointerAndTrackExistingCount()
     {
         // Arrange
-        var containerName = $"test-container-existing-{Guid.CreateVersion7()}";
-
         var binaryPath = UPath.Root / "existing" / "document.pdf";
         var binaryWithPointer = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
@@ -261,7 +249,7 @@ public class ArchiveCommandHandlerHandleTests
         var stalePointer = binaryWithPointer.FilePair.CreatePointerFile(staleHash);
         stalePointer.ReadHash().ShouldBe(staleHash);
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
@@ -303,8 +291,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Multiple_AllUnique_MixedSizes_ShouldUploadLargeAndSmallBatches()
     {
         // Arrange
-        var containerName = $"test-container-mixed-{Guid.CreateVersion7()}";
-
         var smallFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "small.txt")
             .WithRandomContent(512, seed: 1)
@@ -318,13 +304,11 @@ public class ArchiveCommandHandlerHandleTests
         var progressUpdates = new List<ProgressUpdate>();
         var progressReporter = new Progress<ProgressUpdate>(progressUpdates.Add);
 
-        var (command, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
-            containerName,
-            builder => builder
-                .WithProgressReporter(progressReporter)
-                .WithHashingParallelism(1)
-                .WithUploadParallelism(1)
-                .WithSmallFileBoundary(DefaultSmallFileBoundary));
+        var (command, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder
+            .WithProgressReporter(progressReporter)
+            .WithHashingParallelism(1)
+            .WithUploadParallelism(1)
+            .WithSmallFileBoundary(DefaultSmallFileBoundary));
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -372,8 +356,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Multiple_WithDuplicates_InSameRun_ShouldUploadBinaryOnceAndCreateMultiplePointers()
     {
         // Arrange
-        var containerName = $"test-container-duplicates-{Guid.CreateVersion7()}";
-
         var originalLargeFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "shared.bin")
             .WithRandomContent(4096, seed: 42)
@@ -392,7 +374,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithDuplicate(originalSmallFile, UPath.Root / "texts" / "archive" / "note-copy.txt")
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -441,8 +423,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Multiple_SmallFiles_SingleTarBatch_ShouldUploadSingleParentChunk()
     {
         // Arrange
-        var containerName = $"test-container-small-batch-{Guid.CreateVersion7()}";
-
         var paths = new[]
         {
             UPath.Root / "tar" / "alpha.txt",
@@ -457,7 +437,7 @@ public class ArchiveCommandHandlerHandleTests
                 .Build())
             .ToArray();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -494,8 +474,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Multiple_SmallFiles_MultipleTarBatches_ShouldFlushWhenBoundaryExceeded()
     {
         // Arrange
-        var containerName = $"test-container-multi-tar-{Guid.CreateVersion7()}";
-
         var paths = new[]
         {
             UPath.Root / "tar" / "alpha.bin",
@@ -512,7 +490,7 @@ public class ArchiveCommandHandlerHandleTests
                 .Build())
             .ToArray();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -550,8 +528,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Multiple_SmallFiles_WithDuplicates_CrossTarBatches_ShouldWriteDeferredPointers()
     {
         // Arrange
-        var containerName = $"test-container-small-duplicates-{Guid.CreateVersion7()}";
-
         var ownerAlpha = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "alpha-owner.txt")
             .WithRandomContent(900, seed: 11)
@@ -575,7 +551,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithDuplicate(ownerOmega, UPath.Root / "tar" / "zzz-duplicate.txt")
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
@@ -618,8 +594,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Incremental_AllFilesAlreadyUploaded_ShouldSkipUploads()
     {
         // Arrange
-        var containerName = $"test-container-incremental-existing-{Guid.CreateVersion7()}";
-
         var binaryPath = UPath.Root / "incremental" / "presentation.pptx";
         var largeFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, binaryPath)
@@ -628,8 +602,8 @@ public class ArchiveCommandHandlerHandleTests
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
-        var (initialFileCount, _) = GetInitialFileStatistics(initialContext);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var (initialFileCount, _)     = GetInitialFileStatistics(initialContext);
 
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
@@ -641,7 +615,7 @@ public class ArchiveCommandHandlerHandleTests
         staleHash.ShouldNotBe(originalHash);
         largeFile.FilePair.CreatePointerFile(staleHash);
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -675,8 +649,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Incremental_MixOfNewAndExisting_ShouldUploadOnlyNewFiles()
     {
         // Arrange
-        var containerName = $"test-container-incremental-mixed-{Guid.CreateVersion7()}";
-
         var existingFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "existing.pdf")
             .WithRandomContent(4096, seed: 2001)
@@ -684,7 +656,7 @@ public class ArchiveCommandHandlerHandleTests
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
@@ -693,7 +665,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithRandomContent(512, seed: 2002)
             .Build();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -725,8 +697,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Incremental_FileDeleted_PointerRemains_ShouldCleanUpStateEntry()
     {
         // Arrange
-        var containerName = $"test-container-incremental-deleted-{Guid.CreateVersion7()}";
-
         var deletedFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "to-delete.txt")
             .WithRandomContent(2048, seed: 3001)
@@ -734,14 +704,14 @@ public class ArchiveCommandHandlerHandleTests
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt"));
         File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt.pointer.arius"));
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -769,8 +739,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Incremental_FileModified_ShouldUploadNewHashAndPreserveOldBinaryProperties()
     {
         // Arrange
-        var containerName = $"test-container-incremental-modified-{Guid.CreateVersion7()}";
-
         var filePath = UPath.Root / "docs" / "mutable.bin";
         var originalFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, filePath)
@@ -779,7 +747,7 @@ public class ArchiveCommandHandlerHandleTests
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
@@ -792,7 +760,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithRandomContent(3584, seed: 4002)
             .Build();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -825,8 +793,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Incremental_NoChanges_ShouldSkipStateUploadAndDeleteLocalState()
     {
         // Arrange
-        var containerName = $"test-container-incremental-nochanges-{Guid.CreateVersion7()}";
-
         var baselineFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "baseline.txt")
             .WithRandomContent(2048, seed: 5001)
@@ -834,11 +800,11 @@ public class ArchiveCommandHandlerHandleTests
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var firstResult = await handler.Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
-        var (_, incrementalContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
@@ -864,8 +830,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_CancellationByUser_ShouldReturnFailureResult()
     {
         // Arrange
-        var containerName = $"test-container-error-cancel-{Guid.CreateVersion7()}";
-
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "cancel" / "large1.bin")
             .WithRandomContent(4096, seed: 6001)
@@ -876,7 +840,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithRandomContent(4096, seed: 6002)
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -896,8 +860,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_HashTaskFails_ShouldSkipProblematicFileAndContinue()
     {
         // Arrange
-        var containerName = $"test-container-error-hash-{Guid.CreateVersion7()}";
-
         var failingPath = UPath.Root / "hash" / "will-fail.bin";
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, failingPath)
@@ -926,9 +888,7 @@ public class ArchiveCommandHandlerHandleTests
             }
         }
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
-            containerName,
-            builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(HandleProgress)));
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(HandleProgress)));
 
         var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
 
@@ -959,8 +919,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_UploadTaskFails_ShouldReturnFailure()
     {
         // Arrange
-        var containerName = $"test-container-error-upload-{Guid.CreateVersion7()}";
-
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "uploads" / "large.bin")
             .WithRandomContent(4096, seed: 6201)
@@ -969,7 +927,7 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture)
             .WithThrowOnWrite(failureCount: 1);
 
-        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
 
         // Act
         var result = await handler.Handle(handlerContext, CancellationToken.None);
@@ -984,8 +942,6 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_MultipleTasksFail_ShouldReturnAggregateException()
     {
         // Arrange
-        var containerName = $"test-container-error-multi-{Guid.CreateVersion7()}";
-
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "multi" / "large.bin")
             .WithRandomContent(4096, seed: 6301)
@@ -999,7 +955,7 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture)
             .WithThrowOnWrite(failureCount: 2);
 
-        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(containerName, storageBuilder: storageBuilder);
+        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
 
         // Act
         var result = await handler.Handle(handlerContext, CancellationToken.None);
@@ -1014,16 +970,12 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_PointerFileOnly_ShouldReportWarningAndSkip()
     {
         // Arrange
-        var containerName = $"test-container-error-pointer-{Guid.CreateVersion7()}";
-
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.PointerFileOnly, UPath.Root / "orphans" / "lonely.bin")
             .Build();
 
         var progressUpdates = new List<ProgressUpdate>();
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(
-            containerName,
-            builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(progressUpdates.Add)));
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(progressUpdates.Add)));
 
         var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
 
@@ -1053,14 +1005,12 @@ public class ArchiveCommandHandlerHandleTests
     public async Task StalePointerEntries_ShouldBeRemovedWhenMissingOnDisk()
     {
         // Arrange
-        var containerName = $"test-container-stale-{Guid.CreateVersion7()}";
-
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "active.txt")
             .WithRandomContent(256, seed: 7)
             .Build();
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(containerName);
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
 
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
