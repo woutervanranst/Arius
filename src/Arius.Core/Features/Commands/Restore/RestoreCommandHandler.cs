@@ -25,6 +25,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
 {
     private readonly ILogger<RestoreCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
+    private          int                            used;
 
     public RestoreCommandHandler(ILogger<RestoreCommandHandler> logger, ILoggerFactory loggerFactory, IOptions<AriusConfiguration> config)
     {
@@ -57,16 +58,11 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
 
     internal async ValueTask<Result<RestoreCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
+        // Enforce single-use
+        if (Interlocked.Exchange(ref used, 1) != 0)
+            throw new InvalidOperationException($"{nameof(RestoreCommandHandler)} can only be used once.");
+
         logger.LogInformation("Starting restore operation for {TargetCount} targets with hashing parallelism {HashParallelism}, download parallelism {DownloadParallelism}", handlerContext.Targets.Length, handlerContext.Request.HashParallelism, handlerContext.Request.DownloadParallelism);
-
-        // Reset statistics for this operation
-        totalTargetFiles             = 0;
-        verifiedFilesAlreadyExisting = 0;
-        chunksDownloaded             = 0;
-        bytesDownloaded              = 0;
-        filesWrittenToDisk           = 0;
-        bytesWrittenToDisk           = 0;
-
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;

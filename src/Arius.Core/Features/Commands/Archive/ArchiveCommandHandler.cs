@@ -23,6 +23,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
+    private          int                            used;
 
     public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger, ILoggerFactory loggerFactory, IOptions<AriusConfiguration> config)
     {
@@ -72,18 +73,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
     internal async ValueTask<Result<ArchiveCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
+        // Enforce single-use
+        if (Interlocked.Exchange(ref used, 1) != 0)
+            throw new InvalidOperationException($"{nameof(ArchiveCommandHandler)} can only be used once.");
+
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
-
-        // Reset statistics for this operation
-        totalLocalFiles      = 0;
-        existingPointerFiles = 0;
-
-        uniqueBinariesUploaded    = 0;
-        uniqueChunksUploaded      = 0;
-        bytesUploadedUncompressed = 0;
-        bytesUploadedCompressed   = 0;
-        pointerFilesCreated       = 0;
-        pointerFileEntriesDeleted = 0;
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var       errorCancellationToken       = errorCancellationTokenSource.Token;
