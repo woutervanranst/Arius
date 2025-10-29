@@ -60,11 +60,23 @@ public class ArchiveCommandHandlerHandleTests
 
         var command        = commandBuilder.Build();
         var archiveStorage = storageBuilder.Build();
-        var handlerContext = await new HandlerContextBuilder(command, loggerFactory)
-            .WithArchiveStorage(archiveStorage)
-            .BuildAsync();
 
-        return (command, handlerContext, storageBuilder, loggerFactory);
+        Retry:
+        try
+        {
+            var handlerContext = await new HandlerContextBuilder(command, loggerFactory)
+                .WithArchiveStorage(archiveStorage)
+                .BuildAsync();
+
+            return (command, handlerContext, storageBuilder, loggerFactory);
+        }
+        catch (IOException)
+        {
+            await Task.Delay(100); // Delay until the statefile name ("yyyy-MM-ddTHH-mm-ss") is in different seconds
+            goto Retry;
+        }
+
+        
     }
 
     [Fact(Skip = "TODO")]
@@ -571,7 +583,7 @@ public class ArchiveCommandHandlerHandleTests
         tarChunks.Count.ShouldBe(2);
         tarChunks.Select(c => int.Parse(c.Metadata["SmallChunkCount"]))
             .OrderBy(v => v)
-            .ShouldBe(new[] { 1, 2 });
+            .ShouldBe([1, 2]);
 
         var duplicatePaths = new[]
         {
