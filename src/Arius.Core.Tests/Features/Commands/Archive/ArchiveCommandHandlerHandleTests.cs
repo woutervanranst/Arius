@@ -488,12 +488,12 @@ public class ArchiveCommandHandlerHandleTests
             UPath.Root / "tar" / "gamma.bin"
         };
 
-        var sizes = new[] { 900, 900, 500 };
+        var sizes = new[] { 600, 600, 600 }; // note: esp. for small binaries the TAR overhead is substantial
 
         var smallFiles = paths
             .Select((path, index) => new FakeFileBuilder(fixture)
                 .WithActualFile(FilePairType.BinaryFileOnly, path)
-                .WithRandomContent(sizes[index], seed: 200 + index)
+                .WithRandomContent(sizes[index], seed: index)
                 .Build())
             .ToArray();
 
@@ -521,13 +521,13 @@ public class ArchiveCommandHandlerHandleTests
         tarChunks.Count.ShouldBe(2);
         tarChunks.Select(c => int.Parse(c.Metadata["SmallChunkCount"]))
             .OrderBy(v => v)
-            .ShouldBe(new[] { 1, 2 });
+            .ShouldBe(new[] { 1, 2 }); // we expect a TAR with one small chunk and one with two small chunks
 
         foreach (var path in paths)
         {
-            File.Exists(ToAbsolutePointerPath(fixture, path)).ShouldBeTrue();
+            File.Exists(ToAbsolutePointerPath(fixture, path)).ShouldBeTrue(); // the local binary still exists
             handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(path), includeBinaryProperties: true)
-                .ShouldNotBeNull();
+                .ShouldNotBeNull(); // the pointerfileentry has been saved
         }
     }
 
