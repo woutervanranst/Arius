@@ -15,16 +15,14 @@ namespace Arius.Core.Tests.Features.Commands.Archive;
 
 public class ArchiveCommandHandlerHandleTests
 {
-    private readonly FixtureWithFileSystem             fixture;
-    private readonly FakeLogger<ArchiveCommandHandler> logger;
-    private readonly ArchiveCommandHandler             handler;
+    private readonly FixtureWithFileSystem fixture;
 
     public ArchiveCommandHandlerHandleTests()
     {
         this.fixture = new();
-        logger       = new FakeLogger<ArchiveCommandHandler>();
-        handler      = new ArchiveCommandHandler(logger, NullLoggerFactory.Instance, fixture.AriusConfiguration);
     }
+
+    private ArchiveCommandHandler CreateHandler() => new(new FakeLogger<ArchiveCommandHandler>(), NullLoggerFactory.Instance, fixture.AriusConfiguration);
 
     private const int DefaultSmallFileBoundary = 1024;
 
@@ -99,7 +97,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -151,7 +149,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -209,7 +207,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -263,7 +261,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, expectedExistingPointerFile) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -322,7 +320,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -388,7 +386,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -451,7 +449,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -504,7 +502,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -565,7 +563,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, _) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -614,7 +612,7 @@ public class ArchiveCommandHandlerHandleTests
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (initialFileCount, _)     = GetInitialFileStatistics(initialContext);
 
-        var firstResult = await handler.Handle(initialContext, CancellationToken.None);
+        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         var originalHash = largeFile.OriginalHash;
@@ -628,7 +626,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await handler.Handle(incrementalContext, CancellationToken.None);
+        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
         incrementalResult.IsSuccess.ShouldBeTrue();
@@ -666,7 +664,7 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await handler.Handle(initialContext, CancellationToken.None);
+        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         var newSmallFile = new FakeFileBuilder(fixture)
@@ -678,7 +676,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await handler.Handle(incrementalContext, CancellationToken.None);
+        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
         incrementalResult.IsSuccess.ShouldBeTrue();
@@ -714,7 +712,7 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await handler.Handle(initialContext, CancellationToken.None);
+        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt"));
@@ -724,7 +722,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await handler.Handle(incrementalContext, CancellationToken.None);
+        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
         incrementalResult.IsSuccess.ShouldBeTrue();
@@ -757,7 +755,7 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await handler.Handle(initialContext, CancellationToken.None);
+        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         var originalHash = originalFile.OriginalHash;
@@ -773,7 +771,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await handler.Handle(incrementalContext, CancellationToken.None);
+        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
         incrementalResult.IsSuccess.ShouldBeTrue();
@@ -810,14 +808,14 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await handler.Handle(initialContext, CancellationToken.None);
+        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
         firstResult.IsSuccess.ShouldBeTrue();
 
         var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await handler.Handle(incrementalContext, CancellationToken.None);
+        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
         incrementalResult.IsSuccess.ShouldBeTrue();
@@ -855,7 +853,7 @@ public class ArchiveCommandHandlerHandleTests
         cts.Cancel();
 
         // Act
-        var result = await handler.Handle(handlerContext, cts.Token);
+        var result = await CreateHandler().Handle(handlerContext, cts.Token);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -902,7 +900,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -939,7 +937,7 @@ public class ArchiveCommandHandlerHandleTests
         var (_, handlerContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -967,7 +965,7 @@ public class ArchiveCommandHandlerHandleTests
         var (_, handlerContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsFailed.ShouldBeTrue();
@@ -989,7 +987,7 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
@@ -1040,7 +1038,7 @@ public class ArchiveCommandHandlerHandleTests
         });
 
         // Act
-        var result = await handler.Handle(handlerContext, CancellationToken.None);
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
         // Assert
         result.IsSuccess.ShouldBeTrue();
