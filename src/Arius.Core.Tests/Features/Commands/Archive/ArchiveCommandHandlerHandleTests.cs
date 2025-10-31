@@ -677,8 +677,8 @@ public class ArchiveCommandHandlerHandleTests
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
-        firstResult.IsSuccess.ShouldBeTrue();
+        var result1 = await CreateHandler().Handle(initialContext, CancellationToken.None);
+        result1.IsSuccess.ShouldBeTrue();
 
         var newSmallFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "new-note.txt")
@@ -689,11 +689,11 @@ public class ArchiveCommandHandlerHandleTests
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
+        var result2 = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
-        incrementalResult.IsSuccess.ShouldBeTrue();
-        var summary = incrementalResult.Value;
+        result2.IsSuccess.ShouldBeTrue();
+        var summary = result2.Value;
 
         summary.TotalLocalFiles.ShouldBe(expectedFileCount);
         summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
@@ -702,59 +702,104 @@ public class ArchiveCommandHandlerHandleTests
         summary.PointerFilesCreated.ShouldBe(1);
         summary.BytesUploadedUncompressed.ShouldBe(newSmallFile.OriginalContent.Length);
         summary.PointerFileEntriesDeleted.ShouldBe(0);
+        
+            // A new state was created & uploaded
         summary.NewStateName.ShouldNotBeNull();
+        incrementalContext.StateRepository.HasChanges.ShouldBeTrue();
 
-        storageBuilder.StoredChunks.Values.Count().ShouldBe(2);
-
-        var pointerEntry = incrementalContext.StateRepository
-            .GetPointerFileEntry(ToRelativePointerPath(newSmallFile.OriginalPath), includeBinaryProperties: true);
+        var pointerEntry = incrementalContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(newSmallFile.OriginalPath), includeBinaryProperties: true);
         pointerEntry.ShouldNotBeNull();
         pointerEntry!.BinaryProperties.ShouldNotBeNull();
         pointerEntry.BinaryProperties!.OriginalSize.ShouldBe(newSmallFile.OriginalContent.Length);
+
+        storageBuilder.StoredChunks.Values.Count().ShouldBe(2);
     }
 
     [Fact]
-    public async Task Incremental_FileDeleted_PointerRemains_ShouldCleanUpStateEntry()
+    public async Task Incremental_FileAndPointerDeleted_PointerFileEntryDeleted()
     {
         // Arrange
         var deletedFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "to-delete.txt")
-            .WithRandomContent(2048, seed: 3001)
+            .WithRandomContent(2048, seed: 1)
             .Build();
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
-        firstResult.IsSuccess.ShouldBeTrue();
+        var (_, context1, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var result1 = await CreateHandler().Handle(context1, CancellationToken.None);
+        result1.IsSuccess.ShouldBeTrue();
 
-        File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt"));
-        File.Delete(Path.Combine(fixture.TestRunSourceFolder.FullName, "docs", "to-delete.txt.pointer.arius"));
+            // Delete the pointer and the binary
+        deletedFile.FilePair.BinaryFile.Delete();
+        deletedFile.FilePair.PointerFile.Delete();
 
-        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
+        var (_, context2, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(context2);
 
         // Act
-        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
+        var result2 = await CreateHandler().Handle(context2, CancellationToken.None);
 
         // Assert
-        incrementalResult.IsSuccess.ShouldBeTrue();
-        var summary = incrementalResult.Value;
+        result2.IsSuccess.ShouldBeTrue();
+        var summary2 = result2.Value;
 
-        summary.TotalLocalFiles.ShouldBe(expectedFileCount);
-        summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
-        summary.UniqueBinariesUploaded.ShouldBe(0);
-        summary.PointerFileEntriesDeleted.ShouldBe(1);
-        summary.NewStateName.ShouldNotBeNull();
+        summary2.TotalLocalFiles.ShouldBe(0);
+        summary2.ExistingPointerFiles.ShouldBe(0);
+        summary2.UniqueBinariesUploaded.ShouldBe(0);
+        summary2.PointerFileEntriesDeleted.ShouldBe(1);
 
-        var pointerEntry = incrementalContext.StateRepository
-            .GetPointerFileEntry("/docs/to-delete.txt.pointer.arius", includeBinaryProperties: true);
-        pointerEntry.ShouldBeNull();
-
-        storageBuilder.StoredChunks.Count.ShouldBe(1);
+            // A new state was uploaded
+        summary2.NewStateName.ShouldNotBeNull();
         storageBuilder.UploadedStates.Count.ShouldBe(2);
+
+            // The PointerFileEntry should not exist
+        var pfe = context2.StateRepository.GetPointerFileEntry(deletedFile.FilePair.PointerFile.FullName, includeBinaryProperties: true);
+        pfe.ShouldBeNull();
+
+        context2.StateRepository.GetPointerFileEntries("/", false).ShouldBeEmpty();
+
+            // The deleted chunks should still be present
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task Incremental_FileDeleted_PointerRemains_ShouldStillExist()
+    {
+        // Arrange
+        var deletedBinary = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "docs" / "to-delete.txt")
+            .WithRandomContent(2048, seed: 1)
+            .Build();
+
+        var storageBuilder = new MockArchiveStorageBuilder(fixture);
+
+        var (_, context1, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var result1 = await CreateHandler().Handle(context1, CancellationToken.None);
+        result1.IsSuccess.ShouldBeTrue();
+
+        // Delete the binary, the pointer remains
+        deletedBinary.FilePair.BinaryFile.Delete();
+
+        var (_, context2, _, _)                       = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(context2);
+
+        // Act
+        var result2 = await CreateHandler().Handle(context2, CancellationToken.None);
+
+        // Assert
+        result2.IsSuccess.ShouldBeTrue();
+        var summary2 = result2.Value;
+
+        summary2.TotalLocalFiles.ShouldBe(1);
+        summary2.ExistingPointerFiles.ShouldBe(1);
+        summary2.UniqueBinariesUploaded.ShouldBe(0);
+        summary2.PointerFileEntriesDeleted.ShouldBe(0);
+
+        //      A new state was uploaded
+        summary2.NewStateName.ShouldBeNull();
+        storageBuilder.UploadedStates.Count.ShouldBe(1);
+    }
     [Fact]
     public async Task Incremental_FileModified_ShouldUploadNewHashAndPreserveOldBinaryProperties()
     {
