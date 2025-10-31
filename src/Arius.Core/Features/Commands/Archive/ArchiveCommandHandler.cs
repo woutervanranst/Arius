@@ -82,8 +82,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
 
-        using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var       errorCancellationToken       = errorCancellationTokenSource.Token;
+        using var errorCancellationTokenSource   = new CancellationTokenSource();
+        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, errorCancellationTokenSource.Token);
+        var       errorCancellationToken         = linkedCancellationTokenSource.Token;
 
         var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
@@ -137,7 +138,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 FilesSkipped              = filesSkipped
             });
         }
-        catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !errorCancellationTokenSource.IsCancellationRequested)
         {
             // User-triggered cancellation
             logger.LogInformation("Archive operation cancelled by user");

@@ -930,12 +930,12 @@ public class ArchiveCommandHandlerHandleTests
         // Arrange
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "cancel" / "large1.bin")
-            .WithRandomContent(4096, seed: 6001)
+            .WithRandomContent(4096, seed: 1)
             .Build();
 
         _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "cancel" / "large2.bin")
-            .WithRandomContent(4096, seed: 6002)
+            .WithRandomContent(4096, seed: 2)
             .Build();
 
         var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
