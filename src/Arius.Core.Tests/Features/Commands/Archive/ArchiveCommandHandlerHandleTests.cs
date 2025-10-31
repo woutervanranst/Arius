@@ -86,7 +86,7 @@ public class ArchiveCommandHandlerHandleTests
     // --- SINGLE FILE
 
     [Fact]
-    public async Task Single_LargeFile_FirstUpload_ShouldUploadBinaryAndPointer()
+    public async Task Single_LargeFile_FirstUpload_ShouldUploadBinaryAndCreatePointer()
     {
         // Arrange
         var binaryPath = UPath.Root / "documents" / "presentation.pptx";
@@ -295,6 +295,35 @@ public class ArchiveCommandHandlerHandleTests
         var binaryProperties = handlerContext.StateRepository.GetBinaryProperty(pointerEntry.Hash);
         binaryProperties.ShouldNotBeNull();
         binaryProperties!.ArchivedSize.ShouldBeGreaterThan(0L);
+    }
+
+
+    [Fact]
+    public async Task Single_LatentPointer_ShouldLogWarning()
+    {
+        // Arrange
+        var latentFile = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.PointerFileOnly, UPath.Root / "latent.txt")
+            .WithRandomContent(512, seed: 1)
+            .Build();
+
+        latentFile.FilePair.BinaryFile.Exists.ShouldBeFalse();
+        latentFile.FilePair.PointerFile.Exists.ShouldBeTrue();
+
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
+
+        // Act
+        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        var summary = result.Value;
+
+        summary.FilesSkipped.ShouldBe(1);
+        summary.Warnings.ShouldContain("File '/latent.txt' is a pointer file without an associated binary, skipping");
+
+        handlerContext.StateRepository.HasChanges.ShouldBeFalse();
+        handlerContext.StateRepository.StateDatabaseFile.Exists.ShouldBeFalse();
     }
 
 
