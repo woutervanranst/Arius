@@ -82,6 +82,9 @@ public class ArchiveCommandHandlerHandleTests
     {
     }
 
+
+    // --- SINGLE FILE
+
     [Fact]
     public async Task Single_LargeFile_FirstUpload_ShouldUploadBinaryAndPointer()
     {
@@ -293,6 +296,9 @@ public class ArchiveCommandHandlerHandleTests
         binaryProperties.ShouldNotBeNull();
         binaryProperties!.ArchivedSize.ShouldBeGreaterThan(0L);
     }
+
+
+    // --- MULTIPLE FILES
 
     [Fact]
     public async Task Multiple_AllUnique_MixedSizes_ShouldUploadLargeAndSmallBatches()
@@ -599,6 +605,9 @@ public class ArchiveCommandHandlerHandleTests
         handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f31.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
     }
 
+
+    // --- INCREMENTAL RUNS
+
     [Fact]
     public async Task Incremental_AllFilesAlreadyUploaded_ShouldSkipUploads()
     {
@@ -614,44 +623,46 @@ public class ArchiveCommandHandlerHandleTests
         var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (initialFileCount, _)     = GetInitialFileStatistics(initialContext);
 
-        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
-        firstResult.IsSuccess.ShouldBeTrue();
+        var result1 = await CreateHandler().Handle(initialContext, CancellationToken.None);
 
-        var originalHash = largeFile.OriginalHash;
+        result1.IsSuccess.ShouldBeTrue();
+
+        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.UploadedStates.Count.ShouldBe(1);
 
         // Corrupt pointer file to ensure it is rewritten on incremental run
         var staleHash = FakeHashBuilder.GenerateValidHash(999);
-        staleHash.ShouldNotBe(originalHash);
+        staleHash.ShouldNotBe(largeFile.OriginalHash);
         largeFile.FilePair.CreatePointerFile(staleHash);
 
         var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
         var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
 
         // Act
-        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
+        var result2 = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
 
         // Assert
-        incrementalResult.IsSuccess.ShouldBeTrue();
-        var summary = incrementalResult.Value;
+        result2.IsSuccess.ShouldBeTrue();
+        var summary2 = result2.Value;
 
-        summary.TotalLocalFiles.ShouldBe(expectedFileCount);
-        summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
-        summary.UniqueBinariesUploaded.ShouldBe(0);
-        summary.UniqueChunksUploaded.ShouldBe(0);
-        summary.PointerFilesCreated.ShouldBe(0);
-        summary.PointerFileEntriesDeleted.ShouldBe(0);
-        summary.BytesUploadedUncompressed.ShouldBe(0);
-        summary.NewStateName.ShouldBeNull();
-
-        largeFile.FilePair.PointerFile.ReadHash().ShouldBe(originalHash);
-
-        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        summary2.TotalLocalFiles.ShouldBe(expectedFileCount);
+        summary2.ExistingPointerFiles.ShouldBe(existingPointerCount);
+        summary2.UniqueBinariesUploaded.ShouldBe(0); // <-- no additional binaries were uploaded
+        summary2.UniqueChunksUploaded.ShouldBe(0); // <-- etc
+        summary2.PointerFilesCreated.ShouldBe(0); // <-- etc
+        summary2.PointerFileEntriesDeleted.ShouldBe(0);  // <-- etc
+        summary2.BytesUploadedUncompressed.ShouldBe(0); // <-- etc
+        
+            // No new state was created & uploaded and the (temporary) database file was deleted
+        summary2.NewStateName.ShouldBeNull();
+        incrementalContext.StateRepository.HasChanges.ShouldBeFalse();
+        incrementalContext.StateRepository.StateDatabaseFile.Exists.ShouldBeFalse();
         storageBuilder.UploadedStates.Count.ShouldBe(1);
 
-        var pointerEntry = incrementalContext.StateRepository
-            .GetPointerFileEntry(ToRelativePointerPath(binaryPath), includeBinaryProperties: true);
-        pointerEntry.ShouldNotBeNull();
-        pointerEntry!.Hash.ShouldBe(originalHash);
+            // Pointer file was corrected
+        largeFile.FilePair.PointerFile.ReadHash().ShouldBe(largeFile.OriginalHash);
+
+        storageBuilder.StoredChunks.Count.ShouldBe(1); // <-- no additional chunks were uploaded
     }
 
     [Fact]
