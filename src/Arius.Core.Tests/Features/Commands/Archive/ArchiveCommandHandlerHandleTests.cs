@@ -829,57 +829,61 @@ public class ArchiveCommandHandlerHandleTests
         summary2.NewStateName.ShouldBeNull();
         storageBuilder.UploadedStates.Count.ShouldBe(1);
     }
+
+
     [Fact]
-    public async Task Incremental_FileModified_ShouldUploadNewHashAndPreserveOldBinaryProperties()
+    public async Task Incremental_FileModified_ShouldUploadNewBinaryAndPreserveOldBinary()
     {
         // Arrange
         var filePath = UPath.Root / "docs" / "mutable.bin";
         var originalFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, filePath)
-            .WithRandomContent(3072, seed: 4001)
+            .WithRandomContent(3072, seed: 1)
             .Build();
 
         var storageBuilder = new MockArchiveStorageBuilder(fixture);
 
-        var (_, initialContext, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var firstResult = await CreateHandler().Handle(initialContext, CancellationToken.None);
-        firstResult.IsSuccess.ShouldBeTrue();
+        var (_, context1, _, _) = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var result1 = await CreateHandler().Handle(context1, CancellationToken.None);
+        result1.IsSuccess.ShouldBeTrue();
 
-        var originalHash = originalFile.OriginalHash;
-        var originalBinaryProperties = initialContext.StateRepository.GetBinaryProperty(originalHash);
-        originalBinaryProperties.ShouldNotBeNull();
+        var bp1 = context1.StateRepository.GetBinaryProperty(originalFile.OriginalHash);
+        bp1.ShouldNotBeNull();
 
-        _ = new FakeFileBuilder(fixture)
+        //      Overwrite the file with new content
+        var modifiedFile = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, filePath)
-            .WithRandomContent(3584, seed: 4002)
+            .WithRandomContent(4000, seed: 2)
             .Build();
 
-        var (_, incrementalContext, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
-        var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(incrementalContext);
+        var (_, context2, _, _)             = await CreateHandlerContextAsync(storageBuilder: storageBuilder);
+        var (expectedFileCount, existingPointerCount) = GetInitialFileStatistics(context2);
 
         // Act
-        var incrementalResult = await CreateHandler().Handle(incrementalContext, CancellationToken.None);
+        var result2 = await CreateHandler().Handle(context2, CancellationToken.None);
 
         // Assert
-        incrementalResult.IsSuccess.ShouldBeTrue();
-        var summary = incrementalResult.Value;
+        result2.IsSuccess.ShouldBeTrue();
+        var summary = result2.Value;
 
-        summary.TotalLocalFiles.ShouldBe(expectedFileCount);
-        summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
-        summary.UniqueBinariesUploaded.ShouldBe(1);
+        summary.TotalLocalFiles.ShouldBe(1);
+        summary.ExistingPointerFiles.ShouldBe(1);
+        summary.UniqueBinariesUploaded.ShouldBe(1); // one additional binary uploaded
         summary.UniqueChunksUploaded.ShouldBe(1);
         summary.PointerFilesCreated.ShouldBe(0); // pointer already existed
         summary.NewStateName.ShouldNotBeNull();
 
-        var pointerEntry = incrementalContext.StateRepository
-            .GetPointerFileEntry(ToRelativePointerPath(filePath), includeBinaryProperties: true);
-        pointerEntry.ShouldNotBeNull();
-        pointerEntry!.Hash.ShouldNotBe(originalHash);
-        pointerEntry.BinaryProperties.ShouldNotBeNull();
+        var pfe = context2.StateRepository.GetPointerFileEntry(ToRelativePointerPath(filePath), includeBinaryProperties: true);
+        pfe.ShouldNotBeNull();
+        pfe.Hash.ShouldBe(modifiedFile.OriginalHash);
+        pfe.BinaryProperties.ShouldNotBeNull();
+        pfe.BinaryProperties.OriginalSize.ShouldBe(4000);
 
-        var oldBinaryProperties = incrementalContext.StateRepository.GetBinaryProperty(originalHash);
-        oldBinaryProperties.ShouldNotBeNull();
+        //      The BinaryProperties of the originalFile are still present
+        var originalBinaryProperties = context2.StateRepository.GetBinaryProperty(originalFile.OriginalHash);
+        originalBinaryProperties.ShouldNotBeNull();
 
+        //      The old Binary is still present
         storageBuilder.StoredChunks.Count.ShouldBe(2);
     }
 
