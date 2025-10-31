@@ -480,6 +480,8 @@ public class ArchiveCommandHandlerHandleTests
     [Fact]
     public async Task Multiple_SmallFiles_MultipleTarBatches_ShouldFlushWhenBoundaryExceeded()
     {
+        // We will hit the UploadSmallFileAsync / OWNER path with this test
+
         // Arrange
         var paths = new[]
         {
@@ -510,7 +512,7 @@ public class ArchiveCommandHandlerHandleTests
 
         summary.TotalLocalFiles.ShouldBe(expectedInitialFileCount);
         summary.UniqueBinariesUploaded.ShouldBe(paths.Length);
-        summary.UniqueChunksUploaded.ShouldBe(2);
+        summary.UniqueChunksUploaded.ShouldBe(2); // <-- the Tar Writer flushed when the boundary exceeded
         summary.PointerFilesCreated.ShouldBe(paths.Length);
         summary.PointerFileEntriesDeleted.ShouldBe(0);
         summary.BytesUploadedUncompressed.ShouldBe(smallFiles.Sum(f => f.OriginalContent.Length));
@@ -534,28 +536,28 @@ public class ArchiveCommandHandlerHandleTests
     [Fact]
     public async Task Multiple_SmallFiles_WithDuplicates_CrossTarBatches_ShouldWriteDeferredPointers()
     {
+        // We will hit the UploadSmallFileAsync / NON-OWNER path with this test
+
         // Arrange
-        var ownerAlpha = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "alpha-owner.txt")
-            .WithRandomContent(900, seed: 11)
+        var f10 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "alpha.txt")
+            .WithRandomContent(600, seed: 1)
+            .Build();
+        var f11 = new FakeFileBuilder(fixture)
+            .WithDuplicate(f10, UPath.Root / "tar" / "alpha-duplicate.txt")
             .Build();
 
-        var ownerBeta = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "beta-owner.txt")
-            .WithRandomContent(920, seed: 12)
+        var f20 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "beta.txt")
+            .WithRandomContent(600, seed: 2)
             .Build();
 
-        _ = new FakeFileBuilder(fixture)
-            .WithDuplicate(ownerAlpha, UPath.Root / "tar" / "gamma-duplicate.txt")
+        var f30 = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "omega.txt")
+            .WithRandomContent(600, seed: 3)
             .Build();
-
-        var ownerOmega = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "tar" / "omega-owner.txt")
-            .WithRandomContent(480, seed: 13)
-            .Build();
-
-        _ = new FakeFileBuilder(fixture)
-            .WithDuplicate(ownerOmega, UPath.Root / "tar" / "zzz-duplicate.txt")
+        var f31 = new FakeFileBuilder(fixture)
+            .WithDuplicate(f30, UPath.Root / "tar" / "omega-duplicate.txt")
             .Build();
 
         var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync();
@@ -583,18 +585,18 @@ public class ArchiveCommandHandlerHandleTests
             .OrderBy(v => v)
             .ShouldBe([1, 2]);
 
-        var duplicatePaths = new[]
-        {
-            UPath.Root / "tar" / "gamma-duplicate.txt",
-            UPath.Root / "tar" / "zzz-duplicate.txt"
-        };
 
-        foreach (var path in duplicatePaths)
-        {
-            File.Exists(ToAbsolutePointerPath(fixture, path)).ShouldBeTrue();
-            handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(path), includeBinaryProperties: true)
-                .ShouldNotBeNull();
-        }
+        f10.FilePair.BinaryFile.Exists.ShouldBeTrue();
+        f11.FilePair.BinaryFile.Exists.ShouldBeTrue();
+        f20.FilePair.BinaryFile.Exists.ShouldBeTrue();
+        f30.FilePair.BinaryFile.Exists.ShouldBeTrue();
+        f31.FilePair.BinaryFile.Exists.ShouldBeTrue();
+
+        handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f10.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
+        handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f11.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
+        handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f20.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
+        handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f30.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
+        handlerContext.StateRepository.GetPointerFileEntry(ToRelativePointerPath(f31.OriginalPath), includeBinaryProperties: true).ShouldNotBeNull();
     }
 
     [Fact]

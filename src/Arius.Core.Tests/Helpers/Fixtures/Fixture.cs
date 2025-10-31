@@ -39,7 +39,7 @@ public class FixtureWithFileSystem : Fixture, IDisposable
 
     public FixtureWithFileSystem()
     {
-        TestRunSourceFolder = Directory.CreateTempSubdirectory($"arius-core-tests-{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}");
+        TestRunSourceFolder = new DirectoryInfo(Path.Join(Path.GetTempPath(), "Arius-Core-Tests", $"{DateTime.Now:yyyyMMddTHHmmss}_{Guid.CreateVersion7()}"));
         TestRunSourceFolder.Create();
 
         var pfs = new PhysicalFileSystem();
