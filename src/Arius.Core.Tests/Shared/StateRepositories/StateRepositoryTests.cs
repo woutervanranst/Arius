@@ -1,5 +1,4 @@
 using Arius.Core.Shared.FileSystem;
-using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;

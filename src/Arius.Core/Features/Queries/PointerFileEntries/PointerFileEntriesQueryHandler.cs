@@ -1,10 +1,10 @@
+using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Storage;
 using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using Arius.Core.Shared.FileSystem;
-using Arius.Core.Shared.Storage;
 using Zio;
 
 namespace Arius.Core.Features.Queries.PointerFileEntries;

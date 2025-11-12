@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
-using System.IO.Compression;
 using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Fixtures;
 using FluentResults;
 using NSubstitute;
+using System.Collections.Concurrent;
+using System.IO.Compression;
 using Zio;
 
 namespace Arius.Core.Tests.Features.Commands.Archive;

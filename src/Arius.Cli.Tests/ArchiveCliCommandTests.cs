@@ -4,7 +4,6 @@ using FluentResults;
 using Mediator;
 using NSubstitute;
 using Shouldly;
-using System.Threading.Tasks;
 
 namespace Arius.Cli.Tests;
 
