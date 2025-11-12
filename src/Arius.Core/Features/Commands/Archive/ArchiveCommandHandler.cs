@@ -88,14 +88,17 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, errorCancellationTokenSource.Token);
         var       errorCancellationToken         = linkedCancellationTokenSource.Token;
 
-        var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var tasks = new Dictionary<string, Task>
+        {
+            ["indexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["hashTask"]             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["uploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["uploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource)
+        };
 
         try
         {
-            await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
+            await Task.WhenAll(tasks.Values);
 
             // 6. Remove PointerFileEntries that do not exist on disk
             logger.LogDebug("Cleaning up pointer file entries that no longer exist on disk");
@@ -150,47 +153,36 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         {
             // Either a task failed with an exception or error-triggered cancellation occurred
             // Wait for all tasks to complete gracefully
-            var allTasks = new[] { indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask };
-            await Task.WhenAll(allTasks.Select(async t =>
+            await Task.WhenAll(tasks.Values.Select(async t =>
             {
                 try { await t; }
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
 
-            // Map tasks to their names for logging
-            var taskNames = new Dictionary<Task, string>
-            {
-                { indexTask, nameof(indexTask) },
-                { hashTask, nameof(hashTask) },
-                { uploadLargeFilesTask, nameof(uploadLargeFilesTask) },
-                { uploadSmallFilesTask, nameof(uploadSmallFilesTask) }
-            };
-
             // Log cancelled tasks (debug level)
-            var cancelledTasks = allTasks.Where(t => t.IsCanceled).ToArray();
-            if (cancelledTasks.Any())
+            var cancelledTaskNames = tasks.Where(kvp => kvp.Value.IsCanceled).Select(kvp => kvp.Key).ToArray();
+            if (cancelledTaskNames.Any())
             {
-                var cancelledTaskNames = cancelledTasks.Select(t => taskNames[t]).ToArray();
                 logger.LogDebug("Tasks cancelled during graceful shutdown: {TaskNames}", string.Join(", ", cancelledTaskNames));
             }
 
             // Log and handle failed tasks (error level)
-            var faultedTasks = allTasks.Where(t => t.IsFaulted).ToArray();
+            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).ToArray();
             if (faultedTasks.Any())
             {
-                if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
+                if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTaskEntry)
                 {
                     // Single faulted task - return the exception
-                    var baseException = faultedTask.Exception!.GetBaseException();
-                    logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", taskNames[faultedTask], baseException.Message);
+                    var baseException = faultedTaskEntry.Value.Exception!.GetBaseException();
+                    logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", faultedTaskEntry.Key, baseException.Message);
                     return Result.Fail($"Archive operation failed: {baseException.Message}").WithError(new ExceptionalError(baseException));
                 }
                 else
                 {
                     // Multiple faulted tasks - return aggregate exception
-                    var exceptions = faultedTasks.Select(t => t.Exception!.GetBaseException()).ToArray();
+                    var exceptions = faultedTasks.Select(kvp => kvp.Value.Exception!.GetBaseException()).ToArray();
                     var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
-                    logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
+                    logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(kvp => kvp.Key)));
                     return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
                 }
             }
