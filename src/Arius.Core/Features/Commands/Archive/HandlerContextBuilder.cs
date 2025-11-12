@@ -18,6 +18,7 @@ internal class HandlerContextBuilder
     private IArchiveStorage? archiveStorage;
     private StateRepository? stateRepository;
     private IFileSystem?     baseFileSystem;
+    private ISha256Hasher?   hasher;
 
     public HandlerContextBuilder(ArchiveCommand request, ILoggerFactory loggerFactory)
     {
@@ -44,6 +45,12 @@ internal class HandlerContextBuilder
         return this;
     }
 
+    public HandlerContextBuilder WithHasher(ISha256Hasher hasher)
+    {
+        this.hasher = hasher;
+        return this;
+    }
+
     public async Task<HandlerContext> BuildAsync()
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request);
@@ -65,7 +72,7 @@ internal class HandlerContextBuilder
             Request         = request,
             ArchiveStorage  = archiveStorage,
             StateRepository = stateRepository ?? await BuildStateRepositoryAsync(archiveStorage),
-            Hasher          = new Sha256Hasher(request.Passphrase),
+            Hasher          = hasher ?? new Sha256Hasher(request.Passphrase),
             FileSystem      = GetFileSystem()
         };
 

@@ -153,6 +153,8 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         {
             // Either a task failed with an exception or error-triggered cancellation occurred
 
+            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
+
             // Trigger error-driven cancellation to signal other tasks to stop gracefully
             errorCancellationTokenSource.Cancel();
 
@@ -163,6 +165,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
 
+            // Observe all task exceptions to prevent UnobservedTaskException
+            foreach (var task in tasks.Values.Where(t => t.IsFaulted))
+            {
+                _ = task.Exception;
+            }
+
             // Log cancelled tasks (debug level)
             var cancelledTaskNames = tasks.Where(kvp => kvp.Value.IsCanceled).Select(kvp => kvp.Key).ToArray();
             if (cancelledTaskNames.Any())
@@ -171,7 +179,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             }
 
             // Log and handle failed tasks (error level)
-            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
             if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
             {
                 // Single faulted task - return the exception

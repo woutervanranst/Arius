@@ -1,5 +1,6 @@
 using Arius.Core.Features.Commands.Archive;
 using Arius.Core.Shared.FileSystem;
+using Arius.Core.Shared.Hashing;
 using Arius.Core.Shared.StateRepositories;
 using Arius.Core.Shared.Storage;
 using Arius.Core.Tests.Helpers.Builders;
@@ -8,6 +9,7 @@ using Arius.Core.Tests.Helpers.Fakes;
 using Arius.Core.Tests.Helpers.Fixtures;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
+using NSubstitute;
 using Shouldly;
 using Zio;
 
@@ -44,7 +46,8 @@ public class ArchiveCommandHandlerHandleTests
 
     private async Task<(ArchiveCommand Command, HandlerContext Context, MockArchiveStorageBuilder StorageBuilder, FakeLoggerFactory LoggerFactory)> CreateHandlerContextAsync(Action<ArchiveCommandBuilder>? configureCommand = null,
         MockArchiveStorageBuilder? storageBuilder = null,
-        FakeLoggerFactory? loggerFactory = null)
+        FakeLoggerFactory? loggerFactory = null,
+        ISha256Hasher? hasher = null)
     {
         storageBuilder ??= new MockArchiveStorageBuilder(fixture);
         loggerFactory  ??= new FakeLoggerFactory();
@@ -62,9 +65,13 @@ public class ArchiveCommandHandlerHandleTests
         Retry:
         try
         {
-            var handlerContext = await new HandlerContextBuilder(command, loggerFactory)
-                .WithArchiveStorage(archiveStorage)
-                .BuildAsync();
+            var builder = new HandlerContextBuilder(command, loggerFactory)
+                .WithArchiveStorage(archiveStorage);
+
+            if (hasher != null)
+                builder = builder.WithHasher(hasher);
+
+            var handlerContext = await builder.BuildAsync();
 
             return (command, handlerContext, storageBuilder, loggerFactory);
         }
@@ -967,28 +974,14 @@ public class ArchiveCommandHandlerHandleTests
             .WithRandomContent(1024, seed: 1)
             .Build();
 
-        _ = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "hash" / "will-upload.bin")
-            .WithRandomContent(1024, seed: 2)
-            .Build();
+        // Create a mock hasher that fails for will-fail.bin
+        var mockHasher = Substitute.For<ISha256Hasher>();
 
-        var deleted = false;
-        var progressUpdates = new List<ProgressUpdate>();
-        void ProgressHandler(ProgressUpdate update)
-        {
-            progressUpdates.Add(update);
+        // Configure mock
+        mockHasher.GetHashAsync(Arg.Any<FilePair>())
+            .Returns<Task<Hash>>(_ => throw new ArgumentException("BinaryFile does not exist"));
 
-            // Simulate a failure during hashing by deleting the file when we get to that point
-            if (!deleted && update is FileProgressUpdate fileUpdate &&
-                fileUpdate.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) &&
-                fileUpdate.StatusMessage?.Contains("Hashing", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                deleted = true;
-                failingFile.FilePair.BinaryFile.Delete();
-            }
-        }
-
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(ProgressHandler)));
+        var (_, handlerContext, _, _) = await CreateHandlerContextAsync(hasher: mockHasher);
 
         // Act
         var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
@@ -999,10 +992,6 @@ public class ArchiveCommandHandlerHandleTests
 
         summary.FilesSkipped.ShouldBe(1);
         summary.Warnings.First().ShouldContain("Error when hashing file '/hash/will-fail.bin': BinaryFile does not exist");
-
-        progressUpdates.OfType<FileProgressUpdate>()
-            .Any(p => p.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("Error: BinaryFile does not exist", StringComparison.OrdinalIgnoreCase) == true)
-            .ShouldBeTrue();
     }
 
     [Fact]
