@@ -954,6 +954,12 @@ public class ArchiveCommandHandlerHandleTests
         storageBuilder.StoredChunks.Count.ShouldBe(0);
     }
 
+    [Fact(Skip = "TODO")]
+    public async Task Error_IndexTaskFails_ShouldSkipProblematicFileAndContinue()
+    {
+        // See example Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
+    }
+
     [Fact]
     public async Task Error_HashTaskFails_ShouldSkipProblematicFileAndContinue()
     {
