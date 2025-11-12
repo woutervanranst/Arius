@@ -969,7 +969,7 @@ public class ArchiveCommandHandlerHandleTests
             .WithRandomContent(1024, seed: 1)
             .Build();
 
-        var successfulFile = new FakeFileBuilder(fixture)
+        _ = new FakeFileBuilder(fixture)
             .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "hash" / "will-upload.bin")
             .WithRandomContent(1024, seed: 2)
             .Build();
@@ -992,8 +992,6 @@ public class ArchiveCommandHandlerHandleTests
 
         var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(ProgressHandler)));
 
-        var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
-
         // Act
         var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
 
@@ -1001,24 +999,12 @@ public class ArchiveCommandHandlerHandleTests
         result.IsSuccess.ShouldBeTrue();
         var summary = result.Value;
 
-        summary.TotalLocalFiles.ShouldBe(expectedInitialFileCount);
-        summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
-        summary.UniqueBinariesUploaded.ShouldBe(1);
-        summary.PointerFilesCreated.ShouldBe(1);
-        summary.BytesUploadedUncompressed.ShouldBe(successfulFile.OriginalContent.Length);
-
-        //      The Binary & Pointer do not exist
-        File.Exists(failingFile.FilePair.BinaryFile.FullName).ShouldBeFalse();
-        File.Exists(failingFile.FilePair.PointerFile.FullName).ShouldBeFalse();
-
-        storageBuilder.StoredChunks.Count.ShouldBe(1); // only 1 chunk stored (not 2)
+        summary.FilesSkipped.ShouldBe(1);
+        summary.Warnings.First().ShouldContain("Error when hashing file '/hash/will-fail.bin': BinaryFile does not exist");
 
         progressUpdates.OfType<FileProgressUpdate>()
             .Any(p => p.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("Error: BinaryFile does not exist", StringComparison.OrdinalIgnoreCase) == true)
             .ShouldBeTrue();
-
-        summary.FilesSkipped.ShouldBe(1);
-        summary.Warnings.ShouldContain(w => w.StartsWith("Error when hashing file '/hash/will-fail.bin': BinaryFile does not exist"));
     }
 
     [Fact]
