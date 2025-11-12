@@ -6,9 +6,9 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "Arius.Explorer/5.0.159": {
+      "Arius.Explorer/5.0.161": {
         "dependencies": {
-          "Arius.Core": "5.0.159-prerelease",
+          "Arius.Core": "5.0.161",
           "CommunityToolkit.Mvvm": "8.4.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.10",
           "Microsoft.Extensions.Configuration.UserSecrets": "9.0.10",
@@ -940,7 +940,7 @@
           }
         }
       },
-      "Arius.Core/5.0.159-prerelease": {
+      "Arius.Core/5.0.161": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.26.0",
           "EFCore.BulkExtensions.Sqlite": "9.0.2",
@@ -957,15 +957,15 @@
         },
         "runtime": {
           "Arius.Core.dll": {
-            "assemblyVersion": "5.0.159.0",
-            "fileVersion": "5.0.159.0"
+            "assemblyVersion": "5.0.161.0",
+            "fileVersion": "5.0.161.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "Arius.Explorer/5.0.159": {
+    "Arius.Explorer/5.0.161": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1488,7 +1488,7 @@
       "path": "zio/0.21.2",
       "hashPath": "zio.0.21.2.nupkg.sha512"
     },
-    "Arius.Core/5.0.159-prerelease": {
+    "Arius.Core/5.0.161": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
