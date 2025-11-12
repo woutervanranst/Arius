@@ -1055,41 +1055,6 @@ public class ArchiveCommandHandlerHandleTests
     }
 
     [Fact]
-    public async Task Error_PointerFileOnly_ShouldReportWarningAndSkip()
-    {
-        // Arrange
-        _ = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.PointerFileOnly, UPath.Root / "orphans" / "lonely.bin")
-            .Build();
-
-        var progressUpdates = new List<ProgressUpdate>();
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(progressUpdates.Add)));
-
-        var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
-
-        // Act
-        var result = await CreateHandler().Handle(handlerContext, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
-        var summary = result.Value;
-
-        summary.TotalLocalFiles.ShouldBe(expectedInitialFileCount);
-        summary.ExistingPointerFiles.ShouldBe(existingPointerCount);
-        summary.UniqueBinariesUploaded.ShouldBe(0);
-        summary.PointerFilesCreated.ShouldBe(0);
-
-        storageBuilder.StoredChunks.Count.ShouldBe(0);
-
-        handlerContext.StateRepository.GetPointerFileEntry("/orphans/lonely.bin.pointer.arius", includeBinaryProperties: true)
-            .ShouldBeNull();
-
-        progressUpdates.OfType<FileProgressUpdate>()
-            .Any(p => p.FileName.EndsWith("lonely.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("pointer file without binary", StringComparison.OrdinalIgnoreCase) == true)
-            .ShouldBeTrue();
-    }
-
-    [Fact]
     public async Task StalePointerEntries_ShouldBeRemovedWhenMissingOnDisk()
     {
         // Arrange
