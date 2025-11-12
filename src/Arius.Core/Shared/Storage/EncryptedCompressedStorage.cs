@@ -3,6 +3,7 @@ using Arius.Core.Shared.Extensions;
 using Arius.Core.Shared.Hashing;
 using FluentResults;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using Zio;
 
 namespace Arius.Core.Shared.Storage;
@@ -41,12 +42,26 @@ internal class EncryptedCompressedStorage : IArchiveStorage
 
     // -- STATES
 
-    public IAsyncEnumerable<string> GetStates(CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> GetStates([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        return container.GetAllAsync(statesFolderPrefix, cancellationToken)
-            .OrderBy(sp => sp.Name)
-            .Where(sp => sp.Metadata != null && sp.Metadata.TryGetValue("DatabaseVersion", out var version) && version == "5") // Get all v5 states
-            .Select(sp => sp.Name[statesFolderPrefix.Length..]); // remove the "states/" prefix
+        var states = new List<string>();
+
+        await foreach (var storageProperties in container
+                           .GetAllAsync(statesFolderPrefix, cancellationToken)
+                           .WithCancellation(cancellationToken))
+        {
+            if (storageProperties.Metadata != null
+                && storageProperties.Metadata.TryGetValue("DatabaseVersion", out var version)
+                && version == "5")
+            {
+                states.Add(storageProperties.Name[statesFolderPrefix.Length..]);
+            }
+        }
+
+        foreach (var state in states.OrderBy(static name => name, StringComparer.Ordinal))
+        {
+            yield return state;
+        }
     }
 
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)

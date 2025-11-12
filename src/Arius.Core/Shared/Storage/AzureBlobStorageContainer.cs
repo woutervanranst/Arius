@@ -6,6 +6,7 @@ using Azure.Storage.Blobs.Specialized;
 using FluentResults;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Runtime.CompilerServices;
 
 namespace Arius.Core.Shared.Storage;
 
@@ -77,17 +78,22 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         }
     }
 
-    public IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<StorageProperties> GetAllAsync(string prefix, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
-        return blobContainerClient.GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken)
-            .Select(blob => new StorageProperties(
+
+        await foreach (var blob in blobContainerClient
+                               .GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken)
+                               .WithCancellation(cancellationToken))
+        {
+            yield return new StorageProperties(
                 Name: blob.Name,
                 ContentType: blob.Properties.ContentType,
                 Metadata: blob.Metadata,
                 StorageTier: blob.Properties.AccessTier.ToStorageTier(),
                 ContentLength: blob.Properties.ContentLength ?? -1
-            ));
+            );
+        }
     }
 
     public async Task<Result<Stream>> OpenReadAsync(string blobName, IProgress<long>? progress = default, CancellationToken cancellationToken = default)
