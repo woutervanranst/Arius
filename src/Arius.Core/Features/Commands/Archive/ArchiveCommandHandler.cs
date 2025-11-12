@@ -184,8 +184,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 // Multiple faulted tasks - return aggregate exception
                 var exceptions         = faultedTasks.Select(ft => ft.Exception).ToArray();
                 var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
-                logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(ft => ft.Name)));
-                return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
+                var faultedTaskNames = string.Join(", ", faultedTasks.Select(ft => ft.Name));
+                logger.LogError(aggregateException, "Tasks failed: {FaultedTaskNames}", faultedTaskNames);
+                return Result.Fail($"Archive operation failed: {faultedTaskNames} tasks failed").WithError(new ExceptionalError(aggregateException));
             }
         }
     }

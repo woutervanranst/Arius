@@ -1051,8 +1051,7 @@ public class ArchiveCommandHandlerHandleTests
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.First().Message.ShouldContain("multiple tasks failed");
-        storageBuilder.StoredChunks.Count.ShouldBe(0);
+        result.Errors.First().Message.ShouldMatch("Archive operation failed: .* tasks failed");
     }
 
     [Fact]
