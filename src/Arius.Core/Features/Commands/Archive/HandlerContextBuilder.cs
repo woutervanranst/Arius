@@ -82,7 +82,7 @@ internal class HandlerContextBuilder
             var stateCache = new StateCache(request.AccountName, request.ContainerName);
 
             // Determine the version name for this run
-            var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss");
+            var versionName = DateTime.UtcNow.ToString("yyyy-MM-ddTHH-mm-ss-fff");
             request.ProgressReporter?.Report(new TaskProgressUpdate($"Determining version name '{versionName}'...", 0));
 
             // Get the latest state from blob storage

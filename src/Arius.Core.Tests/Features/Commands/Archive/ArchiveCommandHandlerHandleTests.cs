@@ -62,24 +62,15 @@ public class ArchiveCommandHandlerHandleTests
         var command        = commandBuilder.Build();
         var archiveStorage = storageBuilder.Build();
 
-        Retry:
-        try
-        {
-            var builder = new HandlerContextBuilder(command, loggerFactory)
-                .WithArchiveStorage(archiveStorage);
+        var builder = new HandlerContextBuilder(command, loggerFactory)
+            .WithArchiveStorage(archiveStorage);
 
-            if (hasher != null)
-                builder = builder.WithHasher(hasher);
+        if (hasher != null)
+            builder = builder.WithHasher(hasher);
 
-            var handlerContext = await builder.BuildAsync();
+        var handlerContext = await builder.BuildAsync();
 
-            return (command, handlerContext, storageBuilder, loggerFactory);
-        }
-        catch (IOException)
-        {
-            await Task.Delay(100); // Delay until the statefile name ("yyyy-MM-ddTHH-mm-ss") is in different seconds
-            goto Retry;
-        }
+        return (command, handlerContext, storageBuilder, loggerFactory);
     }
 
     [Fact(Skip = "TODO")]
