@@ -9,6 +9,7 @@ using Humanizer;
 using Mediator;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Threading.Channels;
 using Zio;
@@ -23,6 +24,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
     private readonly ILoggerFactory                 loggerFactory;
+    private          int                            used;
 
     public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger, ILoggerFactory loggerFactory, IOptions<AriusConfiguration> config)
     {
@@ -37,14 +39,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     private readonly InFlightGate<Hash, Unit> uploadGate = new();
 
     // Statistics tracking
-    private int  totalLocalFiles;
-    private int  uniqueBinariesUploaded;
-    private int  uniqueChunksUploaded;
-    private long bytesUploadedUncompressed;
-    private long bytesUploadedCompressed;
-    private int  existingPointerFiles;
-    private int  pointerFilesCreated;
-    private int  pointerFileEntriesDeleted;
+    private          int                   totalLocalFiles           = 0;
+    private          int                   existingPointerFiles      = 0;
+    private          int                   uniqueBinariesUploaded    = 0;
+    private          int                   uniqueChunksUploaded      = 0;
+    private          long                  bytesUploadedUncompressed = 0;
+    private          long                  bytesUploadedCompressed   = 0;
+    private          int                   pointerFilesCreated       = 0;
+    private          int                   pointerFileEntriesDeleted = 0;
+    private readonly ConcurrentBag<string> warnings                  = [];
+    private          int                   filesSkipped              = 0;
 
     // Pipeline channels:
     //
@@ -56,11 +60,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     // - small files: a single consumer batches entries into a TAR; only the "owner" of a hash adds to the TAR.
     //   duplicates (non-owners) are *deferred* — we DO NOT block the reader.
     // - large files: each owner uploads the blob directly; non-owners await the owner (safe here because it's in a parallel consumer).
+    private record FilePairWithHash(FilePair FilePair, Hash Hash);
     private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
-    private record FilePairWithHash(FilePair FilePair, Hash Hash);
+
+    // --- HANDLER
 
     public async ValueTask<Result<ArchiveCommandResult>> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
@@ -72,30 +78,27 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
     internal async ValueTask<Result<ArchiveCommandResult>> Handle(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
+        // Enforce single-use
+        if (Interlocked.Exchange(ref used, 1) != 0)
+            throw new InvalidOperationException($"{nameof(ArchiveCommandHandler)} can only be used once.");
+
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
 
-        // Reset statistics for this operation
-        totalLocalFiles      = 0;
-        existingPointerFiles = 0;
+        using var errorCancellationTokenSource   = new CancellationTokenSource();
+        using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, errorCancellationTokenSource.Token);
+        var       errorCancellationToken         = linkedCancellationTokenSource.Token;
 
-        uniqueBinariesUploaded    = 0;
-        uniqueChunksUploaded      = 0;
-        bytesUploadedUncompressed = 0;
-        bytesUploadedCompressed   = 0;
-        pointerFilesCreated       = 0;
-        pointerFileEntriesDeleted = 0;
-
-        using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var       errorCancellationToken       = errorCancellationTokenSource.Token;
-
-        var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var tasks = new Dictionary<string, Task>
+        {
+            ["IndexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["HashTask"]             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["UploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource)
+        };
 
         try
         {
-            await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
+            await Task.WhenAll(tasks.Values);
 
             // 6. Remove PointerFileEntries that do not exist on disk
             logger.LogDebug("Cleaning up pointer file entries that no longer exist on disk");
@@ -135,10 +138,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 BytesUploadedCompressed   = bytesUploadedCompressed,
                 PointerFilesCreated       = pointerFilesCreated,
                 PointerFileEntriesDeleted = pointerFileEntriesDeleted,
-                NewStateName              = newStateName
+                NewStateName              = newStateName,
+                Warnings                  = warnings.ToArray(),
+                FilesSkipped              = filesSkipped
             });
         }
-        catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !errorCancellationTokenSource.IsCancellationRequested)
         {
             // User-triggered cancellation
             logger.LogInformation("Archive operation cancelled by user");
@@ -147,57 +152,54 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         catch (Exception ex)
         {
             // Either a task failed with an exception or error-triggered cancellation occurred
+
+            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
+
+            // Trigger error-driven cancellation to signal other tasks to stop gracefully
+            errorCancellationTokenSource.Cancel();
+
             // Wait for all tasks to complete gracefully
-            var allTasks = new[] { indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask };
-            await Task.WhenAll(allTasks.Select(async t =>
+            await Task.WhenAll(tasks.Values.Select(async t =>
             {
                 try { await t; }
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
 
-            // Map tasks to their names for logging
-            var taskNames = new Dictionary<Task, string>
+            // Observe all task exceptions to prevent UnobservedTaskException
+            foreach (var task in tasks.Values.Where(t => t.IsFaulted))
             {
-                { indexTask, nameof(indexTask) },
-                { hashTask, nameof(hashTask) },
-                { uploadLargeFilesTask, nameof(uploadLargeFilesTask) },
-                { uploadSmallFilesTask, nameof(uploadSmallFilesTask) }
-            };
+                _ = task.Exception;
+            }
 
             // Log cancelled tasks (debug level)
-            var cancelledTasks = allTasks.Where(t => t.IsCanceled).ToArray();
-            if (cancelledTasks.Any())
+            var cancelledTaskNames = tasks.Where(kvp => kvp.Value.IsCanceled).Select(kvp => kvp.Key).ToArray();
+            if (cancelledTaskNames.Any())
             {
-                var cancelledTaskNames = cancelledTasks.Select(t => taskNames[t]).ToArray();
                 logger.LogDebug("Tasks cancelled during graceful shutdown: {TaskNames}", string.Join(", ", cancelledTaskNames));
             }
 
             // Log and handle failed tasks (error level)
-            var faultedTasks = allTasks.Where(t => t.IsFaulted).ToArray();
-            if (faultedTasks.Any())
+            if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
             {
-                if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
-                {
-                    // Single faulted task - return the exception
-                    var baseException = faultedTask.Exception!.GetBaseException();
-                    logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", taskNames[faultedTask], baseException.Message);
-                    return Result.Fail($"Archive operation failed: {baseException.Message}").WithError(new ExceptionalError(baseException));
-                }
-                else
-                {
-                    // Multiple faulted tasks - return aggregate exception
-                    var exceptions = faultedTasks.Select(t => t.Exception!.GetBaseException()).ToArray();
-                    var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
-                    logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
-                    return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
-                }
+                // Single faulted task - return the exception
+                var msg = faultedTask.Exception?.GetBaseException().Message ?? "UNKNOWN";
+                logger.LogError(faultedTask.Exception, "Task '{TaskName}' failed with exception '{Exception}'", faultedTask.Name, msg);
+                return Result.Fail($"Archive operation failed: {faultedTask.Name} failed with {msg}").WithError(new ExceptionalError(faultedTask.Exception));
             }
-
-            // Unexpected error path - return generic failure
-            logger.LogError(ex, "Archive operation failed with unexpected error");
-            return Result.Fail($"Archive operation failed: {ex.Message}").WithError(new ExceptionalError(ex));
+            else
+            {
+                // Multiple faulted tasks - return aggregate exception
+                var exceptions         = faultedTasks.Select(ft => ft.Exception).ToArray();
+                var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
+                var faultedTaskNames = string.Join(", ", faultedTasks.Select(ft => ft.Name));
+                logger.LogError(aggregateException, "Tasks failed: {FaultedTaskNames}", faultedTaskNames);
+                return Result.Fail($"Archive operation failed: {faultedTaskNames} tasks failed").WithError(new ExceptionalError(aggregateException));
+            }
         }
     }
+
+
+    // --- HIGH LEVEL TASKS
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
@@ -225,11 +227,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 indexedFilesChannel.Writer.Complete();
                 throw;
             }
-            catch (Exception e)
+            catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write test Error_IndexTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "File indexing failed with exception");
                 indexedFilesChannel.Writer.Complete();
-                errorCancellationTokenSource.Cancel();
                 throw;
             }
         }, cancellationToken);
@@ -258,6 +259,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
                         logger.LogWarning("File {FileName} is a pointer file without an associated binary, skipping", filePair.FullName);
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, "Error: pointer file without binary"));
+
+                        var warningMessage = $"File '{filePair.FullName}' is a pointer file without an associated binary, skipping";
+                        warnings.Add(warningMessage);
+                        Interlocked.Increment(ref filesSkipped);
                     }
                     else
                     {
@@ -275,20 +280,18 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                             await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
                     }
                 }
-                catch (IOException e)
-                {
-                    logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, $"Error: {e.Message}"));
-                }
                 catch (OperationCanceledException)
                 {
                     throw;
                 }
                 catch (Exception e)
                 {
-                    logger.LogError(e, "File hashing failed for {FileName}", filePair.FullName);
-                    errorCancellationTokenSource.Cancel();
-                    throw;
+                    logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, $"Error: {e.Message}"));
+
+                    var warningMessage = $"Error when hashing file '{filePair.FullName}': {e.Message}, skipping";
+                    warnings.Add(warningMessage);
+                    Interlocked.Increment(ref filesSkipped);
                 }
             });
 
@@ -315,10 +318,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 {
                     throw;
                 }
-                catch (Exception e)
+                catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, update test Error_UploadTaskFails_ShouldReturnFailure
                 {
                     logger.LogError(e, "Large file upload task failed");
-                    errorCancellationTokenSource.Cancel();
                     throw;
                 }
             });
@@ -334,13 +336,15 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             {
                 throw;
             }
-            catch (Exception e)
+            catch (Exception e)  // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "Small files TAR archive task failed");
-                errorCancellationTokenSource.Cancel();
                 throw;
             }
         }, cancellationToken);
+
+    
+    // --- HELPERS
 
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
@@ -750,5 +754,4 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         foreach (var entry in tarWriter.TarredEntries)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 100, "Archive complete"));
     }
-
 }

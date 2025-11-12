@@ -47,13 +47,19 @@ internal class StateRepositoryDbContextPool
         {
             lock (ensureCreatedLock)
             {
-                using var context = CreateContext();
+                using var context = CreateContext(skipExistCheck: true);
                 context.Database.Migrate();
             }
         }
     }
 
-    public StateRepositoryDbContext CreateContext() => factory.CreateDbContext();
+    public StateRepositoryDbContext CreateContext(bool skipExistCheck = false)
+    {
+        if (!skipExistCheck && !StateDatabaseFile.Exists)
+            throw new InvalidOperationException($"Database file {StateDatabaseFile} does not exist");
+
+        return factory.CreateDbContext();
+    }
 
     public void SetHasChanges() => Interlocked.Exchange(ref hasChanges, true);
 

@@ -46,10 +46,10 @@ internal class StateRepositoryDbContext : DbContext
 
         var pfeb = modelBuilder.Entity<PointerFileEntry>();
         pfeb.ToTable("PointerFileEntries");
-        pfeb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
+        pfeb.HasKey(pfe => pfe.RelativeName);
 
         pfeb.HasIndex(pfe => pfe.Hash); // NOT unique
-        pfeb.HasIndex(pfe => pfe.RelativeName); // to facilitate GetPointerFileEntriesAtVersionAsync
+        //pfeb.HasIndex(pfe => pfe.RelativeName); // to facilitate GetPointerFileEntriesAtVersionAsync
 
         // Composite index for better query performance on prefix searches with joins (for GetPointerFileEntries / topdirectoryonly & GetPointerFileDirectories / topdirectoryonly)
         pfeb.HasIndex(pfe => new { pfe.RelativeName, pfe.Hash })

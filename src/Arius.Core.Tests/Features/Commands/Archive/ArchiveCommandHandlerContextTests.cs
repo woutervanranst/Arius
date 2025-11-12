@@ -52,7 +52,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
         // Verify a new state file was created (with current timestamp format)
         var stateFiles = stateCache.GetStateFileEntries().ToArray();
         stateFiles.Length.ShouldBe(1);
-        stateFiles[0].Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        stateFiles[0].Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\-\d{3}\.db");
 
         // Verify no download was attempted since no remote state exists
         await mockArchiveStorage.DidNotReceive().DownloadStateAsync(Arg.Any<string>(), Arg.Any<FileEntry>(), Arg.Any<CancellationToken>());
@@ -101,7 +101,7 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
 
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
         newStateFile.ShouldNotBeNull("a new state file should be created");
-        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\-\d{3}\.db");
     }
 
     [Fact]
@@ -139,6 +139,6 @@ public class ArchiveCommandHandlerContextCreateAsyncTests
 
         var newStateFile = stateFiles.FirstOrDefault(f => f.Name != $"{existingStateName}.db");
         newStateFile.ShouldNotBeNull("a new state file should be created");
-        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.db");
+        newStateFile.Name.ShouldMatch(@"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\-\d{3}\.db");
     }
 }

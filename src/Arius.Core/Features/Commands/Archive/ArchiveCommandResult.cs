@@ -52,4 +52,8 @@ public sealed record ArchiveCommandResult
     /// The name of the new state file that was uploaded, or null if no state changes occurred
     /// </summary>
     public string? NewStateName { get; init; }
+
+    
+    public IReadOnlyList<string> Warnings     { get; init; } = [];
+    public int                   FilesSkipped { get; init; }
 }

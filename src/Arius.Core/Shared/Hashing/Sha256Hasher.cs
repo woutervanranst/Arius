@@ -5,7 +5,33 @@ using System.Text;
 
 namespace Arius.Core.Shared.Hashing;
 
-internal sealed class Sha256Hasher
+internal interface ISha256Hasher
+{
+    /// <summary>
+    /// Gets the salted hash of a raw byte array.
+    /// </summary>
+    Task<Hash> GetHashAsync(byte[] data);
+
+    /// <summary>
+    /// Gets the salted hash of a Stream.
+    /// </summary>
+    /// <param name="s"></param>
+    /// <returns></returns>
+    Task<Hash> GetHashAsync(Stream s);
+
+    /// <summary>
+    /// Gets the salted hash of a FilePair. If it is PointerFileOnly, we simply
+    /// return the hash stored in the pointer file. Otherwise, we hash the BinaryFile.
+    /// </summary>
+    Task<Hash> GetHashAsync(FilePair fp);
+
+    /// <summary>
+    /// Gets the salted hash of a BinaryFile. Throws if the file does not exist.
+    /// </summary>
+    Task<Hash> GetHashAsync(BinaryFile bf);
+}
+
+internal sealed class Sha256Hasher : ISha256Hasher
 {
     private const int BufferSize = 81920; // 80 KB buffer
     private readonly byte[] saltBytes;
@@ -22,10 +48,7 @@ internal sealed class Sha256Hasher
     ///// <param name="salt">Raw salt bytes.</param>
     //private Sha256Hasher(byte[] salt) => saltBytes = salt;
 
-    /// <summary>
-    /// Gets the salted hash of a raw byte array. Returns a Task for consistency.
-    /// </summary>
-    public Task<Hash> GetHashAsync(byte[] data)
+    public Task<Hash> GetHashAsync(byte[] data) // NOTE: returns a Task for consistency
     {
         // No I/O, so no real async needed. We keep a Task-based signature to match the rest of the code.
         var hashValue = ComputeSaltedHash(data);
