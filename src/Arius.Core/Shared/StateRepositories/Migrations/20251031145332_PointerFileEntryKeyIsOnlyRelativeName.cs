@@ -5,7 +5,7 @@
 namespace Arius.Core.Shared.StateRepositories.Migrations
 {
     /// <inheritdoc />
-    public partial class PointerFileEntryKeyIsOnlyRelativeName : Migration
+    internal partial class PointerFileEntryKeyIsOnlyRelativeName : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
