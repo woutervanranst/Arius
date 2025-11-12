@@ -6,9 +6,9 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Arius.Explorer/5.0.164": {
+      "Arius.Explorer/5.0.165": {
         "dependencies": {
-          "Arius.Core": "5.0.164",
+          "Arius.Core": "5.0.165",
           "CommunityToolkit.Mvvm": "8.4.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.10",
           "Microsoft.Extensions.Configuration.UserSecrets": "9.0.10",
@@ -107,23 +107,23 @@
           }
         }
       },
-      "FluentValidation/12.0.0": {
+      "FluentValidation/12.1.0": {
         "runtime": {
           "lib/net8.0/FluentValidation.dll": {
             "assemblyVersion": "12.0.0.0",
-            "fileVersion": "12.0.0.0"
+            "fileVersion": "12.1.0.0"
           }
         }
       },
-      "FluentValidation.DependencyInjectionExtensions/12.0.0": {
+      "FluentValidation.DependencyInjectionExtensions/12.1.0": {
         "dependencies": {
-          "FluentValidation": "12.0.0",
+          "FluentValidation": "12.1.0",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.10"
         },
         "runtime": {
           "lib/net8.0/FluentValidation.DependencyInjectionExtensions.dll": {
             "assemblyVersion": "12.0.0.0",
-            "fileVersion": "12.0.0.0"
+            "fileVersion": "12.1.0.0"
           }
         }
       },
@@ -919,13 +919,13 @@
           }
         }
       },
-      "Arius.Core/5.0.164": {
+      "Arius.Core/5.0.165": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.26.0",
           "EFCore.BulkExtensions.Sqlite": "9.0.2",
           "FluentResults": "4.0.0",
-          "FluentValidation": "12.0.0",
-          "FluentValidation.DependencyInjectionExtensions": "12.0.0",
+          "FluentValidation": "12.1.0",
+          "FluentValidation.DependencyInjectionExtensions": "12.1.0",
           "Humanizer.Core": "2.14.1",
           "Mediator.Abstractions": "3.0.1",
           "Microsoft.EntityFrameworkCore.Sqlite": "9.0.10",
@@ -935,15 +935,15 @@
         },
         "runtime": {
           "Arius.Core.dll": {
-            "assemblyVersion": "5.0.164.0",
-            "fileVersion": "5.0.164.0"
+            "assemblyVersion": "5.0.165.0",
+            "fileVersion": "5.0.165.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "Arius.Explorer/5.0.164": {
+    "Arius.Explorer/5.0.165": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -997,19 +997,19 @@
       "path": "fluentresults/4.0.0",
       "hashPath": "fluentresults.4.0.0.nupkg.sha512"
     },
-    "FluentValidation/12.0.0": {
+    "FluentValidation/12.1.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-8NVLxtMUXynRHJIX3Hn1ACovaqZIJASufXIIFkD0EUbcd5PmMsL1xUD5h548gCezJ5BzlITaR9CAMrGe29aWpA==",
-      "path": "fluentvalidation/12.0.0",
-      "hashPath": "fluentvalidation.12.0.0.nupkg.sha512"
+      "sha512": "sha512-FqWEn8BdbbFEHGanj9K8SVo+LyBeFWy2rolaE+e1TNUbifr8M7Iss+I1AqTSc8kjKtvjl/WN4XIHiRpslh42bA==",
+      "path": "fluentvalidation/12.1.0",
+      "hashPath": "fluentvalidation.12.1.0.nupkg.sha512"
     },
-    "FluentValidation.DependencyInjectionExtensions/12.0.0": {
+    "FluentValidation.DependencyInjectionExtensions/12.1.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-B28fBRL1UjhGsBC8fwV6YBZosh+SiU1FxdD7l7p5dGPgRlVI7UnM+Lgzmg+unZtV1Zxzpaw96UY2MYfMaAd8cg==",
-      "path": "fluentvalidation.dependencyinjectionextensions/12.0.0",
-      "hashPath": "fluentvalidation.dependencyinjectionextensions.12.0.0.nupkg.sha512"
+      "sha512": "sha512-p9ZnpVCUvkelSfqFYZP9aMtnuRlDRkrAAPqjQGG+1mVVn8zxE0bc1/RAFRBZKsPglbMBQOx8wXOZhg2fGstacQ==",
+      "path": "fluentvalidation.dependencyinjectionextensions/12.1.0",
+      "hashPath": "fluentvalidation.dependencyinjectionextensions.12.1.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
@@ -1424,7 +1424,7 @@
       "path": "zio/0.21.2",
       "hashPath": "zio.0.21.2.nupkg.sha512"
     },
-    "Arius.Core/5.0.164": {
+    "Arius.Core/5.0.165": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
