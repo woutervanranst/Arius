@@ -60,11 +60,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     // - small files: a single consumer batches entries into a TAR; only the "owner" of a hash adds to the TAR.
     //   duplicates (non-owners) are *deferred* — we DO NOT block the reader.
     // - large files: each owner uploads the blob directly; non-owners await the owner (safe here because it's in a parallel consumer).
+    private record FilePairWithHash(FilePair FilePair, Hash Hash);
     private readonly Channel<FilePair>         indexedFilesChannel     = ChannelExtensions.CreateBounded<FilePair>(capacity: 20, singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = ChannelExtensions.CreateBounded<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
-    private record FilePairWithHash(FilePair FilePair, Hash Hash);
+
+    // --- HANDLER
 
     public async ValueTask<Result<ArchiveCommandResult>> Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
@@ -199,6 +201,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         }
     }
 
+
+    // --- HIGH LEVEL TASKS
+
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
         {
@@ -225,7 +230,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 indexedFilesChannel.Writer.Complete();
                 throw;
             }
-            catch (Exception e)
+            catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "File indexing failed with exception");
                 indexedFilesChannel.Writer.Complete();
@@ -279,7 +284,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                             await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
                     }
                 }
-                catch (IOException e)
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception e)
                 {
                     logger.LogWarning("Error when hashing file {FileName}: {Message}, skipping.", filePair.FullName, e.Message);
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, $"Error: {e.Message}"));
@@ -287,16 +296,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                     var warningMessage = $"Error when hashing file '{filePair.FullName}': {e.Message}, skipping";
                     warnings.Add(warningMessage);
                     Interlocked.Increment(ref filesSkipped);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, "File hashing failed for {FileName}", filePair.FullName);
-                    errorCancellationTokenSource.Cancel();
-                    throw;
                 }
             });
 
@@ -323,7 +322,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 {
                     throw;
                 }
-                catch (Exception e)
+                catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
                 {
                     logger.LogError(e, "Large file upload task failed");
                     errorCancellationTokenSource.Cancel();
@@ -342,13 +341,16 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             {
                 throw;
             }
-            catch (Exception e)
+            catch (Exception e)  // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "Small files TAR archive task failed");
                 errorCancellationTokenSource.Cancel();
                 throw;
             }
         }, cancellationToken);
+
+    
+    // --- HELPERS
 
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
@@ -758,5 +760,4 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         foreach (var entry in tarWriter.TarredEntries)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(entry.FilePair.FullName, 100, "Archive complete"));
     }
-
 }

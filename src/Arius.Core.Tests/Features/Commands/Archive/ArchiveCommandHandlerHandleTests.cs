@@ -958,35 +958,33 @@ public class ArchiveCommandHandlerHandleTests
     public async Task Error_HashTaskFails_ShouldSkipProblematicFileAndContinue()
     {
         // Arrange
-        var failingPath = UPath.Root / "hash" / "will-fail.bin";
-        _ = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, failingPath)
-            .WithRandomContent(1024, seed: 6101)
+        var failingFile = new FakeFileBuilder(fixture)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "hash" / "will-fail.bin")
+            .WithRandomContent(1024, seed: 1)
             .Build();
 
-        var successfulPath = UPath.Root / "hash" / "will-upload.bin";
         var successfulFile = new FakeFileBuilder(fixture)
-            .WithActualFile(FilePairType.BinaryFileOnly, successfulPath)
-            .WithRandomContent(2048, seed: 6102)
+            .WithActualFile(FilePairType.BinaryFileOnly, UPath.Root / "hash" / "will-upload.bin")
+            .WithRandomContent(1024, seed: 2)
             .Build();
-
-        var failingAbsolutePath = Path.Combine(fixture.TestRunSourceFolder.FullName, "hash", "will-fail.bin");
 
         var deleted = false;
         var progressUpdates = new List<ProgressUpdate>();
-        void HandleProgress(ProgressUpdate update)
+        void ProgressHandler(ProgressUpdate update)
         {
             progressUpdates.Add(update);
+
+            // Simulate a failure during hashing by deleting the file when we get to that point
             if (!deleted && update is FileProgressUpdate fileUpdate &&
                 fileUpdate.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) &&
                 fileUpdate.StatusMessage?.Contains("Hashing", StringComparison.OrdinalIgnoreCase) == true)
             {
                 deleted = true;
-                File.Delete(failingAbsolutePath);
+                failingFile.FilePair.BinaryFile.Delete();
             }
         }
 
-        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(HandleProgress)));
+        var (_, handlerContext, storageBuilder, _) = await CreateHandlerContextAsync(builder => builder.WithProgressReporter(new Progress<ProgressUpdate>(ProgressHandler)));
 
         var (expectedInitialFileCount, existingPointerCount) = GetInitialFileStatistics(handlerContext);
 
@@ -1003,14 +1001,18 @@ public class ArchiveCommandHandlerHandleTests
         summary.PointerFilesCreated.ShouldBe(1);
         summary.BytesUploadedUncompressed.ShouldBe(successfulFile.OriginalContent.Length);
 
-        File.Exists(failingAbsolutePath).ShouldBeFalse();
-        File.Exists(Path.Combine(fixture.TestRunSourceFolder.FullName, "hash", "will-fail.bin.pointer.arius")).ShouldBeFalse();
+        //      The Binary & Pointer do not exist
+        File.Exists(failingFile.FilePair.BinaryFile.FullName).ShouldBeFalse();
+        File.Exists(failingFile.FilePair.PointerFile.FullName).ShouldBeFalse();
 
-        storageBuilder.StoredChunks.Count.ShouldBe(1);
+        storageBuilder.StoredChunks.Count.ShouldBe(1); // only 1 chunk stored (not 2)
 
         progressUpdates.OfType<FileProgressUpdate>()
-            .Any(p => p.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true)
+            .Any(p => p.FileName.EndsWith("will-fail.bin", StringComparison.OrdinalIgnoreCase) && p.StatusMessage?.Contains("Error: BinaryFile does not exist", StringComparison.OrdinalIgnoreCase) == true)
             .ShouldBeTrue();
+
+        summary.FilesSkipped.ShouldBe(1);
+        summary.Warnings.ShouldContain(w => w.StartsWith("Error when hashing file '/hash/will-fail.bin': BinaryFile does not exist"));
     }
 
     [Fact]
