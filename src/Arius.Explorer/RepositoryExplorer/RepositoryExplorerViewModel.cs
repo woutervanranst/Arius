@@ -11,24 +11,27 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Windows;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
 public partial class RepositoryExplorerViewModel : ObservableObject
 {
-    private readonly IApplicationSettings settings;
-    private readonly IRecentRepositoryManager recentRepositoryManager;
-    private readonly IDialogService dialogService;
-    private readonly IMediator mediator;
+    private readonly IApplicationSettings                 settings;
+    private readonly IRecentRepositoryManager             recentRepositoryManager;
+    private readonly IDialogService                       dialogService;
+    private readonly IMediator                            mediator;
+    private readonly ILogger<RepositoryExplorerViewModel> logger;
 
     // -- INITIALIZATION & GENERAL WINDOW
 
-    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService, IMediator mediator)
+    public RepositoryExplorerViewModel(IApplicationSettings settings, IRecentRepositoryManager recentRepositoryManager, IDialogService dialogService, IMediator mediator, ILogger<RepositoryExplorerViewModel> logger)
     {
         this.settings                = settings;
         this.recentRepositoryManager = recentRepositoryManager;
         this.dialogService           = dialogService;
         this.mediator                = mediator;
+        this.logger                  = logger;
 
         // Load recent repositories from settings
         RecentRepositories = settings.RecentRepositories;
@@ -210,13 +213,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            //throw;
+            logger.LogError(e, "Error loading node content");
         }
     }
-
-
-
 
 
     //      About
