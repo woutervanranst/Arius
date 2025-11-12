@@ -35,7 +35,7 @@ jobs:
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.x
+          dotnet-version: 10.x
 
       - name: "🏗️ Build Arius.Cli"
         run: dotnet build Arius.Cli/Arius.Cli.csproj --configuration Release
@@ -79,7 +79,7 @@ jobs:
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.x
+          dotnet-version: 10.x
 
       - name: "🧮 Determine version"
         id: get_version
@@ -164,7 +164,7 @@ jobs:
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.x
+          dotnet-version: 10.x
 
       - name: "🧪 Run Arius.Explorer & Core Tests"
         env:
@@ -205,7 +205,7 @@ jobs:
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 9.x
+          dotnet-version: 10.x
 
       - name: "🧮 Determine version"
         run: |
