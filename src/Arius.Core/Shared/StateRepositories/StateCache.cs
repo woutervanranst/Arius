@@ -18,7 +18,7 @@ internal class StateCache
 
     public FileEntry GetStateFileEntry(string versionName)
     {
-        return cacheDirectory.GetFileEntry($"{versionName}.db");
+        return cacheDirectory.GetFileEntry($"{versionName.Replace(":", "-")}.db");
     }
 
     public IEnumerable<FileEntry> GetStateFileEntries()

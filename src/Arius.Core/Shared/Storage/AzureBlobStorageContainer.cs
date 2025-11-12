@@ -83,8 +83,7 @@ internal class AzureBlobStorageContainer : IRemoteStorageContainer
         logger.LogDebug("Listing blobs with prefix '{Prefix}' from container '{ContainerName}'", prefix, blobContainerClient.Name);
 
         await foreach (var blob in blobContainerClient
-                               .GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken)
-                               .WithCancellation(cancellationToken))
+                           .GetBlobsAsync(prefix: prefix, traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
         {
             yield return new StorageProperties(
                 Name: blob.Name,
