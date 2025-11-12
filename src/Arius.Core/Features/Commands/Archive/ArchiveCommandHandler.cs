@@ -230,7 +230,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 indexedFilesChannel.Writer.Complete();
                 throw;
             }
-            catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
+            catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write test Error_IndexTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "File indexing failed with exception");
                 indexedFilesChannel.Writer.Complete();
