@@ -90,10 +90,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
         var tasks = new Dictionary<string, Task>
         {
-            ["indexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["hashTask"]             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["uploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["uploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource)
+            ["IndexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["HashTask"]             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["UploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
+            ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource)
         };
 
         try
@@ -152,6 +152,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         catch (Exception ex)
         {
             // Either a task failed with an exception or error-triggered cancellation occurred
+
+            // Trigger error-driven cancellation to signal other tasks to stop gracefully
+            errorCancellationTokenSource.Cancel();
+
             // Wait for all tasks to complete gracefully
             await Task.WhenAll(tasks.Values.Select(async t =>
             {
@@ -167,29 +171,22 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             }
 
             // Log and handle failed tasks (error level)
-            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).ToArray();
-            if (faultedTasks.Any())
+            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
+            if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
             {
-                if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTaskEntry)
-                {
-                    // Single faulted task - return the exception
-                    var baseException = faultedTaskEntry.Value.Exception!.GetBaseException();
-                    logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", faultedTaskEntry.Key, baseException.Message);
-                    return Result.Fail($"Archive operation failed: {baseException.Message}").WithError(new ExceptionalError(baseException));
-                }
-                else
-                {
-                    // Multiple faulted tasks - return aggregate exception
-                    var exceptions = faultedTasks.Select(kvp => kvp.Value.Exception!.GetBaseException()).ToArray();
-                    var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
-                    logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(kvp => kvp.Key)));
-                    return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
-                }
+                // Single faulted task - return the exception
+                var msg = faultedTask.Exception?.GetBaseException().Message ?? "UNKNOWN";
+                logger.LogError(faultedTask.Exception, "Task '{TaskName}' failed with exception '{Exception}'", faultedTask.Name, msg);
+                return Result.Fail($"Archive operation failed: {faultedTask.Name} failed with {msg}").WithError(new ExceptionalError(faultedTask.Exception));
             }
-
-            // Unexpected error path - return generic failure
-            logger.LogError(ex, "Archive operation failed with unexpected error");
-            return Result.Fail($"Archive operation failed: {ex.Message}").WithError(new ExceptionalError(ex));
+            else
+            {
+                // Multiple faulted tasks - return aggregate exception
+                var exceptions         = faultedTasks.Select(ft => ft.Exception).ToArray();
+                var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
+                logger.LogError(aggregateException, "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(ft => ft.Name)));
+                return Result.Fail($"Archive operation failed: multiple tasks failed").WithError(new ExceptionalError(aggregateException));
+            }
         }
     }
 
@@ -226,7 +223,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             {
                 logger.LogError(e, "File indexing failed with exception");
                 indexedFilesChannel.Writer.Complete();
-                errorCancellationTokenSource.Cancel();
                 throw;
             }
         }, cancellationToken);
@@ -314,10 +310,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 {
                     throw;
                 }
-                catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
+                catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, update test Error_UploadTaskFails_ShouldReturnFailure
                 {
                     logger.LogError(e, "Large file upload task failed");
-                    errorCancellationTokenSource.Cancel();
                     throw;
                 }
             });
@@ -336,7 +331,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             catch (Exception e)  // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write a test like Error_HashTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "Small files TAR archive task failed");
-                errorCancellationTokenSource.Cancel();
                 throw;
             }
         }, cancellationToken);

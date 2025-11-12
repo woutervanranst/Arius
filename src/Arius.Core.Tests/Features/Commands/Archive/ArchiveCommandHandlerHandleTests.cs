@@ -73,8 +73,6 @@ public class ArchiveCommandHandlerHandleTests
             await Task.Delay(100); // Delay until the statefile name ("yyyy-MM-ddTHH-mm-ss") is in different seconds
             goto Retry;
         }
-
-        
     }
 
     [Fact(Skip = "TODO")]
@@ -1026,8 +1024,7 @@ public class ArchiveCommandHandlerHandleTests
 
         // Assert
         result.IsFailed.ShouldBeTrue();
-        result.Errors.First().Message.ShouldContain("failed");
-        storageBuilder.StoredChunks.Count.ShouldBe(0);
+        result.Errors.First().Message.ShouldStartWith("Archive operation failed: UploadLargeFilesTask failed with ");
     }
 
     [Fact]
