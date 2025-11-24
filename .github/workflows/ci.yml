@@ -30,7 +30,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -74,7 +74,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -159,7 +159,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -198,7 +198,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
