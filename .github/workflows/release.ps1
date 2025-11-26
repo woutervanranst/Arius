@@ -76,6 +76,10 @@ try {
         '/p:Configuration=Release',
         "/p:PublishDir=$publishDir",
         "/p:PublishUrl=$publishDir",
+        # ClickOnce manifest signing requires an Authenticode code signing certificate.
+        # Strong name signing is enabled (Arius.Explorer.snk), but without a certificate,
+        # the modern bootstrapper fails. To enable full signing, obtain a certificate and
+        # configure CODESIGN_CERTIFICATE_BASE64 and CODESIGN_PASSWORD in GitHub Secrets.
         '/p:SignManifests=false'
     )
 
