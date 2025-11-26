@@ -63,6 +63,26 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         }
     }
 
+    public async Task<ChunkStatistics> GetChunkStatistics(CancellationToken cancellationToken = default)
+    {
+        long binaryCount = 0;
+        long chunkCount = 0;
+
+        await foreach (var storageProperties in container.GetAllAsync(chunksFolderPrefix, cancellationToken))
+        {
+            chunkCount++;
+
+            if (string.Equals(storageProperties.ContentType, ChunkContentTypes.TarChunkContentType, StringComparison.OrdinalIgnoreCase) &&
+                storageProperties.Metadata.TryGetValue("SmallChunkCount", out var smallChunkCount) &&
+                int.TryParse(smallChunkCount, out var fileCount))
+            {
+                binaryCount += fileCount;
+            }
+        }
+
+        return new ChunkStatistics(chunkCount, binaryCount);
+    }
+
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)
     {
         var blobName         = $"{statesFolderPrefix}{stateName}";

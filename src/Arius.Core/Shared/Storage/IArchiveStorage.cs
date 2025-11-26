@@ -5,6 +5,8 @@ using Zio;
 
 namespace Arius.Core.Shared.Storage;
 
+internal record ChunkStatistics(long ChunkCount, long BinaryCount); // BinaryCount = + the count of files inside the tar
+
 /// <summary>
 /// Provides archive-specific storage operations for managing chunks and application state.
 /// Handles both chunked file data and state information for the archival system.
