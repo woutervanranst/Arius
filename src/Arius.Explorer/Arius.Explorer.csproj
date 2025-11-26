@@ -18,6 +18,10 @@
 		<!--<PackageId>Arius.Explorer</PackageId>-->
                 <Product>Arius Explorer</Product>
                 <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+
+		<!-- Strong name signing for ClickOnce settings persistence -->
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>Arius.Explorer.snk</AssemblyOriginatorKeyFile>
         </PropertyGroup>
 
         <!--

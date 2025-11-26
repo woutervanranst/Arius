@@ -14,8 +14,6 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
 {
     private static ApplicationSettings? defaultInstance;
 
-    private bool upgradeChecked;
-
     public static ApplicationSettings Default
     {
         get
@@ -25,34 +23,6 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
                 defaultInstance = (ApplicationSettings)Synchronized(new ApplicationSettings());
             }
             return defaultInstance;
-        }
-    }
-
-    public ApplicationSettings()
-    {
-        EnsureUpgraded();
-    }
-
-    private void EnsureUpgraded()
-    {
-        if (upgradeChecked)
-        {
-            return;
-        }
-
-        upgradeChecked = true;
-
-        var currentVersion = typeof(ApplicationSettings)
-            .Assembly
-            .GetName()
-            .Version?
-            .ToString() ?? string.Empty;
-
-        if (!string.Equals(LastUpgradedVersion, currentVersion, StringComparison.Ordinal))
-        {
-            Upgrade();
-            LastUpgradedVersion = currentVersion;
-            Save();
         }
     }
 
@@ -74,11 +44,11 @@ public class ApplicationSettings : ApplicationSettingsBase, IApplicationSettings
     }
 
     [UserScopedSetting]
-    [DefaultSettingValue("")]
-    public string LastUpgradedVersion
+    [DefaultSettingValue("True")]
+    public bool UpgradeRequired
     {
-        get => (string)(this[nameof(LastUpgradedVersion)] ?? string.Empty);
-        set => this[nameof(LastUpgradedVersion)] = value;
+        get => (bool)(this[nameof(UpgradeRequired)] ?? true);
+        set => this[nameof(UpgradeRequired)] = value;
     }
 }
 

@@ -27,6 +27,23 @@ public partial class App : Application
             var logger = ServiceProvider.GetRequiredService<ILogger<App>>();
             logger.LogInformation("Application starting up");
 
+            // Upgrade settings from previous ClickOnce version if needed
+            try
+            {
+                if (Settings.ApplicationSettings.Default.UpgradeRequired)
+                {
+                    logger.LogInformation("Upgrading application settings from previous version");
+                    Settings.ApplicationSettings.Default.Upgrade();
+                    Settings.ApplicationSettings.Default.UpgradeRequired = false;
+                    Settings.ApplicationSettings.Default.Save();
+                    logger.LogInformation("Settings upgraded successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Settings upgrade failed, continuing with default settings");
+            }
+
             // Get the repository explorer window from DI
             var repositoryWindow = ServiceProvider.GetRequiredService<RepositoryExplorer.RepositoryExplorerWindow>();
             MainWindow = repositoryWindow;
