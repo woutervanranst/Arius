@@ -138,8 +138,50 @@ public class ChooseRepositoryViewModelTests
         repository.Passphrase.ShouldBe("secret-pass");
     }
 
-    
+    [Theory]
+    [InlineData("", "account", "key", "container", "pass")] // Empty LocalDirectoryPath
+    [InlineData("C:/data", "", "key", "container", "pass")] // Empty AccountName
+    [InlineData("C:/data", "account", "", "container", "pass")] // Empty AccountKey
+    [InlineData("C:/data", "account", "key", "", "pass")] // Empty ContainerName
+    [InlineData("C:/data", "account", "key", "container", "")] // Empty Passphrase
+    [InlineData("C:/data", "account", "key", "ab", "pass")] // ContainerName too short
+    [InlineData("C:/data", "account", "key", "MyContainer", "pass")] // ContainerName has uppercase
+    [InlineData("C:/data", "account", "key", "container_name", "pass")] // ContainerName has invalid chars
+    [InlineData("C:/data", "account", "key", "-container", "pass")] // ContainerName starts with hyphen
+    [InlineData("C:/data", "account", "key", "container--name", "pass")] // ContainerName has consecutive hyphens
+    public void OpenRepositoryCommand_WhenConfigurationIsInvalid_ShouldBeDisabled(
+        string localPath, string accountName, string accountKey, string containerName, string passphrase)
+    {
+        // Arrange
+        var mediator = Substitute.For<IMediator>();
+        using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
 
+        viewModel.LocalDirectoryPath = localPath;
+        viewModel.AccountName = accountName;
+        viewModel.AccountKey = accountKey;
+        viewModel.ContainerName = containerName;
+        viewModel.Passphrase = passphrase;
+
+        // Act & Assert
+        viewModel.OpenRepositoryCommand.CanExecute(null).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void OpenRepositoryCommand_WhenAllFieldsAreValid_ShouldBeEnabled()
+    {
+        // Arrange
+        var mediator = Substitute.For<IMediator>();
+        using var viewModel = new ChooseRepositoryViewModel(mediator, TimeSpan.FromMilliseconds(1));
+
+        viewModel.LocalDirectoryPath = "C:/data";
+        viewModel.AccountName = "account";
+        viewModel.AccountKey = "key";
+        viewModel.ContainerName = "valid-container-123";
+        viewModel.Passphrase = "pass";
+
+        // Act & Assert
+        viewModel.OpenRepositoryCommand.CanExecute(null).ShouldBeTrue();
+    }
 
     private static async Task WaitForDebouncerAsync(Func<bool> condition, int timeoutMilliseconds = 1000)
     {
