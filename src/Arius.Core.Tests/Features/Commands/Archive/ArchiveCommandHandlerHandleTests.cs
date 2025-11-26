@@ -110,6 +110,12 @@ public class ArchiveCommandHandlerHandleTests
         summary.ExistingPointerFiles.ShouldBe(expectedExistingPointerFile);
         summary.BytesUploadedUncompressed.ShouldBe(largeFile.OriginalContent.LongLength);
         summary.NewStateName.ShouldNotBeNull();
+        summary.ChunksBeforeOperation.ShouldBe(0);
+        summary.BinariesBeforeOperation.ShouldBe(0);
+        summary.ArchivedSizeBeforeOperation.ShouldBe(0);
+        summary.ChunksAfterOperation.ShouldBe(1);
+        summary.BinariesAfterOperation.ShouldBe(1);
+        summary.ArchivedSizeAfterOperation.ShouldBeGreaterThan(0);
 
         storageBuilder.StoredChunks.Count.ShouldBe(1);
         var chunk = storageBuilder.StoredChunks.Single().Value;
@@ -162,6 +168,12 @@ public class ArchiveCommandHandlerHandleTests
         summary.ExistingPointerFiles.ShouldBe(expectedExistingPointerFile);
         summary.BytesUploadedUncompressed.ShouldBe(smallFile.OriginalContent.LongLength);
         summary.NewStateName.ShouldNotBeNull();
+        summary.ChunksBeforeOperation.ShouldBe(0);
+        summary.BinariesBeforeOperation.ShouldBe(0);
+        summary.ArchivedSizeBeforeOperation.ShouldBe(0);
+        summary.ChunksAfterOperation.ShouldBe(1);
+        summary.BinariesAfterOperation.ShouldBe(1);
+        summary.ArchivedSizeAfterOperation.ShouldBeGreaterThan(0);
 
         storageBuilder.StoredChunks.Count.ShouldBe(1);
         var tarChunk = storageBuilder.StoredChunks.Single().Value;
@@ -365,6 +377,12 @@ public class ArchiveCommandHandlerHandleTests
         summary.ExistingPointerFiles.ShouldBe(0);
         summary.BytesUploadedUncompressed.ShouldBe(smallFile.OriginalContent.Length + largeFile.OriginalContent.Length);
         summary.NewStateName.ShouldNotBeNull();
+        summary.ChunksBeforeOperation.ShouldBe(0);
+        summary.BinariesBeforeOperation.ShouldBe(0);
+        summary.ArchivedSizeBeforeOperation.ShouldBe(0);
+        summary.ChunksAfterOperation.ShouldBe(2);
+        summary.BinariesAfterOperation.ShouldBe(2);
+        summary.ArchivedSizeAfterOperation.ShouldBeGreaterThan(0);
 
         storageBuilder.StoredChunks.Count.ShouldBe(2);
         storageBuilder.UploadedStates.ShouldContain(summary.NewStateName!);
@@ -677,7 +695,13 @@ public class ArchiveCommandHandlerHandleTests
         summary2.PointerFilesCreated.ShouldBe(0); // <-- etc
         summary2.PointerFileEntriesDeleted.ShouldBe(0);  // <-- etc
         summary2.BytesUploadedUncompressed.ShouldBe(0); // <-- etc
-        
+        summary2.ChunksBeforeOperation.ShouldBe(1); // <-- from first run
+        summary2.BinariesBeforeOperation.ShouldBe(1); // <-- from first run
+        summary2.ArchivedSizeBeforeOperation.ShouldBeGreaterThan(0); // <-- from first run
+        summary2.ChunksAfterOperation.ShouldBe(1); // <-- no change
+        summary2.BinariesAfterOperation.ShouldBe(1); // <-- no change
+        summary2.ArchivedSizeAfterOperation.ShouldBe(summary2.ArchivedSizeBeforeOperation); // <-- no change
+
             // No new state was created & uploaded and the (temporary) database file was deleted
         summary2.NewStateName.ShouldBeNull();
         incrementalContext.StateRepository.HasChanges.ShouldBeFalse();
@@ -727,7 +751,13 @@ public class ArchiveCommandHandlerHandleTests
         summary.PointerFilesCreated.ShouldBe(1);
         summary.BytesUploadedUncompressed.ShouldBe(newSmallFile.OriginalContent.Length);
         summary.PointerFileEntriesDeleted.ShouldBe(0);
-        
+        summary.ChunksBeforeOperation.ShouldBe(1); // <-- from first run
+        summary.BinariesBeforeOperation.ShouldBe(1); // <-- from first run
+        summary.ArchivedSizeBeforeOperation.ShouldBeGreaterThan(0); // <-- from first run
+        summary.ChunksAfterOperation.ShouldBe(2); // <-- 1 from first run + 1 new
+        summary.BinariesAfterOperation.ShouldBe(2); // <-- 1 from first run + 1 new
+        summary.ArchivedSizeAfterOperation.ShouldBeGreaterThan(summary.ArchivedSizeBeforeOperation); // <-- increased
+
             // A new state was created & uploaded
         summary.NewStateName.ShouldNotBeNull();
         incrementalContext.StateRepository.HasChanges.ShouldBeTrue();

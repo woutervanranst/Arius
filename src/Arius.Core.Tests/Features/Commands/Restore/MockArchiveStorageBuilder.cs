@@ -142,7 +142,23 @@ internal class MockArchiveStorageBuilder
                 
                 return Task.FromResult(Result.Fail<Stream>(new BlobNotFoundError(hash.ToString())));
             });
-            
+
+        storageMock.GetChunkStatistics(Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                long chunkCount = chunks.Count;
+                long binaryCount = 0;
+                long archivedSize = 0;
+
+                foreach (var (hash, content) in chunks)
+                {
+                    archivedSize += content.Length;
+                    binaryCount++; // For simplicity, count each chunk as one binary
+                }
+
+                return Task.FromResult(new ChunkStatistics(chunkCount, binaryCount, archivedSize));
+            });
+
         return storageMock;
     }
 

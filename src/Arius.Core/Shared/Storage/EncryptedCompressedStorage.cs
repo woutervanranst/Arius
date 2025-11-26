@@ -46,8 +46,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     {
         var states = new List<string>();
 
-        await foreach (var storageProperties in container
-                           .GetAllAsync(statesFolderPrefix, cancellationToken))
+        await foreach (var storageProperties in container.GetAllAsync(statesFolderPrefix, cancellationToken))
         {
             if (storageProperties.Metadata != null
                 && storageProperties.Metadata.TryGetValue("DatabaseVersion", out var version)
@@ -67,20 +66,30 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     {
         long binaryCount = 0;
         long chunkCount = 0;
+        long totalSize = 0;
 
         await foreach (var storageProperties in container.GetAllAsync(chunksFolderPrefix, cancellationToken))
         {
             chunkCount++;
+            totalSize += storageProperties.ContentLength;
 
-            if (string.Equals(storageProperties.ContentType, ChunkContentTypes.TarChunkContentType, StringComparison.OrdinalIgnoreCase) &&
-                storageProperties.Metadata.TryGetValue("SmallChunkCount", out var smallChunkCount) &&
-                int.TryParse(smallChunkCount, out var fileCount))
+            if (string.Equals(storageProperties.ContentType, ChunkContentTypes.ChunkContentType, StringComparison.OrdinalIgnoreCase))
             {
-                binaryCount += fileCount;
+                binaryCount++;
+            }
+            else if (string.Equals(storageProperties.ContentType, ChunkContentTypes.TarChunkContentType, StringComparison.OrdinalIgnoreCase) &&
+                storageProperties.Metadata.TryGetValue("SmallChunkCount", out var smallChunkCount) &&
+                int.TryParse(smallChunkCount, out var c))
+            {
+                binaryCount += c;
+            }
+            else
+            {
+                // TODO unsupported chunk type ?
             }
         }
 
-        return new ChunkStatistics(chunkCount, binaryCount);
+        return new ChunkStatistics(chunkCount, binaryCount, totalSize);
     }
 
     public async Task DownloadStateAsync(string stateName, FileEntry targetFile, CancellationToken cancellationToken = default)

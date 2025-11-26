@@ -5,7 +5,7 @@ using Zio;
 
 namespace Arius.Core.Shared.Storage;
 
-internal record ChunkStatistics(long ChunkCount, long BinaryCount); // BinaryCount = + the count of files inside the tar
+internal record ChunkStatistics(long ChunkCount, long BinaryCount, long ArchivedSize); // BinaryCount = + the count of files inside the tar
 
 /// <summary>
 /// Provides archive-specific storage operations for managing chunks and application state.
@@ -31,4 +31,5 @@ internal interface IArchiveStorage
     Task                     SetChunkMetadataAsync(Hash h, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
     Task<StorageTier>        SetChunkStorageTierPerPolicy(Hash h, long length, StorageTier targetTier);
     Task                     StartHydrationAsync(Hash hash, RehydratePriority priority);
+    Task<ChunkStatistics>    GetChunkStatistics(CancellationToken cancellationToken = default);
 }

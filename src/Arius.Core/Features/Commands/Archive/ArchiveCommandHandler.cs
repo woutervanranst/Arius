@@ -84,6 +84,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
         logger.LogInformation("Starting archive operation for path {LocalRoot} with hashing parallelism {HashingParallelism}, upload parallelism {UploadParallelism}", handlerContext.Request.LocalRoot, handlerContext.Request.HashingParallelism, handlerContext.Request.UploadParallelism);
 
+        // Get chunk statistics BEFORE operation
+        logger.LogDebug("Getting chunk statistics before archive operation");
+        var statisticsBefore = await handlerContext.ArchiveStorage.GetChunkStatistics(cancellationToken);
+        logger.LogInformation("Remote storage before: {ChunkCount} chunks, {BinaryCount} binaries, {ArchivedSize} bytes", statisticsBefore.ChunkCount, statisticsBefore.BinaryCount, statisticsBefore.ArchivedSize);
+
         using var errorCancellationTokenSource   = new CancellationTokenSource();
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, errorCancellationTokenSource.Token);
         var       errorCancellationToken         = linkedCancellationTokenSource.Token;
@@ -125,6 +130,11 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 handlerContext.StateRepository.Delete();
             }
 
+            // Get chunk statistics AFTER operation
+            logger.LogDebug("Getting chunk statistics after archive operation");
+            var statisticsAfter = await handlerContext.ArchiveStorage.GetChunkStatistics(cancellationToken);
+            logger.LogInformation("Remote storage after: {ChunkCount} chunks, {BinaryCount} binaries, {ArchivedSize} bytes", statisticsAfter.ChunkCount, statisticsAfter.BinaryCount, statisticsAfter.ArchivedSize);
+
             logger.LogInformation("Archive operation completed successfully for path {LocalRoot}", handlerContext.Request.LocalRoot);
 
             return Result.Ok(new ArchiveCommandResult
@@ -132,12 +142,21 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 TotalLocalFiles      = totalLocalFiles,
                 ExistingPointerFiles = existingPointerFiles,
 
+                ChunksBeforeOperation        = statisticsBefore.ChunkCount,
+                BinariesBeforeOperation      = statisticsBefore.BinaryCount,
+                ArchivedSizeBeforeOperation  = statisticsBefore.ArchivedSize,
+
                 UniqueBinariesUploaded    = uniqueBinariesUploaded,
                 UniqueChunksUploaded      = uniqueChunksUploaded,
                 BytesUploadedUncompressed = bytesUploadedUncompressed,
                 BytesUploadedCompressed   = bytesUploadedCompressed,
                 PointerFilesCreated       = pointerFilesCreated,
                 PointerFileEntriesDeleted = pointerFileEntriesDeleted,
+
+                ChunksAfterOperation        = statisticsAfter.ChunkCount,
+                BinariesAfterOperation      = statisticsAfter.BinaryCount,
+                ArchivedSizeAfterOperation  = statisticsAfter.ArchivedSize,
+
                 NewStateName              = newStateName,
                 Warnings                  = warnings.ToArray(),
                 FilesSkipped              = filesSkipped
@@ -679,7 +698,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         var fileCount = tarWriter.TarredEntries.Count;
         var totalOriginalSize = tarWriter.TotalOriginalSize;
 
-        logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {TotalSize})", fileCount, totalOriginalSize.Bytes().Humanize());
+        logger.LogInformation("Processing TAR archive with {FileCount} files (total size: {ArchivedSize})", fileCount, totalOriginalSize.Bytes().Humanize());
         
         await using var sourceStream = tarWriter.GetCompletedArchive();
 

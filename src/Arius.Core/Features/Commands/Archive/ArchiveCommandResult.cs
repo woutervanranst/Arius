@@ -14,6 +14,21 @@ public sealed record ArchiveCommandResult
     /// </summary>
     public int ExistingPointerFiles { get; init; }
 
+    /// <summary>
+    /// Remote storage chunks (blobs) before this operation
+    /// </summary>
+    public long ChunksBeforeOperation { get; init; }
+
+    /// <summary>
+    /// Remote storage binaries before this operation (files inside TAR archives)
+    /// </summary>
+    public long BinariesBeforeOperation { get; init; }
+
+    /// <summary>
+    /// Remote storage total size in bytes before this operation
+    /// </summary>
+    public long ArchivedSizeBeforeOperation { get; init; }
+
 
     // Operation
 
@@ -47,6 +62,24 @@ public sealed record ArchiveCommandResult
     /// The number of pointer file entries deleted (because they no longer exist on disk)
     /// </summary>
     public int PointerFileEntriesDeleted { get; init; }
+
+
+    // After
+
+    /// <summary>
+    /// Remote storage chunks (blobs) after this operation
+    /// </summary>
+    public long ChunksAfterOperation { get; init; }
+
+    /// <summary>
+    /// Remote storage binaries after this operation (files inside TAR archives)
+    /// </summary>
+    public long BinariesAfterOperation { get; init; }
+
+    /// <summary>
+    /// Remote storage total size in bytes after this operation
+    /// </summary>
+    public long ArchivedSizeAfterOperation { get; init; }
 
     /// <summary>
     /// The name of the new state file that was uploaded, or null if no state changes occurred

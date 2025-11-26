@@ -288,6 +288,33 @@ internal class MockArchiveStorageBuilder
                 return Task.CompletedTask;
             });
 
+        // Get chunk statistics
+        mock.GetChunkStatistics(Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                long chunkCount = chunks.Count;
+                long binaryCount = 0;
+                long archivedSize = 0;
+
+                foreach (var chunk in chunks.Values)
+                {
+                    archivedSize += chunk.ContentLength;
+
+                    if (string.Equals(chunk.ContentType, ChunkContentTypes.ChunkContentType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        binaryCount++;
+                    }
+                    else if (string.Equals(chunk.ContentType, ChunkContentTypes.TarChunkContentType, StringComparison.OrdinalIgnoreCase) &&
+                             chunk.Metadata.TryGetValue("SmallChunkCount", out var smallChunkCount) &&
+                             int.TryParse(smallChunkCount, out var c))
+                    {
+                        binaryCount += c;
+                    }
+                }
+
+                return Task.FromResult(new ChunkStatistics(chunkCount, binaryCount, archivedSize));
+            });
+
         return mock;
     }
 

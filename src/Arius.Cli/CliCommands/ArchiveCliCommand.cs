@@ -128,15 +128,15 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                 var s = result.Value;
 
                 RenderArchiveTable(
-                    $"{s.TotalLocalFiles}",    "?",     "?",
-                    "?",    "?",     "?",
-                    "?",    $"+{s.BytesUploadedUncompressed.Bytes().Humanize()}",     "?",
-                    $"{s.ExistingPointerFiles}",    $"+{s.PointerFilesCreated}",     "?",
+                    $"{s.TotalLocalFiles}",      "?",                                                  "?",
+                    "?",                         "?",                                                  "?",
+                    "?",                         $"+{s.BytesUploadedUncompressed.Bytes().Humanize()}", "?",
+                    $"{s.ExistingPointerFiles}", $"+{s.PointerFilesCreated}",                          "?",
 
-                    "?",    "?",     "?",
-                    "?",    $"{s.UniqueBinariesUploaded} binaries in {s.UniqueChunksUploaded} chunks",     "?",
-                    "?",    $"+{s.BytesUploadedCompressed.Bytes().Humanize()}",     "?",
-                    "?",    $"+ ? - {s.PointerFileEntriesDeleted}",     "?"
+                    "?",                                                                         "?",                                                                        "?",
+                    $"{s.BinariesBeforeOperation} binaries in {s.ChunksBeforeOperation} chunks", $"+{s.UniqueBinariesUploaded} binaries in {s.UniqueChunksUploaded} chunks", $"{s.BinariesAfterOperation} binaries in {s.ChunksAfterOperation} chunks",
+                    $"{s.ArchivedSizeBeforeOperation.Bytes().Humanize()}",                        $"+{s.BytesUploadedCompressed.Bytes().Humanize()}",                         $"{s.ArchivedSizeAfterOperation.Bytes().Humanize()}",
+                    "?",                                                                         $"+ ? - {s.PointerFileEntriesDeleted}",                                     "?"
                 );
 
                 AnsiConsole.MarkupLine("[green]Archive completed successfully![/]");
