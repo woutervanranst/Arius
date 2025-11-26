@@ -32,7 +32,12 @@ namespace Arius.Core.DbMigrationV3V5
             var bsc = new BlobServiceClient(new Uri($"https://{accountName}.blob.core.windows.net/"), new StorageSharedKeyCredential(accountName, accountKey));
 
             foreach (var blobContainerItem in bsc.GetBlobContainers())
+            {
+                //if (blobContainerItem.Name != "archive-books")
+                //    continue;
+
                 await MigrateContainerAsync(bsc, blobContainerItem.Name, passphrase);
+            }
         }
 
         private static async Task MigrateContainerAsync(BlobServiceClient bsc, string containerName, string passphrase)
@@ -70,7 +75,7 @@ namespace Arius.Core.DbMigrationV3V5
                              .UseSqlite($"Data Source={v5LocalDbPath}")
                              .Options))
             {
-                await v5db.Database.EnsureCreatedAsync();
+                v5db.Database.Migrate(); //.EnsureCreatedAsync();
 
                 // Migrate ChunkEntries to BinaryProperties
                 if (v3db.ChunkEntries.Count() != v5db.BinaryProperties.Count())
