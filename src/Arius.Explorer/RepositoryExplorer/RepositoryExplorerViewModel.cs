@@ -118,15 +118,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             // NOTE no loading indicators here bc this is super quick; the actual loading happens in LoadNodeContentAsync
 
+            // Create root node
             var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
             {
                 Name       = "Root",
                 IsSelected = true,
+                IsExpanded = true
             };
 
+            RootNode         = [rootNode];
             SelectedTreeNode = rootNode;
 
-            }
+            OnPropertyChanged(nameof(SelectedItemsText));
         }
     }
 
