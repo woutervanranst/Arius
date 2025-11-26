@@ -214,6 +214,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         catch (Exception e)
         {
             logger.LogError(e, "Error loading node content");
+            MessageBox.Show(
+                $"Failed to load repository content: {e.Message}\n\nPlease check your repository options (Account Name, Account Key, Container Name, and Passphrase).",
+                "Error Loading Repository",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
