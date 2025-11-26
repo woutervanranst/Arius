@@ -114,29 +114,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
         else
         {
-            WindowName        = $"{App.Name}: {Repository}";
-            ArchiveStatistics = "Statistics TODO";
+            WindowName = $"{App.Name}: {Repository}";
 
-            IsLoading = true;
-            try
+            // NOTE no loading indicators here bc this is super quick; the actual loading happens in LoadNodeContentAsync
+
+            var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
             {
-                // Create root node
-                var rootNode = new TreeNodeViewModel("/", OnNodeSelected)
-                {
-                    Name = "Root",
-                    IsSelected = true,
-                    IsExpanded = true
-                };
+                Name       = "Root",
+                IsSelected = true,
+            };
 
-                RootNode         = [rootNode];
-                SelectedTreeNode = rootNode;
+            SelectedTreeNode = rootNode;
 
-                ArchiveStatistics = "Statistics TODO";
-                OnPropertyChanged(nameof(SelectedItemsText));
-            }
-            finally
-            {
-                IsLoading = false;
             }
         }
     }
@@ -169,17 +158,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             // Initialize collections for streaming updates
             node.Folders = [];
-            node.Items = [];
+            node.Items   = [];
 
             // Update the selected tree node reference for ListView binding immediately
-            SelectedTreeNode = node;
+            SelectedTreeNode  = node;
+            IsLoading         = true;
             ArchiveStatistics = "Loading...";
 
-            var results = mediator.CreateStream(query);
-
-            await foreach (var result in results)
+            try
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                var results = mediator.CreateStream(query);
+
+                await foreach (var result in results)
                 {
                     switch (result)
                     {
@@ -202,14 +192,16 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
                             break;
                     }
-                });
+                }
+
+                // Final count update (in case there were only directories)
+                OnPropertyChanged(nameof(SelectedItemsText));
             }
-
-            // Final count update (in case there were only directories)
-            OnPropertyChanged(nameof(SelectedItemsText));
-
-            ArchiveStatistics = "Statistics TODO";
-
+            finally
+            {
+                IsLoading         = false;
+                ArchiveStatistics = ""; // STATISTICS TODO
+            }
         }
         catch (Exception e)
         {
