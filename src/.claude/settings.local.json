@@ -18,7 +18,9 @@
       "Bash(./build-wsl.sh:*)",
       "Read(/mnt/c/Users/WouterVanRanst/Documents/GitHub/Arius/docs/**)",
       "WebSearch",
-      "mcp__serena__think_about_collected_information"
+      "mcp__serena__think_about_collected_information",
+      "mcp__serena__initial_instructions",
+      "mcp__serena__onboarding",
     ],
     "deny": [],
     "ask": []
