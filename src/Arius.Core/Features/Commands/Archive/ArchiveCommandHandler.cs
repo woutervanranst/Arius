@@ -346,8 +346,6 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
     
     // --- HELPERS
 
-    private const string ChunkContentType = "application/aes256cbc+gzip";
-    private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
     internal async Task<(long OriginalSize, long ArchivedSize)> UploadIfNotExistsAsync(HandlerContext handlerContext, Hash hash, Stream sourceStream, CompressionLevel compressionLevel, string contentType, Dictionary<string, string>? additionalMetadata = null, CancellationToken cancellationToken = default)
     {
@@ -446,7 +444,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
                     // Upload
                     await using var sourceStream = filePair.BinaryFile.OpenRead();
-                    var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentType, null, cancellationToken);
+                    var (sourceStreamPosition, targetStreamPosition) = await UploadIfNotExistsAsync(handlerContext, hash, sourceStream, CompressionLevel.SmallestSize, ChunkContentTypes.ChunkContentType, null, cancellationToken);
 
                     // Get the current tier (tier was already set in UploadIfNotExistsAsync)
                     var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(hash, cancellationToken);
@@ -698,7 +696,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         {
             ["SmallChunkCount"] = fileCount.ToString()
         };
-        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, TarChunkContentType, tarMetadata, cancellationToken);
+        var (totalOriginalSizeFromUpload, finalArchivedSize) = await UploadIfNotExistsAsync(handlerContext, parentHash, sourceStream, CompressionLevel.NoCompression /* The TAR file is already GZipped */, ChunkContentTypes.TarChunkContentType, tarMetadata, cancellationToken);
 
         // Get the current tier (tier was already set in UploadIfNotExistsAsync)
         var properties = await handlerContext.ArchiveStorage.GetChunkPropertiesAsync(parentHash, cancellationToken);

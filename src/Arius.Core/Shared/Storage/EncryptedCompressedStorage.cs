@@ -94,7 +94,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
     public async Task UploadStateAsync(string stateName, FileEntry sourceFile, CancellationToken cancellationToken = default)
     {
         var blobName         = $"{statesFolderPrefix}{stateName}";
-        var blobStreamResult = await container.OpenWriteAsync(blobName, throwOnExists: false, contentType: "application/aes256cbc+gzip" /* TODO refactor me */, cancellationToken: cancellationToken);
+        var blobStreamResult = await container.OpenWriteAsync(blobName, throwOnExists: false, contentType: ChunkContentTypes.ChunkContentType, cancellationToken: cancellationToken);
 
         if (blobStreamResult.IsFailed)
             throw new InvalidOperationException($"Failed to open state blob for writing: {blobStreamResult.Errors.First()}");
