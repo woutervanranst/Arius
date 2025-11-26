@@ -22,6 +22,29 @@ public class RestoreCommandHandlerTests : IClassFixture<FixtureWithFileSystem>
     }
 
     [Fact]
+    [Trait("Category", "SkipCI")]
+    public async Task Restore_OnePointerFile_CreateOrOverwritePointerFileOnDiskTEMP() // NOTE temp skipped by CI via the SkipCI category
+    {
+        // Arrange
+        var command = new RestoreCommandBuilder(fixture)
+            .WithLocalRoot(fixture.TestRunSourceFolder)
+            .WithContainerName("test")
+            //.WithTargets("./IMG20250126195020.jpg", "./Sam/")
+            .WithTargets("./invoice.pdf")
+            .WithIncludePointers(true)
+            .Build();
+
+        // TODO directory without trailing /
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        // Should create or overwrite the pointer file on disk
+        //true.ShouldBe(false, "Test not implemented");
+    }
+
+    [Fact]
     public async Task Restore_Mocked_HappyPath()
     {
         // Arrange
