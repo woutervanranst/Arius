@@ -30,7 +30,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -74,7 +74,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -101,7 +101,7 @@ jobs:
         run: tar czf arius-cli-${VERSION}.tar.gz -C publish .
 
       - name: "⬆️ Upload artifact"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: arius-cli-${{ env.VERSION }}
           path: arius-cli-${{ env.VERSION }}.tar.gz
@@ -134,7 +134,7 @@ jobs:
 
       - name: "📝 Build Changelog"
         id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v6
         with:
           commitMode: true
         env:
@@ -159,7 +159,7 @@ jobs:
         working-directory: src
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "🧰 Setup .NET"
         uses: actions/setup-dotnet@v5
@@ -198,7 +198,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - name: "📥 Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
