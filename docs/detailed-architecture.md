@@ -70,12 +70,16 @@ Arius.Core/
 │   │   │   ├── ArchiveCommand.cs              # Command definition
 │   │   │   ├── ArchiveCommandHandler.cs       # Command handler
 │   │   │   ├── ArchiveCommandValidator.cs     # FluentValidation
+│   │   │   ├── HandlerContext.cs              # Immutable context record
+│   │   │   ├── HandlerContextBuilder.cs       # Context initialization
 │   │   │   └── ...
 │   │   │
 │   │   └── Restore/
 │   │       ├── RestoreCommand.cs
 │   │       ├── RestoreCommandHandler.cs
 │   │       ├── RestoreCommandValidator.cs
+│   │       ├── HandlerContext.cs              # Immutable context record
+│   │       ├── HandlerContextBuilder.cs       # Context initialization
 │   │       └── ...
 │   │
 │   └── Queries/                        # Read operations (CQRS)
@@ -87,7 +91,8 @@ Arius.Core/
 │       └── PointerFileEntries/
 │           ├── PointerFileEntriesQuery.cs
 │           ├── PointerFileEntriesQueryHandler.cs
-│           ├── HandlerContextBuilder.cs
+│           ├── HandlerContext.cs              # Immutable context record
+│           ├── HandlerContextBuilder.cs       # Context initialization
 │           └── ...
 │
 └── Shared/                             # Shared infrastructure & domain
@@ -109,36 +114,54 @@ Arius.Core/
 
 ## Core Concepts Flow
 
+### HandlerContext Pattern
+
+Each feature uses a **HandlerContext** pattern to encapsulate dependencies and initialization:
+- **HandlerContext**: Immutable record containing all validated dependencies
+- **HandlerContextBuilder**: Fluent builder that initializes and validates the context
+- Separates complex setup logic from business logic
+- Enables easy testing by allowing dependency injection
+
 ```
 ┌─────────────┐
 │   Command   │  (e.g., ArchiveCommand)
 └──────┬──────┘
        │
        ▼
-┌─────────────────┐
-│    Validator    │  (FluentValidation)
-└──────┬──────────┘
+┌──────────────────────┐
+│ HandlerContextBuilder│  Build context with dependencies
+│  - Validate command  │
+│  - Init Azure Blob   │
+│  - Setup StateRepo   │
+│  - Config FileSystem │
+└──────┬───────────────┘
+       │
+       ▼
+┌──────────────────────┐
+│   HandlerContext     │  Immutable record with:
+│  (Immutable Record)  │  - Command/Query
+│                      │  - ArchiveStorage (Azure + Encryption)
+│                      │  - StateRepository (SQLite)
+│                      │  - FilePairFileSystem (Zio)
+│                      │  - Hasher (SHA256)
+└──────┬───────────────┘
        │
        ▼
 ┌─────────────────┐
-│  Command Handler│
+│  Command Handler│  Business logic using context
 └──────┬──────────┘
        │
-       ├─────▶ FilePairFileSystem  ─────▶  Local File Operations
-       │                                   (Read/Write pointer + binary files)
+       ├─────▶ context.FileSystem      ─────▶  Local File Operations
+       │                                       (Read/Write pointer + binary files)
        │
-       ├─────▶ StateRepository     ─────▶  SQLite
-       │                                   (Track uploaded files, metadata)
+       ├─────▶ context.StateRepository ─────▶  SQLite
+       │                                       (Track uploaded files, metadata)
        │
-       ├─────▶ BlobStorage         ─────▶  Azure Blob Storage
-       │                                   (Upload/download encrypted blobs)
+       ├─────▶ context.ArchiveStorage  ─────▶  Azure Blob Storage
+       │                                       (Upload/download encrypted blobs)
        │
-       ├─────▶ Crypto Services     ─────▶  AES256 Encryption
-       │
-       └─────▶ Hashing Services    ─────▶  SHA256 Hash calculation
+       └─────▶ context.Hasher          ─────▶  SHA256 Hash calculation
 ```
-
----
 
 # 2. Arius.Cli - Command Line Interface
 
