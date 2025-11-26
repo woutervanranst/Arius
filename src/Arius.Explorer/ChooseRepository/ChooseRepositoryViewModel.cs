@@ -42,6 +42,23 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             .Subscribe();
     }
 
+    private static bool IsValidAzureContainerName(string containerName)
+    {
+        if (string.IsNullOrEmpty(containerName))
+            return false;
+
+        if (containerName.Length is < 3 or > 63)
+            return false;
+
+        if (containerName.StartsWith('-') || containerName.EndsWith('-'))
+            return false;
+
+        if (containerName.Contains("--"))
+            return false;
+
+        return containerName.All(c => char.IsLower(c) || char.IsDigit(c) || c == '-');
+    }
+
     // -- REPOSITORY
 
     [ObservableProperty]
@@ -63,6 +80,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     // -- LOCAL PATH
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenRepositoryCommand))]
     private string localDirectoryPath = "";
 
     [RelayCommand]
@@ -84,9 +102,11 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     // -- ACCOUNT NAME & ACCOUNT KEY
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenRepositoryCommand))]
     private string accountName = "";
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenRepositoryCommand))]
     private string accountKey = "";
 
     [ObservableProperty]
@@ -152,6 +172,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     // -- CONTAINERNAME
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenRepositoryCommand))]
     private string containerName = "";
 
     [ObservableProperty]
@@ -160,10 +181,25 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
     // -- PASSPHRASE
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenRepositoryCommand))]
     private string passphrase = "";
-    
 
-    [RelayCommand]
+    private bool CanOpenRepository()
+    {
+        // All fields must be non-empty
+        if (string.IsNullOrWhiteSpace(LocalDirectoryPath)) return false;
+        if (string.IsNullOrWhiteSpace(AccountName)) return false;
+        if (string.IsNullOrWhiteSpace(AccountKey)) return false;
+        if (string.IsNullOrWhiteSpace(ContainerName)) return false;
+        if (string.IsNullOrWhiteSpace(Passphrase)) return false;
+
+        // Container name must be valid Azure format
+        if (!IsValidAzureContainerName(ContainerName)) return false;
+
+        return true;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOpenRepository))]
     private void OpenRepository()
     {
         try
