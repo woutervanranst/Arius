@@ -6,12 +6,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Humanizer;
 using Mediator;
+using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Windows;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Explorer.RepositoryExplorer;
 
