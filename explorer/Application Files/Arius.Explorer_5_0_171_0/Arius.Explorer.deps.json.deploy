@@ -6,9 +6,9 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v10.0": {
-      "Arius.Explorer/5.0.170": {
+      "Arius.Explorer/5.0.171": {
         "dependencies": {
-          "Arius.Core": "5.0.170",
+          "Arius.Core": "5.0.171-prerelease",
           "CommunityToolkit.Mvvm": "8.4.0",
           "Microsoft.Extensions.Configuration.EnvironmentVariables": "9.0.10",
           "Microsoft.Extensions.Configuration.UserSecrets": "9.0.10",
@@ -127,11 +127,11 @@
           }
         }
       },
-      "Humanizer.Core/2.14.1": {
+      "Humanizer.Core/3.0.1": {
         "runtime": {
-          "lib/net6.0/Humanizer.dll": {
-            "assemblyVersion": "2.14.0.0",
-            "fileVersion": "2.14.1.48190"
+          "lib/net10.0/Humanizer.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.1.28244"
           }
         }
       },
@@ -911,39 +911,39 @@
           }
         }
       },
-      "Zio/0.21.2": {
+      "Zio/0.22.1": {
         "runtime": {
           "lib/net9.0/Zio.dll": {
-            "assemblyVersion": "0.21.0.0",
-            "fileVersion": "0.21.2.0"
+            "assemblyVersion": "0.22.0.0",
+            "fileVersion": "0.22.1.0"
           }
         }
       },
-      "Arius.Core/5.0.170": {
+      "Arius.Core/5.0.171-prerelease": {
         "dependencies": {
           "Azure.Storage.Blobs": "12.26.0",
           "EFCore.BulkExtensions.Sqlite": "9.0.2",
           "FluentResults": "4.0.0",
           "FluentValidation": "12.1.0",
           "FluentValidation.DependencyInjectionExtensions": "12.1.0",
-          "Humanizer.Core": "2.14.1",
+          "Humanizer.Core": "3.0.1",
           "Mediator.Abstractions": "3.0.1",
           "Microsoft.EntityFrameworkCore.Sqlite": "9.0.10",
           "Microsoft.Extensions.Options.DataAnnotations": "9.0.10",
           "WouterVanRanst.Utils": "2.0.10",
-          "Zio": "0.21.2"
+          "Zio": "0.22.1"
         },
         "runtime": {
           "Arius.Core.dll": {
-            "assemblyVersion": "5.0.170.0",
-            "fileVersion": "5.0.170.0"
+            "assemblyVersion": "5.0.171.0",
+            "fileVersion": "5.0.171.0"
           }
         }
       }
     }
   },
   "libraries": {
-    "Arius.Explorer/5.0.170": {
+    "Arius.Explorer/5.0.171": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1011,12 +1011,12 @@
       "path": "fluentvalidation.dependencyinjectionextensions/12.1.0",
       "hashPath": "fluentvalidation.dependencyinjectionextensions.12.1.0.nupkg.sha512"
     },
-    "Humanizer.Core/2.14.1": {
+    "Humanizer.Core/3.0.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw==",
-      "path": "humanizer.core/2.14.1",
-      "hashPath": "humanizer.core.2.14.1.nupkg.sha512"
+      "sha512": "sha512-scB3+KcxNmEjZK5V8rKCW2gIiL8m8KH91w14FuuExyhi9xTyAJ+jr+DDxGdy12mHmioe2uvjxTfMgM7WmSUFlw==",
+      "path": "humanizer.core/3.0.1",
+      "hashPath": "humanizer.core.3.0.1.nupkg.sha512"
     },
     "MedallionTopologicalSort/1.0.0": {
       "type": "package",
@@ -1417,14 +1417,14 @@
       "path": "woutervanranst.utils/2.0.10",
       "hashPath": "woutervanranst.utils.2.0.10.nupkg.sha512"
     },
-    "Zio/0.21.2": {
+    "Zio/0.22.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-j2rj9AArlZJlUggDSzYq4elJpjaLJxLPjHqHFarqDOaItDI+TUqYCBhoKkc/4w+aIUafuQdQr1penagqgYx70g==",
-      "path": "zio/0.21.2",
-      "hashPath": "zio.0.21.2.nupkg.sha512"
+      "sha512": "sha512-kG+GuaE1n23E/QWnPJDi5CPd0gWsqdVBn2MOV+1UF6QVtHyMnifSW6A6R9xUrpjP8eJaNOmfd58LdxZ26J4wCg==",
+      "path": "zio/0.22.1",
+      "hashPath": "zio.0.22.1.nupkg.sha512"
     },
-    "Arius.Core/5.0.170": {
+    "Arius.Core/5.0.171-prerelease": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

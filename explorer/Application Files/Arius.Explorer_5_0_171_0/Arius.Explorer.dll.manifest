@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">
-  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="5.0.170.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
+  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="5.0.171.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
   <description asmv2:iconFile="Resources\iceberg.ico" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <application />
   <entryPoint>
@@ -60,25 +60,25 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>mu/PmF3lBw1eYFR+TzoVTtFDGCSuwvS6QWHM2pi/K2w=</dsig:DigestValue>
+      <dsig:DigestValue>6xBVyQlMYcgSS89bSv0k+mcFxkUTXYavZc8AIsMrKZ0=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.deps.json" size="58798">
+  <file name="Arius.Explorer.deps.json" size="58825">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>mCMx0iWVc7lL3CzuOvmYYFEyikAo5E957PFzdHYtJ4E=</dsig:DigestValue>
+      <dsig:DigestValue>zcSbw5MlXz2hZfYJSiO5sAow9Xhz6u9BoY2TvRxfiMA=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.dll" size="253952">
+  <file name="Arius.Explorer.dll" size="254976">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>hiiGb+huETt9HpwpG9bozRF1feIyM/WspVvRLqxZayg=</dsig:DigestValue>
+      <dsig:DigestValue>/sLoNhXnL3GcRLGL95wNUfQZ7uGEbbAj4bPnGpkhOWY=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.exe" size="347648">
@@ -87,7 +87,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>9raH04FhS5uP9Z8BlsW3fx0a9IfvPRpKtt+ttCycZW4=</dsig:DigestValue>
+      <dsig:DigestValue>sPK4dtmaQcJIXQdnKh67PxXJUjZ5aATV6fcStkmXdTs=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.runtimeconfig.json" size="655">
@@ -180,13 +180,13 @@
       <dsig:DigestValue>DyjyUPX1B1kEEYI2DbjzpyYS0NXZzGaTdMUnkP6tFOQ=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Humanizer.dll" size="355944">
+  <file name="Humanizer.dll" size="643248">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>1oUwdVR9fjA+/WA1TZEaL/GO26WCzaL6WdkaLl3Pnpg=</dsig:DigestValue>
+      <dsig:DigestValue>3qzxlUwzCke4pdc1Jx5XbepJN9HlvSoUXzrM+Gr+u84=</dsig:DigestValue>
     </hash>
   </file>
   <file name="MedallionTopologicalSort.dll" size="15872">
@@ -882,13 +882,13 @@
       <dsig:DigestValue>0bwJTNtzXH8FjA3eFVsadpzxMk5E+4UjnARTOJfE0Hc=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Zio.dll" size="139264">
+  <file name="Zio.dll" size="140800">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>2LBmBIX2qv55PDiTjPa4jYiTPrGhDGKME+QTb8rfHGs=</dsig:DigestValue>
+      <dsig:DigestValue>WgRl8Gfz5XxM+3kK2+zMP2LhL4LIOOOPNxlGAoJXXnY=</dsig:DigestValue>
     </hash>
   </file>
 </asmv1:assembly>
