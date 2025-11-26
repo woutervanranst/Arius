@@ -125,8 +125,8 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
 
         try
         {
-            IsLoading = true;
-            StorageAccountError = false;
+            synchronizationContext.Post(_ => IsLoading = true, null);
+            synchronizationContext.Post(_ => StorageAccountError = false, null);
 
             var query = new ContainerNamesQuery
             {
@@ -142,16 +142,20 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
             }
 
             var updated = new ObservableCollection<string>(containers);
-            ContainerNames = updated;
 
-            if (updated.Count == 0)
+            synchronizationContext.Post(_ =>
             {
-                ContainerName = string.Empty;
-            }
-            else if (!updated.Contains(ContainerName))
-            {
-                ContainerName = updated.First();
-            }
+                ContainerNames = updated;
+
+                if (updated.Count == 0)
+                {
+                    ContainerName = string.Empty;
+                }
+                else if (!updated.Contains(ContainerName))
+                {
+                    ContainerName = updated.First();
+                }
+            }, null);
         }
         catch (OperationCanceledException)
         {
@@ -159,13 +163,16 @@ public partial class ChooseRepositoryViewModel : ObservableObject, IDisposable
         }
         catch (Exception)
         {
-            StorageAccountError = true;
-            ContainerNames      = [];
-            ContainerName       = string.Empty;
+            synchronizationContext.Post(_ =>
+            {
+                StorageAccountError = true;
+                ContainerNames      = [];
+                ContainerName       = string.Empty;
+            }, null);
         }
         finally
         {
-            IsLoading = false;
+            synchronizationContext.Post(_ => IsLoading = false, null);
         }
     }
 
