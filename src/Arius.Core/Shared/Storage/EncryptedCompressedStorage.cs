@@ -47,8 +47,7 @@ internal class EncryptedCompressedStorage : IArchiveStorage
         var states = new List<string>();
 
         await foreach (var storageProperties in container
-                           .GetAllAsync(statesFolderPrefix, cancellationToken)
-                           .WithCancellation(cancellationToken))
+                           .GetAllAsync(statesFolderPrefix, cancellationToken))
         {
             if (storageProperties.Metadata != null
                 && storageProperties.Metadata.TryGetValue("DatabaseVersion", out var version)
