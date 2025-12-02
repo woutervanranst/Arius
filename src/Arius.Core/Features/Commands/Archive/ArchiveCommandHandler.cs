@@ -101,6 +101,17 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken)
         };
 
+        foreach (var task in tasks.Values)
+        {
+            task.ContinueWith(t =>
+            {
+                if (t.IsFaulted && !errorCancellationTokenSource.IsCancellationRequested)
+                {
+                    errorCancellationTokenSource.Cancel();
+                }
+            });
+        }
+
         try
         {
             await Task.WhenAll(tasks.Values);
@@ -235,24 +246,27 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                     await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
                 }
 
-                indexedFilesChannel.Writer.Complete();
-
                 logger.LogInformation("File indexing completed: found {FileCount} files in {LocalRoot}", totalLocalFiles, handlerContext.Request.LocalRoot);
                 handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", 100, $"Found {totalLocalFiles} files"));
             }
             catch (OperationCanceledException)
             {
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", -1, $"Cancelled"));
                 logger.LogDebug("File indexing cancelled");
-                indexedFilesChannel.Writer.Complete();
                 throw;
             }
             catch (Exception e) // TODO Align with approach of HashTask where we skip the file and log a warning instead of failing the entire task, write test Error_IndexTaskFails_ShouldSkipProblematicFileAndContinue
             {
                 logger.LogError(e, "File indexing failed with exception");
-                indexedFilesChannel.Writer.Complete();
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate("Indexing files...", -1, $"Error"));
                 throw;
             }
-        }, cancellationToken);
+            finally
+            {
+                indexedFilesChannel.Writer.Complete();
+                logger.LogDebug("Index channel completed");
+            }
+        });  // No cancellation token passed to Task.Run, this allows proper catch/finally execution
 
     private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
@@ -301,6 +315,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 }
                 catch (OperationCanceledException)
                 {
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, -1, "Cancelled..."));
                     throw;
                 }
                 catch (Exception e)
@@ -360,9 +375,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 logger.LogError(e, "Small files TAR archive task failed");
                 throw;
             }
-        }, cancellationToken);
+        }); // No cancellation token passed to Task.Run, this allows proper catch/finally execution
 
-    
+
     // --- HELPERS
 
 
