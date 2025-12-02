@@ -95,10 +95,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
         var tasks = new Dictionary<string, Task>
         {
-            ["IndexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["HashTask"]             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["UploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource),
-            ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource)
+            ["IndexTask"]            = CreateIndexTask(handlerContext, errorCancellationToken),
+            ["HashTask"]             = CreateHashTask(handlerContext, errorCancellationToken),
+            ["UploadLargeFilesTask"] = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken),
+            ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken)
         };
 
         try
@@ -220,7 +220,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
     // --- HIGH LEVEL TASKS
 
-    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
             try
@@ -254,7 +254,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             }
         }, cancellationToken);
 
-    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource)
+    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         logger.LogInformation("Starting file hashing with parallelism {HashingParallelism}", handlerContext.Request.HashingParallelism);
 
@@ -324,7 +324,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         return t;
     }
 
-    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
         Parallel.ForEachAsync(hashedLargeFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.UploadParallelism, CancellationToken = cancellationToken },
             async (filePairWithHash, innerCancellationToken) =>
@@ -344,7 +344,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 }
             });
 
-    private Task CreateUploadSmallFilesTarArchiveTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
+    private Task CreateUploadSmallFilesTarArchiveTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
             try
