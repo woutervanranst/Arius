@@ -999,7 +999,7 @@ public class ArchiveCommandHandlerHandleTests
         var mockHasher = Substitute.For<ISha256Hasher>();
 
         // Configure mock
-        mockHasher.GetHashAsync(Arg.Any<FilePair>())
+        mockHasher.GetHashAsync(Arg.Any<FilePair>(), Arg.Any<CancellationToken>())
             .Returns<Task<Hash>>(_ => throw new ArgumentException("BinaryFile does not exist"));
 
         var (_, handlerContext, _, _) = await CreateHandlerContextAsync(hasher: mockHasher);

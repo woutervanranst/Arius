@@ -232,7 +232,7 @@ internal class RestoreCommandHandler : ICommandHandler<RestoreCommand, Result<Re
                     var fileSizeFormatted = filePair.ExistingBinaryFile?.Length.Bytes().Humanize() ?? "0 B";
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.BinaryFile.FullName, 25, $"Verifying hash {fileSizeFormatted}..."));
                     
-                    var h = await handlerContext.Hasher.GetHashAsync(filePair);
+                    var h = await handlerContext.Hasher.GetHashAsync(filePair, innerCancellationToken);
 
                     if (h == pointerFileEntry.Hash)
                     {

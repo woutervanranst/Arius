@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 
 namespace Arius.Core.Shared.Hashing;
 
@@ -10,25 +11,25 @@ internal interface ISha256Hasher
     /// <summary>
     /// Gets the salted hash of a raw byte array.
     /// </summary>
-    Task<Hash> GetHashAsync(byte[] data);
+    Task<Hash> GetHashAsync(byte[] data, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the salted hash of a Stream.
     /// </summary>
     /// <param name="s"></param>
     /// <returns></returns>
-    Task<Hash> GetHashAsync(Stream s);
+    Task<Hash> GetHashAsync(Stream s, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the salted hash of a FilePair. If it is PointerFileOnly, we simply
     /// return the hash stored in the pointer file. Otherwise, we hash the BinaryFile.
     /// </summary>
-    Task<Hash> GetHashAsync(FilePair fp);
+    Task<Hash> GetHashAsync(FilePair fp, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the salted hash of a BinaryFile. Throws if the file does not exist.
     /// </summary>
-    Task<Hash> GetHashAsync(BinaryFile bf);
+    Task<Hash> GetHashAsync(BinaryFile bf, CancellationToken cancellationToken = default);
 }
 
 internal sealed class Sha256Hasher : ISha256Hasher
@@ -48,46 +49,50 @@ internal sealed class Sha256Hasher : ISha256Hasher
     ///// <param name="salt">Raw salt bytes.</param>
     //private Sha256Hasher(byte[] salt) => saltBytes = salt;
 
-    public Task<Hash> GetHashAsync(byte[] data) // NOTE: returns a Task for consistency
+    public Task<Hash> GetHashAsync(byte[] data, CancellationToken cancellationToken = default) // NOTE: returns a Task for consistency
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         // No I/O, so no real async needed. We keep a Task-based signature to match the rest of the code.
         var hashValue = ComputeSaltedHash(data);
         return Task.FromResult(hashValue);
     }
 
-    public async Task<Hash> GetHashAsync(Stream s)
+    public async Task<Hash> GetHashAsync(Stream s, CancellationToken cancellationToken = default)
     {
-        return await ComputeSaltedHashAsync(s).ConfigureAwait(false);
+        return await ComputeSaltedHashAsync(s, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Gets the salted hash of a FilePair. If it is PointerFileOnly, we simply
     /// return the hash stored in the pointer file. Otherwise, we hash the BinaryFile.
     /// </summary>
-    public async Task<Hash> GetHashAsync(FilePair fp)
+    public async Task<Hash> GetHashAsync(FilePair fp, CancellationToken cancellationToken = default)
     {
         if (fp.Type == FilePairType.PointerFileOnly)
             return fp.PointerFile.ReadHash();
 
-        return await GetHashAsync(fp.BinaryFile).ConfigureAwait(false);
+        return await GetHashAsync(fp.BinaryFile, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Gets the salted hash of a BinaryFile. Throws if the file does not exist.
     /// </summary>
-    public async Task<Hash> GetHashAsync(BinaryFile bf)
+    public async Task<Hash> GetHashAsync(BinaryFile bf, CancellationToken cancellationToken = default)
     {
         if (!bf.Exists)
             throw new ArgumentException("BinaryFile does not exist", nameof(bf));
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         await using var fs = bf.OpenRead();
 
-        return await ComputeSaltedHashAsync(fs).ConfigureAwait(false);
+        return await ComputeSaltedHashAsync(fs, cancellationToken).ConfigureAwait(false);
     }
 
     // --- Private helpers (per-operation SHA256) ---
 
-    private async Task<Hash> ComputeSaltedHashAsync(Stream stream)
+    private async Task<Hash> ComputeSaltedHashAsync(Stream stream, CancellationToken cancellationToken)
     {
         using var sha = SHA256.Create();
         sha.Initialize();
@@ -100,7 +105,7 @@ internal sealed class Sha256Hasher : ISha256Hasher
         try
         {
             int bytesRead;
-            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false)) > 0)
+            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
             {
                 sha.TransformBlock(buffer, 0, bytesRead, null, 0);
             }

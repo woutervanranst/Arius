@@ -286,7 +286,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                     else
                     {
                         // 1. Hash the file
-                        var h = await handlerContext.Hasher.GetHashAsync(filePair);
+                        var h = await handlerContext.Hasher.GetHashAsync(filePair, innerCancellationToken);
 
                         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, "Waiting for upload..."));
 
@@ -702,7 +702,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         
         await using var sourceStream = tarWriter.GetCompletedArchive();
 
-        var parentHash = await handlerContext.Hasher.GetHashAsync(sourceStream);
+        var parentHash = await handlerContext.Hasher.GetHashAsync(sourceStream, cancellationToken);
         sourceStream.Seek(0, SeekOrigin.Begin);
         
         logger.LogDebug("TAR archive hashed to {ParentHash}, uploading to storage", parentHash.ToShortString());
