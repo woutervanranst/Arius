@@ -127,7 +127,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
             {
                 var s = result.Value;
 
-                RenderArchiveTable(
+                var table = RenderArchiveTable(
                     $"{s.TotalLocalFiles}",      "?",                                                  "?",
                     "?",                         "?",                                                  "?",
                     "?",                         $"+{s.BytesUploadedUncompressed.Bytes().Humanize()}", "?",
@@ -139,11 +139,16 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                     "?",                                                                         $"+ ? - {s.PointerFileEntriesDeleted}",                                     "?"
                 );
 
-                AnsiConsole.MarkupLine("[green]Archive completed successfully![/]");
-                AnsiConsole.MarkupLine($"[green]Total files scanned: {s.TotalLocalFiles}, {s.UniqueBinariesUploaded} unique uploaded, in {s.UniqueChunksUploaded} chunks[/]");
-                AnsiConsole.MarkupLine($"[green]Bytes uploaded: {s.BytesUploadedUncompressed.Bytes().Humanize()} -> {s.BytesUploadedCompressed.Bytes().Humanize()} (compression: {(s.BytesUploadedUncompressed > 0 ? ((double)s.BytesUploadedCompressed / s.BytesUploadedUncompressed).ToString("P1") : "N/A")})[/]");
+                var r = new Recorder(AnsiConsole.Console);
+                r.Write(table);
+
+                r.MarkupLine("[green]Archive completed successfully![/]");
+                r.MarkupLine($"[green]Total files scanned: {s.TotalLocalFiles}, {s.UniqueBinariesUploaded} unique uploaded, in {s.UniqueChunksUploaded} chunks[/]");
+                r.MarkupLine($"[green]Bytes uploaded: {s.BytesUploadedUncompressed.Bytes().Humanize()} -> {s.BytesUploadedCompressed.Bytes().Humanize()} (compression: {(s.BytesUploadedUncompressed > 0 ? ((double)s.BytesUploadedCompressed / s.BytesUploadedUncompressed).ToString("P1") : "N/A")})[/]");
                 if (s.NewStateName is not null)
-                    AnsiConsole.MarkupLine($"[green]State file uploaded: {s.NewStateName}[/]");
+                    r.MarkupLine($"[green]State file uploaded: {s.NewStateName}[/]");
+
+                logger.LogInformation(r.ExportText());
             }
             else
             {
@@ -171,7 +176,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         //}
     }
 
-    private void RenderArchiveTable(
+    private Table RenderArchiveTable(
         // Local (Before, Operation, After) × 4 rows
         string localFilesBefore, string localFilesOp, string localFilesAfter,
         string localBinariesBefore, string localBinariesOp, string localBinariesAfter,
@@ -226,7 +231,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
         table.AddColumn(new TableColumn(local).Centered());
         table.AddColumn(new TableColumn(remote).Centered());
 
-        AnsiConsole.Write(table);
+        return table;
     }
 }
 
