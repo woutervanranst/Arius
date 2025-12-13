@@ -109,31 +109,25 @@ internal class FilePairFileSystem : ComposeFileSystem
             yield break;
         }
 
-        var directoryInfo = new DirectoryInfo(directory.FileSystem.ConvertPathToInternal(directory.Path));
-
-        foreach (var fileInfo in directoryInfo.EnumerateFiles())
+        foreach (var fe in directory.EnumerateFiles())
         {
-            var fileEntry = new FileEntry(directory.FileSystem, directory.FileSystem.ConvertPathFromInternal(fileInfo.FullName));
-
-            if (ShouldSkipFile(fileEntry))
+            if (ShouldSkipFile(fe))
             {
-                logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fileEntry.FullName);
+                logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fe.FullName);
                 continue;
             }
 
-            yield return fileEntry;
+            yield return fe;
         }
 
         // Only recurse into subdirectories if AllDirectories is specified
         if (searchOption == SearchOption.AllDirectories)
         {
-            foreach (var subDirectoryInfo in directoryInfo.GetDirectories())
+            foreach (var subDir in directory.EnumerateDirectories())
             {
-                var subDirectoryEntry = directory.FileSystem.GetDirectoryEntry(directory.FileSystem.ConvertPathFromInternal(subDirectoryInfo.FullName));
-
-                foreach (var fileEntry in EnumerateFiles(subDirectoryEntry, searchOption))
+                foreach (var file in EnumerateFiles(subDir, searchOption))
                 {
-                    yield return fileEntry;
+                    yield return file;
                 }
             }
         }
