@@ -109,7 +109,7 @@ public abstract class ArchiveCliCommandBase : CliFx.ICommand
                             var isError = fpu.Percentage < 0;
                             var color = isError ? "red" : "blue";
                             var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[{color}]{fileName}[/]"));
-                            task.Description = $"[{color}]{fpu.FileName.EscapeMarkup().TruncateAndRightJustify(50)}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
+                            task.Description = $"[{color}]{fpu.FileName.TruncateAndRightJustify(50).EscapeMarkup()}[/] ({fpu.StatusMessage?.TruncateAndLeftJustify(20)})";
                             task.Value       = isError ? 0 : fpu.Percentage;
                             if (fpu.Percentage >= 100/* || isError*/)
                                 task.StopTask();
