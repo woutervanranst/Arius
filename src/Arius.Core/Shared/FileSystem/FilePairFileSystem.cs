@@ -107,8 +107,18 @@ internal class FilePairFileSystem : ComposeFileSystem
         var directoryInfo = new DirectoryInfo(directory.FileSystem.ConvertPathToInternal(directory.Path));
         foreach (var fe in EnumerateFiles(directoryInfo, searchOption))
         {
-            var fileEntry = new FileEntry(directory.FileSystem, directory.FileSystem.ConvertPathFromInternal(fe.FullName));
-            yield return fileEntry;
+            FileEntry? fileEntryNullable = null;
+            try
+            {
+                fileEntryNullable = new FileEntry(directory.FileSystem, directory.FileSystem.ConvertPathFromInternal(fe.FullName));
+            }
+            catch (ArgumentException ex) when (ex.Message.Contains("Invalid character"))
+            {
+                logger.LogWarning("Skipping file {File} because its path contains invalid characters: {ExceptionMessage}", fe.FullName, ex.Message);
+            }
+
+            if (fileEntryNullable is not null)
+                yield return fileEntryNullable;
         }
 
 
