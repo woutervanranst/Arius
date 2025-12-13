@@ -1,5 +1,4 @@
-﻿using Arius.Core.Shared.Extensions;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Zio;
 using Zio.FileSystems;
 
@@ -110,7 +109,7 @@ internal class FilePairFileSystem : ComposeFileSystem
             yield break;
         }
 
-        foreach (var fe in directory.EnumerateFiles().WithErrorLogging(logger, $"Error enumerating files in directory {directory.FullName}"))
+        foreach (var fe in directory.EnumerateFiles())
         {
             if (ShouldSkipFile(fe))
             {
@@ -124,9 +123,9 @@ internal class FilePairFileSystem : ComposeFileSystem
         // Only recurse into subdirectories if AllDirectories is specified
         if (searchOption == SearchOption.AllDirectories)
         {
-            foreach (var subDir in directory.EnumerateDirectories().WithErrorLogging(logger, $"Error enumerating directories in directory {directory.FullName}"))
+            foreach (var subDir in directory.EnumerateDirectories())
             {
-                foreach (var file in EnumerateFiles(subDir, searchOption).WithErrorLogging(logger, $"Error enumerating files in directory {subDir.FullName}"))
+                foreach (var file in EnumerateFiles(subDir, searchOption))
                 {
                     yield return file;
                 }
