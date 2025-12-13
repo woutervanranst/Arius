@@ -103,31 +103,43 @@ internal class FilePairFileSystem : ComposeFileSystem
 
     private IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory, SearchOption searchOption)
     {
-        if (ShouldSkipDirectory(directory))
+        // FIX: Zio throws an ArgumentException: Invalid character found \u000D at index 91 (Parameter 'path') for some reason in FileSystems.PhysicalFileSystem.EnumeratePathsImpl. Reverting to native netcore methods.
+        var directoryInfo = new DirectoryInfo(directory.FileSystem.ConvertPathToInternal(directory.Path));
+        foreach (var fe in EnumerateFiles(directoryInfo, searchOption))
         {
-            logger.LogWarning("Skipping directory {directory} as it is hidden, system, or excluded", directory.FullName);
-            yield break;
+            var fileEntry = new FileEntry(directory.FileSystem, directory.FileSystem.ConvertPathFromInternal(fe.FullName));
+            yield return fileEntry;
         }
 
-        foreach (var fe in directory.EnumerateFiles())
+
+        IEnumerable<FileInfo> EnumerateFiles(DirectoryInfo directory, SearchOption searchOption)
         {
-            if (ShouldSkipFile(fe))
+            if (ShouldSkipDirectory(directory))
             {
-                logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fe.FullName);
-                continue;
+                logger.LogWarning("Skipping directory {directory} as it is hidden, system, or excluded", directory.FullName);
+                yield break;
             }
 
-            yield return fe;
-        }
-
-        // Only recurse into subdirectories if AllDirectories is specified
-        if (searchOption == SearchOption.AllDirectories)
-        {
-            foreach (var subDir in directory.EnumerateDirectories())
+            foreach (var fi in directory.EnumerateFiles())
             {
-                foreach (var file in EnumerateFiles(subDir, searchOption))
+                if (ShouldSkipFile(fi))
                 {
-                    yield return file;
+                    logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fi.FullName);
+                    continue;
+                }
+
+                yield return fi;
+            }
+
+            // Only recurse into subdirectories if AllDirectories is specified
+            if (searchOption == SearchOption.AllDirectories)
+            {
+                foreach (var subDir in directory.EnumerateDirectories())
+                {
+                    foreach (var file in EnumerateFiles(subDir, searchOption))
+                    {
+                        yield return file;
+                    }
                 }
             }
         }
@@ -136,10 +148,16 @@ internal class FilePairFileSystem : ComposeFileSystem
     static bool ShouldSkipDirectory(DirectoryEntry dir) =>
         (dir.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
         ExcludedDirectories.Contains(dir.Name);
+    static bool ShouldSkipDirectory(DirectoryInfo dir) =>
+        (dir.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
+        ExcludedDirectories.Contains(dir.Name);
 
     static bool ShouldSkipFile(FileEntry file) =>
         (file.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
         ExcludedFiles.Contains(Path.GetFileName(file.FullName));
+    static bool ShouldSkipFile(FileInfo file) =>
+        (file.Attributes & (/*FileAttributes.Hidden | */FileAttributes.System)) != 0 ||
+        ExcludedFiles.Contains(file.Name);
 
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
     private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
