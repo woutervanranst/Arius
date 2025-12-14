@@ -103,19 +103,78 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
 
         // Attach cancellation logic
         tasks.Values.RaiseCancellationOnFault(errorCancellationTokenSource);
-        {
-            {
-                {
-                }
-        }
 
         try
         {
             await Task.WhenAll(tasks.Values);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !errorCancellationTokenSource.IsCancellationRequested)
+        {
+            // User-triggered cancellation
+            logger.LogInformation("Archive operation cancelled by user");
+            return Result.Fail("Archive operation was cancelled by user");
+        }
+        catch (Exception ex)
+        {
+            // Either a task failed with an exception or error-triggered cancellation occurred
+            logger.LogError(ex, "Unhandled exception: Either a task failed with an exception or error-triggered cancellation occurred");
 
+            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
+
+            // Trigger error-driven cancellation to signal other tasks to stop gracefully
+            errorCancellationTokenSource.Cancel();
+
+            // Wait for all tasks to complete gracefully
+            await Task.WhenAll(tasks.Values.Select(async t =>
+            {
+                try
+                {
+                    await t;
+                }
+                catch
+                {
+                    /* Ignore exceptions during graceful shutdown */
+                }
+            }));
+
+            // Observe all task exceptions to prevent UnobservedTaskException
+            foreach (var task in tasks.Values.Where(t => t.IsFaulted))
+            {
+                _ = task.Exception;
+            }
+
+            // Log cancelled tasks (debug level)
+            var cancelledTaskNames = tasks.Where(kvp => kvp.Value.IsCanceled).Select(kvp => kvp.Key).ToArray();
+            if (cancelledTaskNames.Any())
+            {
+                logger.LogDebug("Tasks cancelled during graceful shutdown: {TaskNames}", string.Join(", ", cancelledTaskNames));
+            }
+
+            // Log and handle failed tasks (error level)
+            if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
+            {
+                // Single faulted task - return the exception
+                var msg = faultedTask.Exception?.GetBaseException().Message ?? "UNKNOWN";
+                logger.LogError(faultedTask.Exception, "Task '{TaskName}' failed with exception '{Exception}'", faultedTask.Name, msg);
+                return Result.Fail($"Archive operation failed: {faultedTask.Name} failed with {msg}").WithError(new ExceptionalError(faultedTask.Exception));
+            }
+            else
+            {
+                // Multiple faulted tasks - return aggregate exception
+                var exceptions         = faultedTasks.Select(ft => ft.Exception).ToArray();
+                var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
+                var faultedTaskNames   = string.Join(", ", faultedTasks.Select(ft => ft.Name));
+                logger.LogError(aggregateException, "Tasks failed: {FaultedTaskNames}", faultedTaskNames);
+                return Result.Fail($"Archive operation failed: {faultedTaskNames} tasks failed").WithError(new ExceptionalError(aggregateException));
+            }
+        }
+
+        try
+        {
             // 6. Remove PointerFileEntries that do not exist on disk
-            logger.LogDebug("Cleaning up pointer file entries that no longer exist on disk");
+            logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk...");
             pointerFileEntriesDeleted = handlerContext.StateRepository.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+            logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk... {count} deleted", pointerFileEntriesDeleted);
 
             // 7. Upload the new state file to blob storage
             string? newStateName = null;
@@ -150,9 +209,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 TotalLocalFiles      = totalLocalFiles,
                 ExistingPointerFiles = existingPointerFiles,
 
-                ChunksBeforeOperation        = statisticsBefore.ChunkCount,
-                BinariesBeforeOperation      = statisticsBefore.BinaryCount,
-                ArchivedSizeBeforeOperation  = statisticsBefore.ArchivedSize,
+                ChunksBeforeOperation       = statisticsBefore.ChunkCount,
+                BinariesBeforeOperation     = statisticsBefore.BinaryCount,
+                ArchivedSizeBeforeOperation = statisticsBefore.ArchivedSize,
 
                 UniqueBinariesUploaded    = uniqueBinariesUploaded,
                 UniqueChunksUploaded      = uniqueChunksUploaded,
@@ -161,13 +220,13 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
                 PointerFilesCreated       = pointerFilesCreated,
                 PointerFileEntriesDeleted = pointerFileEntriesDeleted,
 
-                ChunksAfterOperation        = statisticsAfter.ChunkCount,
-                BinariesAfterOperation      = statisticsAfter.BinaryCount,
-                ArchivedSizeAfterOperation  = statisticsAfter.ArchivedSize,
+                ChunksAfterOperation       = statisticsAfter.ChunkCount,
+                BinariesAfterOperation     = statisticsAfter.BinaryCount,
+                ArchivedSizeAfterOperation = statisticsAfter.ArchivedSize,
 
-                NewStateName              = newStateName,
-                Warnings                  = warnings.ToArray(),
-                FilesSkipped              = filesSkipped
+                NewStateName = newStateName,
+                Warnings     = warnings.ToArray(),
+                FilesSkipped = filesSkipped
             });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested && !errorCancellationTokenSource.IsCancellationRequested)
@@ -176,52 +235,10 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             logger.LogInformation("Archive operation cancelled by user");
             return Result.Fail("Archive operation was cancelled by user");
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            // Either a task failed with an exception or error-triggered cancellation occurred
-
-            var faultedTasks = tasks.Where(kvp => kvp.Value.IsFaulted).Select(kvp => (Name: kvp.Key, Exception: kvp.Value.Exception!.GetBaseException())).ToArray();
-
-            // Trigger error-driven cancellation to signal other tasks to stop gracefully
-            errorCancellationTokenSource.Cancel();
-
-            // Wait for all tasks to complete gracefully
-            await Task.WhenAll(tasks.Values.Select(async t =>
-            {
-                try { await t; }
-                catch { /* Ignore exceptions during graceful shutdown */ }
-            }));
-
-            // Observe all task exceptions to prevent UnobservedTaskException
-            foreach (var task in tasks.Values.Where(t => t.IsFaulted))
-            {
-                _ = task.Exception;
-            }
-
-            // Log cancelled tasks (debug level)
-            var cancelledTaskNames = tasks.Where(kvp => kvp.Value.IsCanceled).Select(kvp => kvp.Key).ToArray();
-            if (cancelledTaskNames.Any())
-            {
-                logger.LogDebug("Tasks cancelled during graceful shutdown: {TaskNames}", string.Join(", ", cancelledTaskNames));
-            }
-
-            // Log and handle failed tasks (error level)
-            if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
-            {
-                // Single faulted task - return the exception
-                var msg = faultedTask.Exception?.GetBaseException().Message ?? "UNKNOWN";
-                logger.LogError(faultedTask.Exception, "Task '{TaskName}' failed with exception '{Exception}'", faultedTask.Name, msg);
-                return Result.Fail($"Archive operation failed: {faultedTask.Name} failed with {msg}").WithError(new ExceptionalError(faultedTask.Exception));
-            }
-            else
-            {
-                // Multiple faulted tasks - return aggregate exception
-                var exceptions         = faultedTasks.Select(ft => ft.Exception).ToArray();
-                var aggregateException = new AggregateException("Multiple tasks failed during archive operation", exceptions);
-                var faultedTaskNames = string.Join(", ", faultedTasks.Select(ft => ft.Name));
-                logger.LogError(aggregateException, "Tasks failed: {FaultedTaskNames}", faultedTaskNames);
-                return Result.Fail($"Archive operation failed: {faultedTaskNames} tasks failed").WithError(new ExceptionalError(aggregateException));
-            }
+            logger.LogError(e, "Unhandled exception");
+            return Result.Fail($"Archive operation failed: {e}").WithError(new ExceptionalError(e));
         }
     }
 
