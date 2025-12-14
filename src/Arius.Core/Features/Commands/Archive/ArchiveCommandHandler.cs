@@ -172,9 +172,7 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         try
         {
             // 6. Remove PointerFileEntries that do not exist on disk
-            logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk...");
-            pointerFileEntriesDeleted = handlerContext.StateRepository.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
-            logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk... {count} deleted", pointerFileEntriesDeleted);
+            DeleteStalePointerFileEntries(handlerContext);
 
             // 7. Upload the new state file to blob storage
             string? newStateName = null;
@@ -391,6 +389,25 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             }
         }); // No cancellation token passed to Task.Run, this allows proper catch/finally execution
 
+    private void DeleteStalePointerFileEntries(HandlerContext handlerContext)
+    {
+        logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk...");
+        pointerFileEntriesDeleted = handlerContext.StateRepository.DeletePointerFileEntries(FileDoesNotExist);
+        logger.LogInformation("Cleaning up pointer file entries that no longer exist on disk... {count} deleted", pointerFileEntriesDeleted);
+
+        bool FileDoesNotExist(PointerFileEntry pfe)
+        {
+            try
+            {
+                return !handlerContext.FileSystem.FileExists(pfe.RelativeName);
+            }
+            catch (ArgumentException) 
+            {
+                logger.LogWarning("Invalid character found in path for pointer file entry {PointerFileEntry}. Assuming the PointerFileEntry is valid/the file exists.", pfe);
+                return false; // FIX: Zio throws an ArgumentException: Invalid character found \u000D at index 91 (Parameter 'path') for some reason. Assume the file exists in this case.
+            }
+        }
+    }
 
     // --- HELPERS
 
