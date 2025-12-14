@@ -29,7 +29,7 @@ internal static class Program
             .Enrich.With<ShortSourceContextEnricher>()
             .WriteTo.File(logPath,
                 //rollingInterval: RollingInterval.Day, // Not strictly needed for unique files, but good practice
-                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{ShortSourceContext}] [Thread:{ThreadId}] {Message:lj}{NewLine}{Exception}")
+                outputTemplate: "{Timestamp:HH:mm:ss.fff} [{Level:u3}] [{ShortSourceContext}] [🧵:{ThreadId}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
         var exitCode = 0;
