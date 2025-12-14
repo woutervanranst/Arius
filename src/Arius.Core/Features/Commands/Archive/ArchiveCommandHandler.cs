@@ -89,9 +89,9 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
         var statisticsBefore = await handlerContext.ArchiveStorage.GetChunkStatistics(cancellationToken);
         logger.LogInformation("Remote storage before: {ChunkCount} chunks, {BinaryCount} binaries, {ArchivedSize} bytes", statisticsBefore.ChunkCount, statisticsBefore.BinaryCount, statisticsBefore.ArchivedSize);
 
-        using var errorCancellationTokenSource   = new CancellationTokenSource();
+        using var errorCancellationTokenSource  = new CancellationTokenSource();
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, errorCancellationTokenSource.Token);
-        var       errorCancellationToken         = linkedCancellationTokenSource.Token;
+        var       errorCancellationToken        = linkedCancellationTokenSource.Token;
 
         var tasks = new Dictionary<string, Task>
         {
@@ -101,15 +101,12 @@ internal class ArchiveCommandHandler : ICommandHandler<ArchiveCommand, Result<Ar
             ["UploadSmallFilesTask"] = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken)
         };
 
-        foreach (var task in tasks.Values)
+        // Attach cancellation logic
+        tasks.Values.RaiseCancellationOnFault(errorCancellationTokenSource);
         {
-            task.ContinueWith(t =>
             {
-                if (t.IsFaulted && !errorCancellationTokenSource.IsCancellationRequested)
                 {
-                    errorCancellationTokenSource.Cancel();
                 }
-            });
         }
 
         try
