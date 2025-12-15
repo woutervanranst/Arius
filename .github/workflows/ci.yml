@@ -101,7 +101,7 @@ jobs:
         run: tar czf arius-cli-${VERSION}.tar.gz -C publish .
 
       - name: "⬆️ Upload artifact"
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: arius-cli-${{ env.VERSION }}
           path: arius-cli-${{ env.VERSION }}.tar.gz
