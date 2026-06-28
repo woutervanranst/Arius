@@ -13,7 +13,7 @@ Arius is a lightweight archival solution, specifically built to leverage the Azu
 
 The name derives from the Greek for 'immortal'.
 
-> [!NOTE]
+> [!IMPORTANT]
 >
 > As of June 27, 2026, this repository is read-only and no longer maintained.
 > Arius7 is the successor and receives all new development: [Arius7](https://github.com/woutervanranst/Arius7).
