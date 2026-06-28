@@ -13,6 +13,11 @@ Arius is a lightweight archival solution, specifically built to leverage the Azu
 
 The name derives from the Greek for 'immortal'.
 
+> [!NOTE]
+>
+> As of June 27, 2026, this repository is read-only and no longer maintained.
+> Arius7 is the successor and receives all new development: [Arius7](https://github.com/woutervanranst/Arius7).
+
 ## Why?
 
 1. **Supporting 3-2-1 Backup Strategy**: Arius offers a secure and cost-effective offsite backup solution, complementing offline disk backups. The use of Azure Blob Archive tier allows for low-cost archiving, approximately 1 EUR per TB per month.
