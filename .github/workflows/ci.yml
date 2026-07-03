@@ -52,7 +52,7 @@ jobs:
 
       - name: "📄 Publish Test Report"
         if: always()
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         with:
           name: Arius.Cli & Core Test Report
           path: '**/*.trx'
@@ -178,7 +178,7 @@ jobs:
 
       - name: "📄 Publish Test Report"
         if: always()
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         with:
           name: Arius.Explorer Test Report
           path: '**/*.trx'
